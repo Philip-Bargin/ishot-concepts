@@ -8,7 +8,7 @@ export default function Footer() {
   return (
     <footer style={{ background: "#0b1836", borderTop: "1px solid #223B78" }}>
       {/* editorial closing line — set apart with a soft-blue tint + accent rule */}
-      <div className="container" style={{ paddingTop: "clamp(48px,7vw,80px)", textAlign: "center" }}>
+      {/* <div className="container" style={{ paddingTop: "clamp(48px,7vw,80px)", textAlign: "center" }}>
         <span
           aria-hidden="true"
           style={{
@@ -33,7 +33,7 @@ export default function Footer() {
           Your moments deserve to be{" "}
           <em style={{ color: "#F26A22", fontStyle: "italic" }}>remembered, felt, and celebrated.</em>
         </p>
-      </div>
+      </div> */}
 
       <div
         className="container"
@@ -46,7 +46,7 @@ export default function Footer() {
         }}
       >
         <div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 13 }}>
             <Logo />
           </div>
           <p
