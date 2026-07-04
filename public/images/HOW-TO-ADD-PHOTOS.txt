@@ -1,0 +1,28 @@
+HOW TO ADD YOUR REAL iSHOT CONCEPT PHOTOS
+==========================================
+
+1. Copy your photo files into THIS folder (public/images/).
+   Use simple lowercase names, no spaces. Examples:
+     hero.jpg
+     wedding-1.jpg
+     studio-portrait.jpg
+
+2. Open  src/assets.js  and replace the placeholder link with your file.
+   A file named  hero.jpg  in this folder is written as  "/images/hero.jpg"
+
+   Before:  homeHero: "https://picsum.photos/seed/ishotherowedding/1800/1100",
+   After:   homeHero: "/images/hero.jpg",
+
+3. Save. The site updates automatically while "npm run dev" is running.
+
+LOGO
+====
+Put your logo file in the  public/  folder (one level up), e.g.  public/logo.svg
+Then in  src/assets.js  set:   src: "/logo.svg"
+Use a WHITE or TRANSPARENT logo — it sits on the dark navy header and footer.
+
+TIPS
+====
+- Good formats: .jpg (photos), .png or .svg (logo/graphics), .webp (smallest).
+- Keep photos reasonably sized (long edge ~1600-2000px) so the site stays fast.
+- You can name files anything; just match the name in src/assets.js.
