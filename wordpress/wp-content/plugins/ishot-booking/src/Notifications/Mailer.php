@@ -27,7 +27,7 @@ final class Mailer {
 		add_action( 'wp_mail_failed', $failed );
 		add_action( 'phpmailer_init', $prepare );
 		try {
-			$sent = wp_mail( $message->to, $message->subject, $message->html, self::headers() );
+			$sent = wp_mail( $message->to, $message->subject, $message->html, self::headers( $message->reply_to ) );
 		} catch ( \Throwable $e ) {
 			$sent  = false;
 			$error = $e->getMessage();
@@ -39,14 +39,15 @@ final class Mailer {
 	}
 
 	/** @return string[] */
-	private static function headers(): array {
+	private static function headers( ?string $reply_to = null ): array {
 		$s       = Settings::all();
 		$headers = array( 'Content-Type: text/html; charset=UTF-8' );
 		$from    = sanitize_email( (string) $s['email_from_address'] );
 		if ( '' !== $from ) {
 			$headers[] = sprintf( 'From: %s <%s>', self::headerText( Settings::studioName() ), $from );
 		}
-		$reply = sanitize_email( (string) $s['email_reply_to'] );
+		// A message may name its own Reply-To (an enquiry is answered to the person who wrote).
+		$reply = sanitize_email( (string) ( $reply_to ?? $s['email_reply_to'] ) );
 		if ( '' !== $reply ) {
 			$headers[] = 'Reply-To: ' . $reply;
 		}

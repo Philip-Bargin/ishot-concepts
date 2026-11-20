@@ -297,6 +297,18 @@ final class BookingRepository {
 			$args[]  = $filters['now'] ?? gmdate( self::DATETIME );
 			$order   = 'upcoming' === $when ? 'start_utc ASC, id ASC' : $order;
 		}
+		if ( isset( $filters['owner'] ) ) {
+			// A client's own bookings: linked to their account, or unclaimed guest bookings under
+			// an email address the account has verified. Anonymised rows are no longer anyone's.
+			$where[] = 'anonymised_at IS NULL';
+			if ( null !== ( $filters['owner_email'] ?? null ) ) {
+				$where[] = '(client_user_id = %d OR (client_user_id IS NULL AND client_email = %s))';
+				array_push( $args, (int) $filters['owner'], (string) $filters['owner_email'] );
+			} else {
+				$where[] = 'client_user_id = %d';
+				$args[]  = (int) $filters['owner'];
+			}
+		}
 		if ( isset( $filters['q'] ) && '' !== trim( $filters['q'] ) ) {
 			$like    = '%' . $this->db->esc_like( trim( $filters['q'] ) ) . '%';
 			$where[] = '(client_name LIKE %s OR client_email LIKE %s OR client_phone LIKE %s)';

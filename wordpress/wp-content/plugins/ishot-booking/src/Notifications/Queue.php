@@ -48,5 +48,6 @@ final class Queue {
 		$dispatcher->recoverStale( $now );
 		( new Reminders() )->queueDue( $now );
 		$dispatcher->sendDue( $now );
+		( new \IShot\Booking\Contact\Enquiries() )->sendDue( $now ); // safety net for contact enquiries
 	}
 }

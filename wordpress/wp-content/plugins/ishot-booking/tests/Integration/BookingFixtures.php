@@ -69,6 +69,7 @@ trait BookingFixtures {
 				client_email: $o['email'] ?? 'ada@example.com',
 				service_id: $o['service'] ?? null,
 				kind: $o['kind'] ?? 'booking',
+				client_user_id: $o['user'] ?? null,
 				hold_expires_at: isset( $o['hold'] ) ? new DateTimeImmutable( $o['hold'], $utc ) : null
 			)
 		);

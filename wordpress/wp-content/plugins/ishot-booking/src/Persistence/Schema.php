@@ -7,7 +7,7 @@ namespace IShot\Booking\Persistence;
  */
 final class Schema {
 
-	public const VERSION     = '4';
+	public const VERSION     = '5';
 	public const VERSION_KEY = 'ishot_booking_db_version';
 
 	public static function bookings(): string {
@@ -37,9 +37,15 @@ final class Schema {
 		return $wpdb->prefix . 'ishot_booking_links';
 	}
 
+	/** Contact-form enquiries, kept until delivered to the studio (and purged by retention). */
+	public static function enquiries(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'ishot_enquiries';
+	}
+
 	/** @return string[] */
 	public static function tables(): array {
-		return array( self::bookings(), self::locks(), self::events(), self::notifications(), self::links() );
+		return array( self::bookings(), self::locks(), self::events(), self::notifications(), self::links(), self::enquiries() );
 	}
 
 	/** Creates or upgrades the tables (dbDelta is idempotent). */
@@ -53,6 +59,7 @@ final class Schema {
 		$events   = self::events();
 		$outbox   = self::notifications();
 		$links    = self::links();
+		$enquiry  = self::enquiries();
 
 		dbDelta(
 			"CREATE TABLE {$bookings} (
@@ -138,6 +145,26 @@ CREATE TABLE {$links} (
   created_at datetime NOT NULL,
   PRIMARY KEY  (token_hash),
   KEY booking_id (booking_id)
+) ENGINE=InnoDB {$charset};
+CREATE TABLE {$enquiry} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  name varchar(100) NOT NULL,
+  email varchar(254) NOT NULL,
+  phone varchar(30) NOT NULL DEFAULT '',
+  enquiry_type varchar(100) NOT NULL DEFAULT '',
+  message text NOT NULL,
+  consent_at datetime NOT NULL,
+  status varchar(12) NOT NULL DEFAULT 'pending',
+  attempts tinyint(3) unsigned NOT NULL DEFAULT 0,
+  next_attempt_at datetime NOT NULL,
+  claimed_at datetime NULL,
+  sent_at datetime NULL,
+  last_error varchar(255) NOT NULL DEFAULT '',
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  KEY due (status,next_attempt_at),
+  KEY email (email(100)),
+  KEY created_at (created_at)
 ) ENGINE=InnoDB {$charset};"
 		);
 

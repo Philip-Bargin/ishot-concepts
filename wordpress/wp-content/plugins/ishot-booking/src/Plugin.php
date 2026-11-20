@@ -9,6 +9,7 @@ use IShot\Booking\Admin\Menu;
 use IShot\Booking\Admin\SettingsScreen;
 use IShot\Booking\Application\HoldExpiry;
 use IShot\Booking\Catalog\ServiceCatalog;
+use IShot\Booking\Contact\Enquiries;
 use IShot\Booking\Content\ContentAdmin;
 use IShot\Booking\Content\ContentTypes;
 use IShot\Booking\Content\Fields;
@@ -18,6 +19,8 @@ use IShot\Booking\Notifications\Queue;
 use IShot\Booking\Privacy\PersonalData;
 use IShot\Booking\Privacy\Retention;
 use IShot\Booking\Rest\ClientController;
+use IShot\Booking\Rest\ContactController;
+use IShot\Booking\Rest\MyBookingsController;
 use IShot\Booking\Rest\PublicController;
 use IShot\Booking\Rest\StaffController;
 
@@ -36,6 +39,7 @@ final class Plugin {
 		add_action( Queue::SEND_HOOK, array( Queue::class, 'send' ) );
 		add_action( Queue::TICK_HOOK, array( Queue::class, 'tick' ) );
 		add_action( 'action_scheduler_init', array( Queue::class, 'ensureScheduled' ) );
+		add_action( Enquiries::SEND_HOOK, array( Enquiries::class, 'run' ) );
 		add_action( 'init', array( ServiceCatalog::class, 'register' ) );
 
 		// Content: projects, testimonials, categories (and every content field, services included).
@@ -61,6 +65,8 @@ final class Plugin {
 				( new PublicController() )->register();
 				( new StaffController() )->register();
 				( new ClientController() )->register();
+				( new MyBookingsController() )->register();
+				( new ContactController() )->register();
 				( new CalendarFeed() )->register();
 			}
 		);

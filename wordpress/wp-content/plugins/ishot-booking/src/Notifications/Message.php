@@ -14,6 +14,7 @@ final class Message {
 		public readonly string $html,
 		public readonly string $text,
 		public readonly array $attachments = array(),
-		public readonly ?string $link_hash = null
+		public readonly ?string $link_hash = null,
+		public readonly ?string $reply_to = null
 	) {}
 }

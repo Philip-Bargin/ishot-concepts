@@ -3,6 +3,7 @@ namespace IShot\Booking\Privacy;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use IShot\Booking\Contact\Enquiries;
 use IShot\Booking\Notifications\Queue;
 use IShot\Booking\Persistence\Schema;
 use IShot\Booking\Settings;
@@ -40,6 +41,7 @@ final class Retention {
 			return 0;
 		}
 		$cutoff = $now->setTimezone( new DateTimeZone( 'UTC' ) )->modify( "-{$months} months" )->format( 'Y-m-d H:i:s' );
+		( new Enquiries() )->deleteOlderThan( $cutoff );
 		$ids    = $wpdb->get_col(
 			$wpdb->prepare( 'SELECT id FROM ' . Schema::bookings() . " WHERE anonymised_at IS NULL AND end_utc < %s AND kind = 'booking' ORDER BY id LIMIT %d", $cutoff, self::BATCH ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		);

@@ -2,6 +2,7 @@
 namespace IShot\Booking\Privacy;
 
 use IShot\Booking\Admin\View;
+use IShot\Booking\Contact\Enquiries;
 use IShot\Booking\Domain\BookingStatus;
 use IShot\Booking\Persistence\Schema;
 use IShot\Booking\Settings;
@@ -80,6 +81,25 @@ final class PersonalData {
 				'data'        => $this->describe( $row ),
 			);
 		}
+		if ( 1 === max( 1, $page ) ) {
+			foreach ( ( new Enquiries( $this->db ) )->forEmail( sanitize_email( $email ) ) as $e ) {
+				$items[] = array(
+					'group_id'    => 'ishot-enquiries',
+					'group_label' => __( 'Studio enquiries', 'ishot-booking' ),
+					'item_id'     => 'ishot-enquiry-' . $e['id'],
+					'data'        => self::fields(
+						array(
+							__( 'Name', 'ishot-booking' )    => (string) $e['name'],
+							__( 'Email', 'ishot-booking' )   => (string) $e['email'],
+							__( 'Phone', 'ishot-booking' )   => (string) $e['phone'],
+							__( 'Enquiry', 'ishot-booking' ) => (string) $e['enquiry_type'],
+							__( 'Message', 'ishot-booking' ) => (string) $e['message'],
+							__( 'Sent', 'ishot-booking' )    => View::when( $e['created_at'] ),
+						)
+					),
+				);
+			}
+		}
 		return array(
 			'data' => $items,
 			'done' => count( $rows ) < self::PAGE,
@@ -99,6 +119,9 @@ final class PersonalData {
 		$removed    = false;
 		$retained   = false;
 		$messages   = array();
+
+		// Enquiries hold nothing the studio must keep: delete them outright.
+		$removed = ( new Enquiries( $this->db ) )->deleteForEmail( sanitize_email( $email ) ) > 0;
 
 		$rows = $this->bookingsFor( $email, 1, true );
 		foreach ( $rows as $row ) {
@@ -173,6 +196,14 @@ final class PersonalData {
 			__( 'Requested', 'ishot-booking' )         => View::when( $row['created_at'] ),
 			__( 'Emails sent to you', 'ishot-booking' ) => $this->emailsSent( (int) $row['id'] ),
 		);
+		return self::fields( $fields );
+	}
+
+	/**
+	 * @param array<string, string> $fields Label => value; empty values are left out.
+	 * @return array<int, array{name: string, value: string}>
+	 */
+	private static function fields( array $fields ): array {
 		$out = array();
 		foreach ( $fields as $name => $value ) {
 			if ( '' !== $value ) {
