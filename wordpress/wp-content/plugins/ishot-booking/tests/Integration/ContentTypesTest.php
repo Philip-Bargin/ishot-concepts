@@ -143,6 +143,28 @@ final class ContentTypesTest extends WP_UnitTestCase {
 		$this->assertSame( 'draft', get_post_status( $future ) );
 	}
 
+	public function test_placeholder_content_cannot_be_published_outside_local_development(): void {
+		add_filter( 'ishot_booking_allow_placeholder_publish', '__return_false' );
+		foreach ( array( ServiceCatalog::POST_TYPE, ContentTypes::PROJECT ) as $type ) {
+			$id = self::factory()->post->create( array( 'post_type' => $type, 'post_status' => 'draft' ) );
+			update_post_meta( $id, 'content_status', Fields::PLACEHOLDER );
+			wp_update_post( array( 'ID' => $id, 'post_status' => 'publish' ) );
+			$this->assertSame( 'draft', get_post_status( $id ), $type );
+
+			update_post_meta( $id, 'content_status', Fields::APPROVED );
+			wp_update_post( array( 'ID' => $id, 'post_status' => 'publish' ) );
+			$this->assertSame( 'publish', get_post_status( $id ), "approved {$type} publishes" );
+		}
+		remove_all_filters( 'ishot_booking_allow_placeholder_publish' );
+	}
+
+	public function test_placeholder_publishing_is_allowed_only_on_local_and_development_sites(): void {
+		$this->assertTrue( ContentTypes::placeholderPublishAllowedOn( 'local' ) );
+		$this->assertTrue( ContentTypes::placeholderPublishAllowedOn( 'development' ) );
+		$this->assertFalse( ContentTypes::placeholderPublishAllowedOn( 'staging' ) );
+		$this->assertFalse( ContentTypes::placeholderPublishAllowedOn( 'production' ) );
+	}
+
 	public function test_categories_carry_an_aperture_colour_index(): void {
 		$term = self::factory()->term->create( array( 'taxonomy' => ContentTypes::CATEGORY ) );
 		$this->assertTrue( registered_meta_key_exists( 'term', 'aperture', ContentTypes::CATEGORY ) );

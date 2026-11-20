@@ -164,6 +164,31 @@ final class ContentTypes {
 
 	public static function afterInsert( int $post_id, WP_Post $post ): void {
 		self::enforceConsent( $post );
+		self::enforceApproval( get_post( $post_id ) );
+	}
+
+	/**
+	 * Placeholder (prototype) copy never goes live: on a staging or production site a published
+	 * placeholder is put back to draft until the owner sets Content status to Approved. Local and
+	 * development sites may publish it for previews. Filter: ishot_booking_allow_placeholder_publish.
+	 */
+	public static function enforceApproval( ?WP_Post $post ): void {
+		if ( null === $post || 'publish' !== $post->post_status || ! in_array( $post->post_type, array( ServiceCatalog::POST_TYPE, self::PROJECT, self::TESTIMONIAL ), true ) ) {
+			return;
+		}
+		$allowed = (bool) apply_filters( 'ishot_booking_allow_placeholder_publish', self::placeholderPublishAllowedOn( wp_get_environment_type() ) );
+		if ( ! $allowed && Fields::PLACEHOLDER === get_post_meta( $post->ID, 'content_status', true ) ) {
+			wp_update_post(
+				array(
+					'ID'          => $post->ID,
+					'post_status' => 'draft',
+				)
+			);
+		}
+	}
+
+	public static function placeholderPublishAllowedOn( string $environment ): bool {
+		return in_array( $environment, array( 'local', 'development' ), true );
 	}
 
 	/** Every primitive post capability collapses to edit_ishot_content. */

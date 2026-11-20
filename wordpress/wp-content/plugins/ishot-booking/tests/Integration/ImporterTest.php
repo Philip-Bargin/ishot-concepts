@@ -154,6 +154,7 @@ final class ImporterTest extends WP_UnitTestCase {
 	}
 
 	public function test_publishing_is_explicit_and_later_runs_never_change_status(): void {
+		add_filter( 'ishot_booking_allow_placeholder_publish', '__return_true' ); // a local preview site
 		$this->import( array(), array( 'publish' => true ) );
 		$service = self::byKey( ServiceCatalog::POST_TYPE, 'service:s1' );
 		$this->assertSame( 'publish', $service->post_status );
@@ -161,6 +162,16 @@ final class ImporterTest extends WP_UnitTestCase {
 		wp_update_post( array( 'ID' => $service->ID, 'post_status' => 'draft' ) );
 		$this->import( array(), array( 'publish' => true ) );
 		$this->assertSame( 'draft', get_post_status( $service->ID ), 'the owner unpublished it' );
+		remove_all_filters( 'ishot_booking_allow_placeholder_publish' );
+	}
+
+	public function test_on_a_live_site_publish_still_leaves_placeholders_as_drafts(): void {
+		add_filter( 'ishot_booking_allow_placeholder_publish', '__return_false' );
+		$this->import( array(), array( 'publish' => true ) );
+		$this->assertSame( 'draft', self::byKey( ServiceCatalog::POST_TYPE, 'service:s1' )->post_status );
+		$this->assertSame( 'draft', self::byKey( ContentTypes::PROJECT, 'project:birthday-call-concept' )->post_status );
+		$this->assertSame( 0, $this->import( array(), array( 'publish' => true ) )['updated'], 'and the guard does not look like an edit' );
+		remove_all_filters( 'ishot_booking_allow_placeholder_publish' );
 	}
 
 	public function test_dry_run_reports_without_writing(): void {

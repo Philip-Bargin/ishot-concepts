@@ -10,6 +10,7 @@
     "prebuild": "npm run sync:ds && npm run lint:tokens",
     "build": "vite build",
     "preview": "vite preview",
+    "preview:build": "npm run build && node scripts/prepare-preview.mjs",
     "images": "node scripts/optimize-images.mjs",
     "lint:tokens": "node scripts/check-tokens.mjs",
     "wp:start": "wp-env start",

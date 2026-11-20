@@ -71,6 +71,9 @@ final class ContentAdminTest extends WP_UnitTestCase {
 
 		$this->assertSame( array( $b, $a ), array_map( 'intval', get_post_meta( $id, 'gallery', true ) ) );
 		$this->assertSame( '2026-10-08', get_post_meta( $id, 'shoot_date', true ) );
+
+		$this->post( $id, array( 'gallery' => '' ) );
+		$this->assertSame( array(), get_post_meta( $id, 'gallery', true ), 'clearing the field removes every image' );
 	}
 
 	public function test_without_the_capability_or_nonce_nothing_is_saved(): void {

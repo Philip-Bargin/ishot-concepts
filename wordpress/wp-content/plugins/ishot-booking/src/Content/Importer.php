@@ -245,7 +245,11 @@ final class Importer {
 		}
 		$state = static fn( int $id ): array => self::postState( $id, array_keys( $meta ) );
 		$write = function ( int $id ) use ( $type, $key, $want ): int {
-			$args = $want['fields'] + array( 'post_type' => $type );
+			// meta_input lands before wp_after_insert_post, so the placeholder guard sees it.
+			$args = $want['fields'] + array(
+				'post_type'  => $type,
+				'meta_input' => $want['meta'],
+			);
 			if ( 0 === $id ) {
 				$args['post_status'] = $this->options['publish'] ? 'publish' : 'draft';
 				$id                  = wp_insert_post( wp_slash( $args ), true );
