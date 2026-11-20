@@ -127,6 +127,9 @@ export default function Book() {
     setDate(alt.date);
     setTime(alt.time);
     setStatus("idle");
+    // The alert holding the focused button disappears; keep keyboard and screen-reader users on
+    // the Confirm step (same rule as every step change) instead of dropping focus to <body>.
+    requestAnimationFrame(() => headingRef.current?.focus());
   };
 
   const downloadIcs = () => {
