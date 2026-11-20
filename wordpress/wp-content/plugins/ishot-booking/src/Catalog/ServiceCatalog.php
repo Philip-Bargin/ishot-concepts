@@ -34,6 +34,9 @@ final class ServiceCatalog {
 				'rewrite'      => array( 'slug' => 'services' ),
 				'menu_icon'    => 'dashicons-camera',
 				'supports'     => array( 'title', 'editor', 'excerpt', 'thumbnail', 'page-attributes', 'custom-fields' ),
+				// Services and prices belong to managers, not to anyone with edit_posts (authors).
+				'map_meta_cap' => true,
+				'capabilities' => self::capabilities(),
 			)
 		);
 
@@ -46,10 +49,28 @@ final class ServiceCatalog {
 					'single'        => true,
 					'default'       => $default,
 					'show_in_rest'  => true,
-					'auth_callback' => static fn() => current_user_can( 'edit_posts' ),
+					'auth_callback' => static fn( $allowed, $meta_key, $post_id ) => current_user_can( 'edit_post', (int) $post_id ),
 				)
 			);
 		}
+	}
+
+	/** Every primitive post capability for the type collapses to edit_ishot_services. */
+	private static function capabilities(): array {
+		$primitives = array(
+			'edit_posts',
+			'edit_others_posts',
+			'edit_private_posts',
+			'edit_published_posts',
+			'publish_posts',
+			'read_private_posts',
+			'delete_posts',
+			'delete_others_posts',
+			'delete_private_posts',
+			'delete_published_posts',
+			'create_posts',
+		);
+		return array_fill_keys( $primitives, 'edit_ishot_services' );
 	}
 
 	/** A published, bookable service, or null. */

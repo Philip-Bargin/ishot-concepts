@@ -20,6 +20,12 @@ final class ConcurrencyTest extends TestCase {
 		return trim( (string) shell_exec( $cmd . ' 2>&1' ) );
 	}
 
+	/** A child's output as one readable line: wp_die() pages are HTML. */
+	private static function plain( string $output ): string {
+		$body = preg_replace( '#<(style|script|head)\b.*?</\1>#is', '', $output );
+		return substr( trim( (string) preg_replace( '/\s+/', ' ', html_entity_decode( strip_tags( (string) $body ) ) ) ), 0, 300 );
+	}
+
 	public function test_fifty_simultaneous_requests_for_overlapping_times_yield_exactly_one_booking(): void {
 		$this->assertSame( 'ready', self::child( 'reset', '0', '' ) );
 
@@ -44,7 +50,8 @@ final class ConcurrencyTest extends TestCase {
 		$conflicts = array_filter( $results, static fn( $r ) => 'conflict' === $r );
 
 		$this->assertCount( 1, $winners, 'exactly one racer may win; got: ' . implode( ' | ', array_unique( $results ) ) );
-		$this->assertCount( self::RACERS - 1, $conflicts, 'every other racer must get a clean conflict, not an error' );
+		$others = array_diff_key( $results, $winners, $conflicts );
+		$this->assertCount( self::RACERS - 1, $conflicts, 'every other racer must get a clean conflict, not an error; got: ' . implode( ' | ', array_unique( array_map( array( self::class, 'plain' ), $others ) ) ) );
 		// One booking; its 60 min + 30 min buffer = 3 locked half-hour units.
 		$this->assertSame( '1:3', self::child( 'count', '0', '' ) );
 	}

@@ -2,7 +2,9 @@
 // - tokens.css is copied as-is.
 // - components/bundle.css has its Google Fonts @import removed: fonts are self-hosted
 //   via @fontsource (see src/main.jsx), so no third-party font requests are made.
-// Runs automatically before `npm run dev` and `npm run build`. Never edit src/styles/ds/ by hand.
+// Also writes the booking plugin's admin tokens: the light theme only, scoped to `.ishot-admin`
+// so the design system's generic names (--ink, --line, ...) never leak into the rest of wp-admin.
+// Runs automatically before `npm run dev` and `npm run build`. Never edit the generated files by hand.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,4 +25,12 @@ if (bundle === bundleSrc) {
 
 writeFileSync(resolve(outDir, "tokens.css"), banner + tokens);
 writeFileSync(resolve(outDir, "bundle.css"), banner + bundle);
-console.log("sync-design-system: wrote src/styles/ds/tokens.css and bundle.css");
+// Custom-property blocks only (light theme + shared scales). The type classes are left out on purpose:
+// the design system's `.button` etc. would restyle wp-admin's own controls.
+const rootBlocks = [...tokens.matchAll(/^:root(?:,\s*\[data-theme="light"\])?\s*\{[^}]*\}/gm)].map((m) => m[0]);
+if (rootBlocks.length !== 2) throw new Error(`sync-design-system: expected 2 :root blocks in tokens.css, found ${rootBlocks.length}`);
+const scoped = rootBlocks.map((block) => block.replace(/^:root[^{]*\{/, ".ishot-admin {")).join("\n");
+const pluginCss = resolve(root, "wordpress/wp-content/plugins/ishot-booking/assets/css");
+mkdirSync(pluginCss, { recursive: true });
+writeFileSync(resolve(pluginCss, "tokens.css"), banner + scoped + "\n");
+console.log("sync-design-system: wrote src/styles/ds/tokens.css, bundle.css and the plugin admin tokens.css");

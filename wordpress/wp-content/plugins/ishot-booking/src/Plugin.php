@@ -1,6 +1,10 @@
 <?php
 namespace IShot\Booking;
 
+use IShot\Booking\Admin\ActionHandler;
+use IShot\Booking\Admin\DashboardWidget;
+use IShot\Booking\Admin\Menu;
+use IShot\Booking\Admin\SettingsScreen;
 use IShot\Booking\Application\HoldExpiry;
 use IShot\Booking\Catalog\ServiceCatalog;
 use IShot\Booking\Rest\ClientController;
@@ -27,5 +31,16 @@ final class Plugin {
 				( new ClientController() )->register();
 			}
 		);
+
+		if ( is_admin() ) {
+			add_action( 'admin_menu', array( Menu::class, 'register' ) );
+			add_action( 'admin_enqueue_scripts', array( Menu::class, 'enqueue' ) );
+			add_action( 'wp_dashboard_setup', array( DashboardWidget::class, 'register' ) );
+			add_action( 'admin_post_' . ActionHandler::POST_ACTION, array( ActionHandler::class, 'handleAction' ) );
+			add_action( 'admin_post_' . ActionHandler::POST_BLOCK, array( ActionHandler::class, 'handleBlock' ) );
+			add_action( 'admin_post_' . ActionHandler::POST_UNBLOCK, array( ActionHandler::class, 'handleUnblock' ) );
+			add_action( 'admin_post_' . SettingsScreen::POST_HOURS, array( SettingsScreen::class, 'handleHours' ) );
+			add_action( 'admin_post_' . SettingsScreen::POST_POLICY, array( SettingsScreen::class, 'handlePolicy' ) );
+		}
 	}
 }

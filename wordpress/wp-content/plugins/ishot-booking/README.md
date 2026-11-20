@@ -7,7 +7,7 @@ Booking management for the iShot Concept studio: availability, conflict-safe boo
 1. A booking's session is widened by its buffers (`NewBooking::blockedRange()`).
 2. That range is mapped onto fixed slot units, 30 minutes by default (`Domain\SlotUnits::cover()`). Any unit the range touches counts.
 3. `Persistence\BookingRepository::create()` inserts the booking row and one `ishot_slot_locks` row per unit in a single InnoDB transaction.
-4. The lock table's primary key `(resource_id, unit_start_utc)` makes MySQL reject a unit that is already held. The transaction rolls back and the caller gets a `SlotConflict` (HTTP 409).
+4. The lock table's primary key `(resource_id, unit_start_utc)` makes MySQL reject a unit that is already held. The transaction rolls back and the caller gets a `SlotConflict` (HTTP 409). Under contention, InnoDB can instead roll one racer back as a deadlock victim; the repository re-runs that transaction (up to 3 attempts, with jitter), and the retry then sees the winner's locks and ends in a clean `SlotConflict`.
 5. Statuses that release a booking (cancelled, expired, completed, no-show) delete its lock rows in the same transaction as the status change.
 
 The UI's availability (`Domain\Availability`) is advisory; the insert is the only authority. `tests/Integration/ConcurrencyTest.php` releases 50 separate processes at the same instant against overlapping times and asserts exactly one booking.
@@ -23,6 +23,8 @@ The UI's availability (`Domain\Availability`) is advisory; the insert is the onl
 | `src/Rest/` | `ishot/v1` routes and the per-address rate limiter |
 | `src/Settings.php`, `src/Installer.php`, `src/Plugin.php` | Studio policy settings, activation (InnoDB check) and upgrades, hooks |
 | `src/Roles.php` | Studio manager, photographer and client roles and their booking capabilities |
+| `src/Admin/` | wp-admin screens: calendar, booking list and detail, opening hours, settings, dashboard widget; form handlers |
+| `assets/css/` | `tokens.css` (generated from `design-system/` by `npm run sync:ds`, scoped to `.ishot-admin`), `admin.css` (tokens only; checked by `npm run lint:tokens`) |
 | `tests/Unit/` | Domain tests (no database) |
 | `tests/Integration/` | Real MySQL in the wp-env test container, including the concurrency race |
 
@@ -116,24 +118,31 @@ Unpaid `requested` and `pending_deposit` bookings hold their slot until `hold_ex
 
 Confirming a booking clears its hold.
 
+## Dashboard (wp-admin → Bookings)
+
+| Screen | Who | What |
+|---|---|---|
+| Calendar | `view_ishot_calendar` | Week agenda (Mon–Sun, studio time) with opening hours, bookings and blocks; previous and next week; block and unblock time (`block_ishot_time`) |
+| All bookings | `view_ishot_calendar` | Upcoming / past / all; status filter; search by client name, email or phone; 25 per page |
+| Booking detail (`?booking=ID`) | `view_ishot_calendar` | Session and contact details, history timeline, and only the actions this user's role allows in the booking's current state |
+| Opening hours | `manage_ishot_availability` | Weekly hours and dated exceptions (holidays, short days) |
+| Settings | `manage_ishot_settings` | Notice period, booking window, hold time, change cut-off. The slot length is shown but locked, because changing it would let new bookings overlap existing locks. |
+| Dashboard widget "Studio today" | `view_ishot_calendar` | Today's sessions; counts of new requests, awaiting deposit, and holds ending within 24 h |
+
+Every button posts to `admin-post.php` with a per-booking nonce and the version shown on screen, and goes through the same `StaffActions` as the REST API. The screens are server-rendered and need no JavaScript. The calendar is a week agenda rather than FullCalendar: simpler, accessible, and enough for one studio calendar.
+
 ## Status
 
 - Done:
-  - domain layer
-  - schema (v2)
-  - atomic create and reschedule
-  - idempotency
-  - optimistic versioning
-  - audit log
-  - concurrency proof
+  - domain, persistence, concurrency proof
   - activation and upgrades
   - settings
   - services post type
-  - public, staff and client REST routes
   - roles
+  - public, staff and client REST routes
   - hold expiry
+  - wp-admin dashboard
 - Next:
-  - wp-admin screens (calendar, list, detail, availability, settings, dashboard widget)
   - notifications (Action Scheduler) and ICS
   - privacy exporter and eraser, and the retention job
   - `PaymentGateway` interface

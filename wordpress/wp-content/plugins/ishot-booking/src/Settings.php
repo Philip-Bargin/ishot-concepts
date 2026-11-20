@@ -36,6 +36,12 @@ final class Settings {
 		return array_merge( self::DEFAULTS, is_array( $stored ) ? $stored : array() );
 	}
 
+	/** Merges validated values into the stored settings (callers validate; see Admin\SettingsForm). */
+	public static function update( array $values ): void {
+		$stored = get_option( self::OPTION, array() );
+		update_option( self::OPTION, array_merge( is_array( $stored ) ? $stored : array(), $values ), false );
+	}
+
 	public static function int( string $key ): int {
 		return (int) self::all()[ $key ];
 	}

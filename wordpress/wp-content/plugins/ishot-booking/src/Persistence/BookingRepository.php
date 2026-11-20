@@ -77,6 +77,7 @@ final class BookingRepository {
 					if ( null !== $booking->idempotency_key && $this->isDuplicateKeyError() ) {
 						throw new IdempotentReplay();
 					}
+					$this->throwIfTransient();
 					throw new RuntimeException( 'Could not save the booking: ' . $this->db->last_error );
 				}
 				$id = (int) $this->db->insert_id;
@@ -260,6 +261,71 @@ final class BookingRepository {
 		);
 	}
 
+	/**
+	 * Client bookings (not staff blocks) for the admin list.
+	 *
+	 * @param array{status?: string, when?: string, now?: string, q?: string} $filters
+	 *        when: 'upcoming' (start >= now, soonest first), 'past' (start < now, latest first), or all (latest first).
+	 * @return array{rows: array<int, array<string, mixed>>, total: int}
+	 */
+	public function search( array $filters, int $per_page, int $page ): array {
+		$where = array( "kind = 'booking'" );
+		$args  = array();
+		$order = 'start_utc DESC, id DESC';
+
+		if ( ! empty( $filters['status'] ) ) {
+			$where[] = 'status = %s';
+			$args[]  = $filters['status'];
+		}
+		$when = $filters['when'] ?? 'all';
+		if ( 'upcoming' === $when || 'past' === $when ) {
+			$where[] = 'upcoming' === $when ? 'start_utc >= %s' : 'start_utc < %s';
+			$args[]  = $filters['now'] ?? gmdate( self::DATETIME );
+			$order   = 'upcoming' === $when ? 'start_utc ASC, id ASC' : $order;
+		}
+		if ( isset( $filters['q'] ) && '' !== trim( $filters['q'] ) ) {
+			$like    = '%' . $this->db->esc_like( trim( $filters['q'] ) ) . '%';
+			$where[] = '(client_name LIKE %s OR client_email LIKE %s OR client_phone LIKE %s)';
+			array_push( $args, $like, $like, $like );
+		}
+
+		$sql_where = implode( ' AND ', $where );
+		$table     = Schema::bookings();
+		$total     = (int) $this->db->get_var( $this->prepareMaybe( "SELECT COUNT(*) FROM {$table} WHERE {$sql_where}", $args ) );
+		$rows      = $this->db->get_results(
+			$this->db->prepare( "SELECT * FROM {$table} WHERE {$sql_where} ORDER BY {$order} LIMIT %d OFFSET %d", array_merge( $args, array( $per_page, max( 0, ( $page - 1 ) * $per_page ) ) ) ), // phpcs:ignore WordPress.DB.PreparedSQL
+			ARRAY_A
+		);
+		return array(
+			'rows'  => $rows,
+			'total' => $total,
+		);
+	}
+
+	public function countWithStatus( BookingStatus $status ): int {
+		return (int) $this->db->get_var(
+			$this->db->prepare( 'SELECT COUNT(*) FROM ' . Schema::bookings() . " WHERE kind = 'booking' AND status = %s", $status->value ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+	}
+
+	/** Unpaid holds that lapse in (from, to], UTC. */
+	public function countHoldsExpiringBetween( string $from_utc, string $to_utc ): int {
+		return (int) $this->db->get_var(
+			$this->db->prepare(
+				'SELECT COUNT(*) FROM ' . Schema::bookings() . ' WHERE status IN (%s, %s) AND hold_expires_at > %s AND hold_expires_at <= %s', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				BookingStatus::Requested->value,
+				BookingStatus::PendingDeposit->value,
+				$from_utc,
+				$to_utc
+			)
+		);
+	}
+
+	/** @param array<int, mixed> $args */
+	private function prepareMaybe( string $sql, array $args ): string {
+		return array() === $args ? $sql : $this->db->prepare( $sql, $args ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
 	/** @return array<int, array<string, mixed>> Audit events for a booking, oldest first. */
 	public function events( int $booking_id ): array {
 		return $this->db->get_results(
@@ -308,6 +374,7 @@ final class BookingRepository {
 			if ( $this->isDuplicateKeyError() ) {
 				throw new SlotConflict( 'That time has just been booked by someone else.' );
 			}
+			$this->throwIfTransient();
 			throw new RuntimeException( 'Could not lock the time slot: ' . $this->db->last_error );
 		}
 	}
@@ -334,22 +401,51 @@ final class BookingRepository {
 		return null === $id ? null : (int) $id;
 	}
 
+	/** Attempts per transaction when InnoDB picks it as a deadlock victim. */
+	private const MAX_ATTEMPTS = 3;
+
 	/**
 	 * Runs $work inside START TRANSACTION … COMMIT, rolling back on any exception.
 	 * $on_error may turn a rolled-back exception into a return value.
+	 *
+	 * Concurrent inserts into the unique slot-lock index can deadlock; InnoDB then rolls one
+	 * transaction back and asks for it to be restarted. $work is re-run from the top (it reads
+	 * everything it needs inside the transaction), so the retry sees the winner's committed
+	 * locks and ends in a clean SlotConflict instead of a 500.
 	 */
 	private function inTransaction( callable $work, ?callable $on_error = null ): mixed {
-		$this->db->query( 'START TRANSACTION' );
-		try {
-			$result = $work();
-			$this->db->query( 'COMMIT' );
-			return $result;
-		} catch ( Throwable $e ) {
-			$this->db->query( 'ROLLBACK' );
-			if ( null === $on_error ) {
-				throw $e;
+		for ( $attempt = 1; ; $attempt++ ) {
+			$this->db->query( 'START TRANSACTION' );
+			try {
+				$result = $work();
+				$this->db->query( 'COMMIT' );
+				return $result;
+			} catch ( TransientLockError $e ) {
+				$this->db->query( 'ROLLBACK' );
+				if ( $attempt < self::MAX_ATTEMPTS ) {
+					usleep( wp_rand( 5000, 25000 ) * $attempt ); // jitter so the victims don't collide again
+					continue;
+				}
+				$e = new RuntimeException( 'The booking could not be saved because the calendar is busy. Please try again.', 0, $e );
+				if ( null === $on_error ) {
+					throw $e;
+				}
+				return $on_error( $e );
+			} catch ( Throwable $e ) {
+				$this->db->query( 'ROLLBACK' );
+				if ( null === $on_error ) {
+					throw $e;
+				}
+				return $on_error( $e );
 			}
-			return $on_error( $e );
+		}
+	}
+
+	/** @throws TransientLockError When the last query was a deadlock victim or timed out waiting for a lock. */
+	private function throwIfTransient(): void {
+		$error = $this->db->last_error;
+		if ( str_contains( $error, 'Deadlock found' ) || str_contains( $error, 'Lock wait timeout' ) ) {
+			throw new TransientLockError( $error );
 		}
 	}
 

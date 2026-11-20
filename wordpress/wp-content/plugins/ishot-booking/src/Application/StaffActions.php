@@ -34,7 +34,14 @@ final class StaffActions {
 	 * @throws SlotConflict             Reschedule target is taken.
 	 */
 	public function perform( int $id, string $action, int $version, int $actor, array $args = array() ): void {
-		$note    = array_filter( array( 'note' => $args['note'] ?? '' ) );
+		// Staff time blocks are managed only through block/unblock; booking actions such as
+		// complete or cancel would otherwise release their time.
+		$row = $this->repo->find( $id );
+		if ( null === $row || 'booking' !== $row['kind'] ) {
+			throw new InvalidArgumentException( 'Booking actions apply to client bookings only.' );
+		}
+
+		$note   = array_filter( array( 'note' => $args['note'] ?? '' ) );
 		$reason  = array_filter( array( 'reason' => $args['reason'] ?? '' ) );
 		$confirm = array( 'hold_expires_at' => null );
 
