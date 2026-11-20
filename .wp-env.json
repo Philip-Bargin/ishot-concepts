@@ -5,6 +5,9 @@
   "plugins": [
     "./wordpress/wp-content/plugins/ishot-booking"
   ],
+  "themes": [
+    "./wordpress/wp-content/themes/ishot-concept"
+  ],
   "config": {
     "WP_DEBUG": true,
     "WP_DEBUG_LOG": true,
