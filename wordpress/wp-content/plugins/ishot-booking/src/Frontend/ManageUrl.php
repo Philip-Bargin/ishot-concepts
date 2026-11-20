@@ -28,6 +28,35 @@ final class ManageUrl {
 		'X-Robots-Tag'    => 'noindex, nofollow',
 	);
 
+	/**
+	 * Content-Security-Policy for the manage page. The token sits in location.hash, which any
+	 * script on the page can read, so only same-origin scripts may run and the page may only talk
+	 * to its own origin: a third-party tag (analytics, chat widget, ad pixel) can neither load
+	 * nor send the token away. 'unsafe-inline' is kept because WordPress core prints inline
+	 * scripts; the theme self-hosts its fonts. Extend deliberately with ishot_booking_manage_csp.
+	 */
+	private const CSP = array(
+		'default-src'     => "'self'",
+		'script-src'      => "'self' 'unsafe-inline'",
+		'style-src'       => "'self' 'unsafe-inline'",
+		'img-src'         => "'self' data:",
+		'font-src'        => "'self' data:",
+		'connect-src'     => "'self'",
+		'frame-src'       => "'none'",
+		'object-src'      => "'none'",
+		'frame-ancestors' => "'none'",
+		'base-uri'        => "'self'",
+		'form-action'     => "'self'",
+	);
+
+	/** @return array<string, string> Every header the manage page (and legacy redirects) send. */
+	public static function headers(): array {
+		$csp = (array) apply_filters( 'ishot_booking_manage_csp', self::CSP );
+		return self::HEADERS + array(
+			'Content-Security-Policy' => implode( '; ', array_map( static fn( string $k, string $v ) => "{$k} {$v}", array_keys( $csp ), $csp ) ),
+		);
+	}
+
 	private const TOKEN = '[0-9a-f]{64}';
 
 	public static function for( string $token ): string {
@@ -79,7 +108,7 @@ final class ManageUrl {
 		if ( headers_sent() ) {
 			return;
 		}
-		foreach ( self::HEADERS as $name => $value ) {
+		foreach ( self::headers() as $name => $value ) {
 			header( "{$name}: {$value}" );
 		}
 	}

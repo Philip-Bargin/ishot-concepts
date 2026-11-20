@@ -154,4 +154,16 @@ final class ManageUrlTest extends TestCase {
 		$this->assertFalse( ManageUrl::isManagePath( '/manage-bookings-archive/' ) );
 		$this->assertSame( 'no-referrer', ManageUrl::HEADERS['Referrer-Policy'] );
 	}
+
+	public function test_the_manage_page_blocks_third_party_scripts_and_exfiltration(): void {
+		$csp = ManageUrl::headers()['Content-Security-Policy'];
+		foreach ( array( "script-src 'self'", "connect-src 'self'", "img-src 'self'", "frame-ancestors 'none'", "form-action 'self'", "base-uri 'self'" ) as $directive ) {
+			$this->assertStringContainsString( $directive, $csp );
+		}
+		$this->assertDoesNotMatchRegularExpression( '#https?:|\*#', $csp, 'no third-party origins or wildcards' );
+
+		add_filter( 'ishot_booking_manage_csp', static fn( array $d ) => array( 'img-src' => "'self' data: https://cdn.example" ) + $d );
+		$this->assertStringContainsString( 'img-src \'self\' data: https://cdn.example', ManageUrl::headers()['Content-Security-Policy'], 'site owner can extend deliberately' );
+		remove_all_filters( 'ishot_booking_manage_csp' );
+	}
 }
