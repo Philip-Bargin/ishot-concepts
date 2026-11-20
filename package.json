@@ -21,7 +21,8 @@
     "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking vendor/bin/phpunit",
     "test:php:unit": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking vendor/bin/phpunit --testsuite unit",
     "seed:export": "node scripts/export-wp-seed.mjs",
-    "wp:import": "npm run seed:export && wp-env run cli wp ishot import-prototype --seed=wp-content/ishot-seed/prototype-content.json --images=wp-content/ishot-prototype-images"
+    "wp:import": "npm run seed:export && wp-env run cli wp ishot import-prototype --seed=wp-content/ishot-seed/prototype-content.json --images=wp-content/ishot-prototype-images",
+    "qa": "node scripts/qa.mjs"
   },
   "dependencies": {
     "@fontsource/oswald": "^5.1.1",

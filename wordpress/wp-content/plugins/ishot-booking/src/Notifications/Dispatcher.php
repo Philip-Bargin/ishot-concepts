@@ -50,7 +50,7 @@ final class Dispatcher {
 	public function sendDue( DateTimeImmutable $now, int $limit = 50 ): int {
 		$now_sql = gmdate( self::DATETIME, $now->getTimestamp() );
 		$open    = $this->db->get_results(
-			"SELECT id, booking_id, recipient, status, next_attempt_at FROM " . Schema::notifications() . " WHERE status IN ('pending', 'sending') ORDER BY id LIMIT 500", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			'SELECT id, booking_id, recipient, status, next_attempt_at FROM ' . Schema::notifications() . " WHERE status IN ('pending', 'sending') ORDER BY id LIMIT 500", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			ARRAY_A
 		);
 

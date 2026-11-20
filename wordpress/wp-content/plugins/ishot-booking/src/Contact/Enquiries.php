@@ -86,7 +86,15 @@ final class Enquiries {
 			$row   = $this->db->get_row( $this->db->prepare( "SELECT * FROM {$table} WHERE id = %d", (int) $id ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$error = $this->mailer->send( self::message( $row ) );
 			if ( null === $error ) {
-				$this->db->update( $table, array( 'status' => 'sent', 'sent_at' => $now_sql, 'last_error' => '' ), array( 'id' => (int) $id ) );
+				$this->db->update(
+					$table,
+					array(
+						'status'     => 'sent',
+						'sent_at'    => $now_sql,
+						'last_error' => '',
+					),
+					array( 'id' => (int) $id )
+				);
 				++$sent;
 				continue;
 			}
@@ -107,7 +115,7 @@ final class Enquiries {
 
 	/** @param array<string, mixed> $row */
 	private static function message( array $row ): Message {
-		$type    = '' !== (string) $row['enquiry_type'] ? (string) $row['enquiry_type'] : __( 'General question', 'ishot-booking' );
+		$type = '' !== (string) $row['enquiry_type'] ? (string) $row['enquiry_type'] : __( 'General question', 'ishot-booking' );
 		/* translators: %s: enquiry type */
 		$subject = Mailer::headerText( sprintf( __( 'New enquiry: %s', 'ishot-booking' ), $type ) );
 		$fields  = array(
@@ -117,8 +125,8 @@ final class Enquiries {
 			__( 'Enquiry', 'ishot-booking' )  => $type,
 			__( 'Received', 'ishot-booking' ) => (string) $row['created_at'] . ' UTC',
 		);
-		$text = '';
-		$html = '';
+		$text    = '';
+		$html    = '';
 		foreach ( $fields as $label => $value ) {
 			if ( '' !== $value ) {
 				$text .= "{$label}: {$value}\n";

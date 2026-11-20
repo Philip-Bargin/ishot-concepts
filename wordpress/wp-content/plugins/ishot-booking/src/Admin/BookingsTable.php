@@ -53,8 +53,8 @@ final class BookingsTable extends WP_List_Table {
 
 	public function prepare_items(): void {
 		global $wpdb;
-		$repo   = new BookingRepository( $wpdb, Settings::int( 'granularity_minutes' ) );
-		$result = $repo->search(
+		$repo                  = new BookingRepository( $wpdb, Settings::int( 'granularity_minutes' ) );
+		$result                = $repo->search(
 			array(
 				'status' => $this->filters['status'] ?? '',
 				'when'   => $this->filters['when'] ?? 'upcoming',

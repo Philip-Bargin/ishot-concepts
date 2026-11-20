@@ -190,7 +190,7 @@ final class StaffController {
 			'location'        => $row['location'],
 			'notes'           => (string) $row['notes'],
 			'deposit'         => array(
-				'amount' => null === $row['deposit_amount'] ? null : (float) $row['deposit_amount'],
+				'amount'    => null === $row['deposit_amount'] ? null : (float) $row['deposit_amount'],
 				'status'    => $row['deposit_status'],
 				'gateway'   => $row['deposit_gateway'] ?? null,
 				'reference' => (string) ( $row['deposit_reference'] ?? '' ),

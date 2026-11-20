@@ -59,12 +59,14 @@ final class Rules {
 
 	/** @return Planned[] */
 	private static function statusChanged( ?string $from, string $to, array $payload, bool $by_staff ): array {
+		$cancel_invite    = 'confirmed' === $from ? Ics::CANCEL : null;
+		$client_cancelled = ! $by_staff && 'client' === ( $payload['by'] ?? '' );
 		return match ( $to ) {
 			'pending_deposit' => array( new Planned( 'deposit_requested' ) ),
 			'confirmed'       => array( new Planned( 'confirmed', Ics::REQUEST ) ),
 			'cancelled'       => array_merge(
-				array( new Planned( 'cancelled', 'confirmed' === $from ? Ics::CANCEL : null ) ),
-				'client' === ( $payload['by'] ?? '' ) && ! $by_staff ? array( new Planned( 'client_cancelled' ) ) : array()
+				array( new Planned( 'cancelled', $cancel_invite ) ),
+				$client_cancelled ? array( new Planned( 'client_cancelled' ) ) : array()
 			),
 			'expired'         => array( new Planned( 'hold_expired' ), new Planned( 'hold_expired_studio' ) ),
 			'completed'       => array( new Planned( 'thank_you' ) ),

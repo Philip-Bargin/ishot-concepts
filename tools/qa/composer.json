@@ -1,0 +1,30 @@
+{
+  "name": "ishot/qa-tools",
+  "description": "Static analysis for the iShot WordPress plugin and theme (PHPCS + WordPress Coding Standards, PHPCompatibility, PHPStan). Kept out of the plugin's own composer.json so the plugin ships without QA tooling.",
+  "type": "project",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "php": ">=8.1",
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+    "php-stubs/wp-cli-stubs": "^2.11",
+    "phpcompatibility/phpcompatibility-wp": "^2.1",
+    "phpstan/extension-installer": "^1.4",
+    "phpstan/phpstan": "^2.1",
+    "szepeviktor/phpstan-wordpress": "^2.0",
+    "wp-coding-standards/wpcs": "^3.1"
+  },
+  "config": {
+    "sort-packages": true,
+    "platform": { "php": "8.2" },
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true,
+      "phpstan/extension-installer": true
+    }
+  },
+  "scripts": {
+    "phpcs": "phpcs --standard=phpcs.xml.dist",
+    "phpcbf": "phpcbf --standard=phpcs.xml.dist",
+    "phpstan": "phpstan analyse --configuration=phpstan.neon.dist --no-progress --memory-limit=1G",
+    "qa": ["@phpcs", "@phpstan"]
+  }
+}

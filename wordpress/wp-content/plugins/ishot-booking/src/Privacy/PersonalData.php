@@ -89,12 +89,12 @@ final class PersonalData {
 					'item_id'     => 'ishot-enquiry-' . $e['id'],
 					'data'        => self::fields(
 						array(
-							__( 'Name', 'ishot-booking' )    => (string) $e['name'],
-							__( 'Email', 'ishot-booking' )   => (string) $e['email'],
-							__( 'Phone', 'ishot-booking' )   => (string) $e['phone'],
+							__( 'Name', 'ishot-booking' )  => (string) $e['name'],
+							__( 'Email', 'ishot-booking' ) => (string) $e['email'],
+							__( 'Phone', 'ishot-booking' ) => (string) $e['phone'],
 							__( 'Enquiry', 'ishot-booking' ) => (string) $e['enquiry_type'],
 							__( 'Message', 'ishot-booking' ) => (string) $e['message'],
-							__( 'Sent', 'ishot-booking' )    => View::when( $e['created_at'] ),
+							__( 'Sent', 'ishot-booking' )  => View::when( $e['created_at'] ),
 						)
 					),
 				);
@@ -112,7 +112,7 @@ final class PersonalData {
 	 *
 	 * @return array{items_removed: bool, items_retained: bool, messages: string[], done: bool}
 	 */
-	public function erase( string $email, int $page = 1 ): array {
+	public function erase( string $email, int $page = 1 ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- WordPress eraser callback signature; every call restarts from the first identifiable booking.
 		$anonymiser = new Anonymiser( $this->db );
 		$now        = gmdate( 'Y-m-d H:i:s' );
 		$actor      = get_current_user_id();
@@ -182,18 +182,18 @@ final class PersonalData {
 		$service = null === $row['service_id'] ? '' : html_entity_decode( get_the_title( (int) $row['service_id'] ), ENT_QUOTES, 'UTF-8' );
 		$deposit = null === $row['deposit_amount'] ? '' : Settings::all()['currency'] . ' ' . number_format( (float) $row['deposit_amount'], 2 ) . ' (' . $row['deposit_status'] . ')';
 		$fields  = array(
-			__( 'Booking number', 'ishot-booking' )    => (string) $row['id'],
-			__( 'Service', 'ishot-booking' )           => $service,
-			__( 'Session', 'ishot-booking' )           => View::when( $row['start_utc'] ),
-			__( 'Status', 'ishot-booking' )            => View::statusLabel( (string) $row['status'] ),
-			__( 'Name', 'ishot-booking' )              => (string) $row['client_name'],
-			__( 'Email', 'ishot-booking' )             => (string) $row['client_email'],
-			__( 'Phone', 'ishot-booking' )             => (string) $row['client_phone'],
-			__( 'Location', 'ishot-booking' )          => (string) $row['location'],
-			__( 'Notes', 'ishot-booking' )             => (string) $row['notes'],
-			__( 'Deposit', 'ishot-booking' )           => $deposit,
-			__( 'Payment reference', 'ishot-booking' ) => (string) $row['deposit_reference'],
-			__( 'Requested', 'ishot-booking' )         => View::when( $row['created_at'] ),
+			__( 'Booking number', 'ishot-booking' )     => (string) $row['id'],
+			__( 'Service', 'ishot-booking' )            => $service,
+			__( 'Session', 'ishot-booking' )            => View::when( $row['start_utc'] ),
+			__( 'Status', 'ishot-booking' )             => View::statusLabel( (string) $row['status'] ),
+			__( 'Name', 'ishot-booking' )               => (string) $row['client_name'],
+			__( 'Email', 'ishot-booking' )              => (string) $row['client_email'],
+			__( 'Phone', 'ishot-booking' )              => (string) $row['client_phone'],
+			__( 'Location', 'ishot-booking' )           => (string) $row['location'],
+			__( 'Notes', 'ishot-booking' )              => (string) $row['notes'],
+			__( 'Deposit', 'ishot-booking' )            => $deposit,
+			__( 'Payment reference', 'ishot-booking' )  => (string) $row['deposit_reference'],
+			__( 'Requested', 'ishot-booking' )          => View::when( $row['created_at'] ),
 			__( 'Emails sent to you', 'ishot-booking' ) => $this->emailsSent( (int) $row['id'] ),
 		);
 		return self::fields( $fields );

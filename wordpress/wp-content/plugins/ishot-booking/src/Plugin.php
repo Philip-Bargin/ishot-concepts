@@ -107,9 +107,9 @@ final class Plugin {
 	}
 
 	/** Content fields are edited in the Details box, not the raw Custom Fields panel (which skips validation). */
-	public static function protectContentMeta( bool $protected, string $meta_key ): bool {
+	public static function protectContentMeta( bool $is_protected, string $meta_key ): bool {
 		static $keys = null;
 		$keys      ??= array_keys( array_merge( ...array_map( array( Fields::class, 'for' ), ContentAdmin::TYPES ) ) );
-		return $protected || in_array( $meta_key, $keys, true );
+		return $is_protected || in_array( $meta_key, $keys, true );
 	}
 }

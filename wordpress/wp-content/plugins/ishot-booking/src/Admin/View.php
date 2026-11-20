@@ -53,11 +53,11 @@ final class View {
 	}
 
 	/** Opening tag of an admin-post form with its action and nonce. */
-	public static function formOpen( string $post_action, string $nonce_action, string $class = '' ): string {
+	public static function formOpen( string $post_action, string $nonce_action, string $css_class = '' ): string {
 		return sprintf(
 			'<form method="post" action="%1$s" class="%2$s"><input type="hidden" name="action" value="%3$s">%4$s',
 			esc_url( admin_url( 'admin-post.php' ) ),
-			esc_attr( $class ),
+			esc_attr( $css_class ),
 			esc_attr( $post_action ),
 			wp_nonce_field( $nonce_action, '_wpnonce', true, false )
 		);

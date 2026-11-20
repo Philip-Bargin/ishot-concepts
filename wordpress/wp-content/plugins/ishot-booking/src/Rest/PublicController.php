@@ -63,18 +63,18 @@ final class PublicController {
 				'callback'            => array( $this, 'create' ),
 				'permission_callback' => '__return_true',
 				'args'                => array(
-					'service'  => array(
+					'service'        => array(
 						'type'     => 'integer',
 						'minimum'  => 1,
 						'required' => true,
 					),
-					'start'    => array(
+					'start'          => array(
 						'description' => 'Studio-local start, YYYY-MM-DDTHH:MM.',
 						'type'        => 'string',
 						'pattern'     => Format::DATETIME_PATTERN,
 						'required'    => true,
 					),
-					'name'     => array(
+					'name'           => array(
 						'type'              => 'string',
 						'minLength'         => 1,
 						'maxLength'         => 100,
@@ -82,34 +82,34 @@ final class PublicController {
 						'sanitize_callback' => 'sanitize_text_field',
 						'validate_callback' => 'rest_validate_request_arg', // a custom sanitizer otherwise skips schema checks.
 					),
-					'email'    => array(
+					'email'          => array(
 						'type'      => 'string',
 						'format'    => 'email',
 						'maxLength' => 254,
 						'required'  => true,
 					),
-					'phone'    => array(
+					'phone'          => array(
 						'type'              => 'string',
 						'maxLength'         => 30,
 						'default'           => '',
 						'sanitize_callback' => 'sanitize_text_field',
 						'validate_callback' => 'rest_validate_request_arg', // a custom sanitizer otherwise skips schema checks.
 					),
-					'location' => array(
+					'location'       => array(
 						'type'              => 'string',
 						'maxLength'         => 120,
 						'default'           => '',
 						'sanitize_callback' => 'sanitize_text_field',
 						'validate_callback' => 'rest_validate_request_arg', // a custom sanitizer otherwise skips schema checks.
 					),
-					'notes'    => array(
+					'notes'          => array(
 						'type'              => 'string',
 						'maxLength'         => 2000,
 						'default'           => '',
 						'sanitize_callback' => 'sanitize_textarea_field',
 						'validate_callback' => 'rest_validate_request_arg', // a custom sanitizer otherwise skips schema checks.
 					),
-					'consent'  => array(
+					'consent'        => array(
 						'description' => 'The client agreed to the privacy notice.',
 						'type'        => 'boolean',
 						'enum'        => array( true ),
@@ -121,7 +121,7 @@ final class PublicController {
 						'default'     => false,
 					),
 					// Honeypot: hidden from people, filled in by bots.
-					'website'  => array(
+					'website'        => array(
 						'type'      => 'string',
 						'maxLength' => 500,
 						'default'   => '',

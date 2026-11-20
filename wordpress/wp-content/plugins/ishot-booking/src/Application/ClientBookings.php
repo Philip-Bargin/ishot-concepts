@@ -117,12 +117,12 @@ final class ClientBookings {
 		$catalog = null === $row['service_id'] ? null : ServiceCatalog::bookable( (int) $row['service_id'] );
 		return new Service(
 			(int) $row['service_id'],
-			$catalog?->title ?? '',
+			$catalog->title ?? '',
 			intdiv( $ts( 'end_utc' ) - $ts( 'start_utc' ), 60 ),
 			intdiv( $ts( 'start_utc' ) - $ts( 'block_start_utc' ), 60 ),
 			intdiv( $ts( 'block_end_utc' ) - $ts( 'end_utc' ), 60 ),
-			$catalog?->price_from ?? 0.0,
-			$catalog?->deposit_amount ?? 0.0,
+			$catalog->price_from ?? 0.0,
+			$catalog->deposit_amount ?? 0.0,
 			true
 		);
 	}

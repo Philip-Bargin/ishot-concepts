@@ -133,7 +133,7 @@ final class Renderer {
 			$rows[] = array( __( 'Location', 'ishot-booking' ), self::oneLine( (string) $snap['location'] ) );
 		}
 		if ( '' !== $values['{deposit_amount}'] ) {
-			$state  = match ( $snap['deposit_status'] ) {
+			$state = match ( $snap['deposit_status'] ) {
 				'received' => __( 'paid', 'ishot-booking' ),
 				'awaiting' => __( 'awaiting payment', 'ishot-booking' ),
 				default    => '',

@@ -46,7 +46,7 @@ final class SettingsScreen {
 			printf(
 				'<tr><th scope="row">%1$s</th><td><input type="checkbox" name="weekly[%2$d][closed]" value="1" aria-label="%3$s"%4$s></td><td><input type="time" name="weekly[%2$d][open]" value="%5$s" aria-label="%6$s"></td><td><input type="time" name="weekly[%2$d][close]" value="%7$s" aria-label="%8$s"></td></tr>',
 				esc_html( $name ),
-				$day,
+				(int) $day,
 				esc_attr( sprintf( /* translators: %s: weekday */ __( '%s closed', 'ishot-booking' ), $name ) ),
 				checked( null === $window, true, false ),
 				esc_attr( $window[0] ?? '09:00' ),
@@ -64,7 +64,7 @@ final class SettingsScreen {
 
 		echo '<h2>' . esc_html__( 'Holidays and special days', 'ishot-booking' ) . '</h2><p class="ishot-muted">' . esc_html__( 'Override the weekly hours for a date. Clear a date to remove the row.', 'ishot-booking' ) . '</p>';
 		echo '<table class="widefat striped ishot-hours"><thead><tr><th scope="col">' . esc_html__( 'Date', 'ishot-booking' ) . '</th><th scope="col">' . esc_html__( 'Closed', 'ishot-booking' ) . '</th><th scope="col">' . esc_html__( 'Opens', 'ishot-booking' ) . '</th><th scope="col">' . esc_html__( 'Closes', 'ishot-booking' ) . '</th></tr></thead><tbody>';
-		$rows   = array();
+		$rows = array();
 		foreach ( (array) $settings['exceptions'] as $date => $window ) {
 			$rows[] = array( $date, $window );
 		}
@@ -73,7 +73,7 @@ final class SettingsScreen {
 		foreach ( $rows as $i => [ $date, $window ] ) {
 			printf(
 				'<tr><td><input type="date" name="exceptions[%1$d][date]" value="%2$s" aria-label="%3$s"></td><td><input type="checkbox" name="exceptions[%1$d][closed]" value="1" aria-label="%4$s"%5$s></td><td><input type="time" name="exceptions[%1$d][open]" value="%6$s" aria-label="%7$s"></td><td><input type="time" name="exceptions[%1$d][close]" value="%8$s" aria-label="%9$s"></td></tr>',
-				$i,
+				(int) $i,
 				esc_attr( $date ),
 				esc_attr__( 'Date', 'ishot-booking' ),
 				esc_attr__( 'Closed all day', 'ishot-booking' ),
@@ -113,8 +113,8 @@ final class SettingsScreen {
 				'<tr><th scope="row"><label for="ishot-%1$s">%2$s</label></th><td><input id="ishot-%1$s" name="%1$s" type="number" min="%3$d" max="%4$d" value="%5$d" class="small-text"%6$s> <span class="description" id="desc-%1$s">%7$s</span>',
 				esc_attr( $field ),
 				esc_html( $labels[ $field ][0] ),
-				$min,
-				$max,
+				(int) $min,
+				(int) $max,
 				(int) $settings[ $field ],
 				isset( $errors[ $field ] ) ? ' aria-invalid="true" aria-describedby="err-' . esc_attr( $field ) . ' desc-' . esc_attr( $field ) . '"' : ' aria-describedby="desc-' . esc_attr( $field ) . '"',
 				esc_html( $labels[ $field ][1] )
@@ -141,9 +141,9 @@ final class SettingsScreen {
 		wp_safe_redirect(
 			add_query_arg(
 				array(
-					'page'                       => $slug,
+					'page'                      => $slug,
 					ActionHandler::NOTICE_PARAM => array() === $errors ? 'saved' : 'settings_invalid',
-					'ishot_type'                 => array() === $errors ? 'success' : 'error',
+					'ishot_type'                => array() === $errors ? 'success' : 'error',
 				),
 				admin_url( 'admin.php' )
 			)

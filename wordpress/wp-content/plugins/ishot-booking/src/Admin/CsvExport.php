@@ -37,8 +37,8 @@ final class CsvExport {
 	 */
 	public static function rows( array $filters ): array {
 		global $wpdb;
-		$repo = new BookingRepository( $wpdb, Settings::int( 'granularity_minutes' ) );
-		$out  = array(
+		$repo  = new BookingRepository( $wpdb, Settings::int( 'granularity_minutes' ) );
+		$out   = array(
 			array(
 				__( 'Booking', 'ishot-booking' ),
 				__( 'Status', 'ishot-booking' ),
@@ -126,11 +126,12 @@ final class CsvExport {
 		header( 'Content-Disposition: attachment; filename="bookings-' . gmdate( 'Y-m-d' ) . '.csv"' );
 		header( 'X-Content-Type-Options: nosniff' );
 		$out = fopen( 'php://output', 'w' );
-		fwrite( $out, "\xEF\xBB\xBF" ); // UTF-8 BOM so Excel reads names correctly
+		// Streams to php://output, not the filesystem, so WP_Filesystem does not apply.
+		fwrite( $out, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- UTF-8 BOM so Excel reads names correctly.
 		foreach ( $rows as $row ) {
 			fputcsv( $out, $row, ',', '"', '' );
 		}
-		fclose( $out );
+		fclose( $out ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- php://output stream.
 		exit;
 	}
 

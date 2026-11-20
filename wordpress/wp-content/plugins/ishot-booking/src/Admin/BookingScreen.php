@@ -131,8 +131,8 @@ final class BookingScreen {
 			'awaiting' => __( 'Awaiting payment', 'ishot-booking' ),
 			'received' => __( 'Received', 'ishot-booking' ),
 		)[ $row['deposit_status'] ] ?? $row['deposit_status'];
-		$text = null === $row['deposit_amount'] ? $state : number_format_i18n( (float) $row['deposit_amount'], 2 ) . ' · ' . $state;
-		$ref  = (string) ( $row['deposit_reference'] ?? '' );
+		$text  = null === $row['deposit_amount'] ? $state : number_format_i18n( (float) $row['deposit_amount'], 2 ) . ' · ' . $state;
+		$ref   = (string) ( $row['deposit_reference'] ?? '' );
 		/* translators: %s: payment reference */
 		return '' === $ref ? $text : $text . ' · ' . sprintf( __( 'ref. %s', 'ishot-booking' ), $ref );
 	}
@@ -189,11 +189,11 @@ final class BookingScreen {
 		echo '<div class="ishot-detail">';
 		echo '<section class="ishot-panel" aria-labelledby="ishot-summary"><h2 id="ishot-summary">' . esc_html__( 'Session', 'ishot-booking' ) . '</h2><dl class="ishot-dl">';
 		$items = array(
-			__( 'When', 'ishot-booking' )     => View::when( $row['start_utc'] ) . ' – ' . View::when( $row['end_utc'], (string) get_option( 'time_format' ) ),
-			__( 'Service', 'ishot-booking' )  => View::serviceTitle( $row['service_id'] ),
-			__( 'Client', 'ishot-booking' )   => $row['client_name'],
-			__( 'Location', 'ishot-booking' ) => '' !== $row['location'] ? $row['location'] : '—',
-			__( 'Deposit', 'ishot-booking' )  => self::depositText( $row ),
+			__( 'When', 'ishot-booking' )         => View::when( $row['start_utc'] ) . ' – ' . View::when( $row['end_utc'], (string) get_option( 'time_format' ) ),
+			__( 'Service', 'ishot-booking' )      => View::serviceTitle( $row['service_id'] ),
+			__( 'Client', 'ishot-booking' )       => $row['client_name'],
+			__( 'Location', 'ishot-booking' )     => '' !== $row['location'] ? $row['location'] : '—',
+			__( 'Deposit', 'ishot-booking' )      => self::depositText( $row ),
 			__( 'Hold expires', 'ishot-booking' ) => View::when( $row['hold_expires_at'] ),
 		);
 		foreach ( $items as $term => $value ) {
@@ -217,7 +217,7 @@ final class BookingScreen {
 		}
 		foreach ( $actions as $i => $action ) {
 			echo View::formOpen( ActionHandler::POST_ACTION, ActionHandler::nonceAction( $id ), 'ishot-action' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- formOpen() escapes.
-			printf( '<input type="hidden" name="booking" value="%1$d"><input type="hidden" name="version" value="%2$d">', $id, (int) $row['version'] );
+			printf( '<input type="hidden" name="booking" value="%1$d"><input type="hidden" name="version" value="%2$d">', (int) $id, (int) $row['version'] );
 			echo self::fields( $action, $row ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fields() escapes.
 			printf(
 				' <button type="submit" name="booking_action" value="%1$s" class="button %2$s">%3$s</button></form>',

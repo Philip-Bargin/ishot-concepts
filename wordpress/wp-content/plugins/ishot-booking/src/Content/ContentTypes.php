@@ -118,7 +118,12 @@ final class ContentTypes {
 				'type'          => 'string',
 				'single'        => true,
 				'default'       => '',
-				'show_in_rest'  => array( 'schema' => array( 'type' => 'string', 'pattern' => '^(\d{1,3}% \d{1,3}%)?$' ) ),
+				'show_in_rest'  => array(
+					'schema' => array(
+						'type'    => 'string',
+						'pattern' => '^(\d{1,3}% \d{1,3}%)?$',
+					),
+				),
 				'auth_callback' => static fn( $allowed, $key, $id ) => current_user_can( 'edit_post', (int) $id ),
 				'description'   => 'CSS object-position that keeps the subject in frame when the image is cropped.',
 			)

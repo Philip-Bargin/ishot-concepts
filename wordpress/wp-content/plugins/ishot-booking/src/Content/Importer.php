@@ -21,9 +21,9 @@ use WP_Error;
  */
 final class Importer {
 
-	public const KEY_META       = '_ishot_import_key';
-	private const SEED_HASH     = '_ishot_import_seed_hash';
-	private const STATE_HASH    = '_ishot_import_state_hash';
+	public const KEY_META    = '_ishot_import_key';
+	private const SEED_HASH  = '_ishot_import_seed_hash';
+	private const STATE_HASH = '_ishot_import_state_hash';
 
 	/** @var array{created: int, updated: int, unchanged: int, skipped_edited: int, errors: int, warnings: int, messages: string[]} */
 	private array $report;
@@ -79,7 +79,7 @@ final class Importer {
 			$this->error( "Category #{$index}: slug and label are required." );
 			return;
 		}
-		$want = array(
+		$want     = array(
 			'name'        => (string) $c['label'],
 			'slug'        => sanitize_title( (string) $c['slug'] ),
 			'description' => (string) ( $c['blurb'] ?? '' ),
@@ -100,8 +100,8 @@ final class Importer {
 			$same    = get_term_by( 'slug', $want['slug'], ContentTypes::CATEGORY );
 			$term_id = false === $same ? 0 : (int) $same->term_id;
 		}
-		$state    = static fn( int $id ): array => self::termState( $id );
-		$write    = function ( int $id ) use ( $want, $key ): int {
+		$state = static fn( int $id ): array => self::termState( $id );
+		$write = function ( int $id ) use ( $want, $key ): int {
 			$args   = array(
 				'slug'        => $want['slug'],
 				'description' => $want['description'],
@@ -129,7 +129,7 @@ final class Importer {
 			$alt       = trim( (string) ( $p['alt'] ?? '' ) );
 			$file      = $this->image_dir . '/' . basename( (string) ( $p['image'] ?? '' ) );
 			if ( '' === $photo_key || '' === $alt || ( isset( $alts[ $alt ] ) && $alts[ $alt ] !== $photo_key ) ) {
-				$this->error( "{$key}: every photo needs a key and its own alt text (empty, or already used by " . ( $alts[ $alt ] ?? "another photo" ) . ")." );
+				$this->error( "{$key}: every photo needs a key and its own alt text (empty, or already used by " . ( $alts[ $alt ] ?? 'another photo' ) . ').' );
 				continue;
 			}
 			$alts[ $alt ] = $photo_key;
@@ -137,16 +137,16 @@ final class Importer {
 				$this->error( "{$key}: image " . basename( (string) ( $p['image'] ?? '' ) ) . " not found or not an image in {$this->image_dir}." );
 				continue;
 			}
-			$order = array_search( $photo_key, $portfolio, true );
-			$want  = array(
+			$order                      = array_search( $photo_key, $portfolio, true );
+			$want                       = array(
 				'title'      => wp_trim_words( $alt, 8, '' ),
 				'alt'        => $alt,
 				'focus'      => (string) ( $p['focus'] ?? '' ),
 				'menu_order' => false === $order ? 0 : $order + 1,
 				'terms'      => $this->termSlugs( array( $p['cat'] ?? '' ), $key ),
 			);
-			$id    = $this->findPost( 'attachment', $key );
-			$write = function ( int $id ) use ( $want, $key, $file ): int {
+			$id                         = $this->findPost( 'attachment', $key );
+			$write                      = function ( int $id ) use ( $want, $key, $file ): int {
 				if ( 0 === $id ) {
 					$id = $this->sideload( $file, $key );
 					if ( 0 === $id ) {
@@ -231,13 +231,13 @@ final class Importer {
 	// ----- generic post upsert -----------------------------------------------------------------
 
 	private function post( string $type, string $key, array $fields, array $meta, array $terms, int $thumb ): void {
-		$want  = array(
+		$want = array(
 			'fields' => $fields,
 			'meta'   => $meta,
 			'terms'  => $terms,
 			'thumb'  => $thumb,
 		);
-		$id    = $this->findPost( $type, $key );
+		$id   = $this->findPost( $type, $key );
 		if ( 0 === $id ) {
 			// Created by hand with the same slug: adopt it; with no import hashes it counts as edited.
 			$same = get_page_by_path( $fields['post_name'], OBJECT, $type );

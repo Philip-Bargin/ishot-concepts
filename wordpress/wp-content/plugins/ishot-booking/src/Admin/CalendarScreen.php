@@ -50,9 +50,9 @@ final class CalendarScreen {
 		$today = wp_date( 'Y-m-d' );
 		echo '<ol class="ishot-week">';
 		foreach ( $data['days'] as $day_data ) {
-			$date      = new DateTimeImmutable( $day_data['date'], wp_timezone() );
-			$hours     = null === $day_data['hours'] ? __( 'Closed', 'ishot-booking' ) : implode( '–', $day_data['hours'] );
-			$is_today  = $day_data['date'] === $today;
+			$date     = new DateTimeImmutable( $day_data['date'], wp_timezone() );
+			$hours    = null === $day_data['hours'] ? __( 'Closed', 'ishot-booking' ) : implode( '–', $day_data['hours'] );
+			$is_today = $day_data['date'] === $today;
 			printf(
 				'<li class="ishot-day%1$s"%2$s><h3><span>%3$s</span> <small>%4$s</small></h3>',
 				$is_today ? ' ishot-day--today' : '',

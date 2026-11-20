@@ -119,11 +119,11 @@ final class Fields {
 	public static function fromInput( array $field, mixed $raw ): mixed {
 		$value = match ( $field['input'] ) {
 			'checkbox' => ! empty( $raw ),
-			'lines'    => array_values( array_filter( array_map( 'trim', preg_split( '/\R/', (string) $raw ) ?: array() ), 'strlen' ) ),
+			'lines'    => self::lines( (string) $raw ),
 			'gallery'  => self::galleryIds( (string) $raw ),
 			'textarea' => sanitize_textarea_field( (string) $raw ),
 			default    => match ( $field['type'] ) {
-				'integer' => is_numeric( $raw ) && (string) (int) $raw === trim( (string) $raw ) ? (int) $raw : $raw,
+				'integer' => is_numeric( $raw ) && trim( (string) $raw ) === (string) (int) $raw ? (int) $raw : $raw,
 				'number'  => is_numeric( $raw ) ? (float) $raw : $raw,
 				default   => sanitize_text_field( (string) $raw ),
 			},
@@ -133,6 +133,12 @@ final class Fields {
 		}
 		$valid = rest_validate_value_from_schema( $value, self::schema( $field ), $field['label'] );
 		return is_wp_error( $valid ) ? $valid : $value;
+	}
+
+	/** @return string[] Non-empty, trimmed lines of a textarea. */
+	private static function lines( string $raw ): array {
+		$lines = preg_split( '/\R/', $raw );
+		return array_values( array_filter( array_map( 'trim', is_array( $lines ) ? $lines : array() ), static fn( string $line ): bool => '' !== $line ) );
 	}
 
 	/** @return int[] Unique ids of existing images, in the order given. */
@@ -151,10 +157,10 @@ final class Fields {
 		) + ( '' !== $help ? array( 'help' => $help ) : array() );
 	}
 
-	private static function integer( string $label, int $default, int $min, int $max, string $help = '' ): array {
+	private static function integer( string $label, int $fallback, int $min, int $max, string $help = '' ): array {
 		return array(
 			'type'    => 'integer',
-			'default' => $default,
+			'default' => $fallback,
 			'label'   => $label,
 			'input'   => 'number',
 			'schema'  => array(

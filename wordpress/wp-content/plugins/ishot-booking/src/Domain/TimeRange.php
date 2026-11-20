@@ -14,7 +14,7 @@ final class TimeRange {
 	public readonly DateTimeImmutable $end;
 
 	public function __construct( DateTimeImmutable $start, DateTimeImmutable $end ) {
-		$utc = new DateTimeZone( 'UTC' );
+		$utc         = new DateTimeZone( 'UTC' );
 		$this->start = $start->setTimezone( $utc );
 		$this->end   = $end->setTimezone( $utc );
 

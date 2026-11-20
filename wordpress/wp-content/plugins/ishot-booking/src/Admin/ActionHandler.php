@@ -19,11 +19,11 @@ use InvalidArgumentException;
  */
 final class ActionHandler {
 
-	public const POST_ACTION    = 'ishot_booking_action';
-	public const POST_BLOCK     = 'ishot_block_time';
-	public const POST_UNBLOCK   = 'ishot_unblock_time';
-	public const BLOCK_NONCE    = 'ishot_block_time';
-	public const NOTICE_PARAM   = 'ishot_notice';
+	public const POST_ACTION  = 'ishot_booking_action';
+	public const POST_BLOCK   = 'ishot_block_time';
+	public const POST_UNBLOCK = 'ishot_unblock_time';
+	public const BLOCK_NONCE  = 'ishot_block_time';
+	public const NOTICE_PARAM = 'ishot_notice';
 
 	public static function nonceAction( int $booking_id ): string {
 		return 'ishot_booking_' . $booking_id;
@@ -194,8 +194,9 @@ final class ActionHandler {
 
 	/** @param array{type: string, code: string} $result */
 	private static function redirect( array $result ): never {
-		$back = wp_get_referer() ?: admin_url( 'admin.php?page=' . Menu::SLUG );
-		$back = remove_query_arg( array( self::NOTICE_PARAM, 'ishot_type' ), $back );
+		$referer = wp_get_referer();
+		$back    = false !== $referer ? $referer : admin_url( 'admin.php?page=' . Menu::SLUG );
+		$back    = remove_query_arg( array( self::NOTICE_PARAM, 'ishot_type' ), $back );
 		wp_safe_redirect(
 			add_query_arg(
 				array(

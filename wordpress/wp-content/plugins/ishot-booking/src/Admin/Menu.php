@@ -4,11 +4,11 @@ namespace IShot\Booking\Admin;
 /** The Bookings menu in wp-admin, and its styles. */
 final class Menu {
 
-	public const SLUG       = 'ishot-bookings';
-	public const LIST_SLUG  = 'ishot-bookings-list';
-	public const HOURS_SLUG = 'ishot-hours';
-	public const SET_SLUG   = 'ishot-settings';
-	public const EMAIL_SLUG = 'ishot-emails';
+	public const SLUG         = 'ishot-bookings';
+	public const LIST_SLUG    = 'ishot-bookings-list';
+	public const HOURS_SLUG   = 'ishot-hours';
+	public const SET_SLUG     = 'ishot-settings';
+	public const EMAIL_SLUG   = 'ishot-emails';
 	public const ENQUIRY_SLUG = 'ishot-enquiries';
 
 	public static function register(): void {

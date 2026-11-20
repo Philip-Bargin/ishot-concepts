@@ -14,14 +14,14 @@ final class Settings {
 
 	/** Defaults until the owner confirms real values (docs/content-inventory.md). */
 	public const DEFAULTS = array(
-		'lead_time_hours'     => 48,
-		'horizon_days'        => 180,
-		'granularity_minutes' => 30,
-		'hold_hours'          => 48,
-		'cancel_cutoff_hours' => 72,
+		'lead_time_hours'      => 48,
+		'horizon_days'         => 180,
+		'granularity_minutes'  => 30,
+		'hold_hours'           => 48,
+		'cancel_cutoff_hours'  => 72,
 		// Months after a session ends before the client's details are anonymised; 0 keeps them.
-		'retention_months'    => 24,
-		'weekly_hours'        => array(
+		'retention_months'     => 24,
+		'weekly_hours'         => array(
 			1 => array( '09:00', '18:00' ),
 			2 => array( '09:00', '18:00' ),
 			3 => array( '09:00', '18:00' ),
@@ -29,7 +29,7 @@ final class Settings {
 			5 => array( '09:00', '18:00' ),
 			6 => array( '09:00', '18:00' ),
 		),
-		'exceptions'          => array(),
+		'exceptions'           => array(),
 		// Email. Empty values fall back at send time: studio name → site title,
 		// studio address → admin email, from address → WordPress's default sender.
 		'email_from_name'      => '',

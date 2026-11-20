@@ -19,7 +19,7 @@ final class SlotUnits {
 	 * @return string[]
 	 */
 	public static function cover( TimeRange $range, int $granularity_minutes ): array {
-		if ( $granularity_minutes <= 0 || 60 % $granularity_minutes !== 0 ) {
+		if ( $granularity_minutes <= 0 || 0 !== 60 % $granularity_minutes ) {
 			throw new InvalidArgumentException( 'Slot granularity must divide an hour evenly (e.g. 15, 20, 30, 60).' );
 		}
 

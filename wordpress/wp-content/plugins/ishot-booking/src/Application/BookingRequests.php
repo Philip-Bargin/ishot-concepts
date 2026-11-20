@@ -113,7 +113,10 @@ final class BookingRequests {
 		$requested = $requested->setTimezone( $this->timezone() );
 		$found     = array();
 		$day       = $requested->setTime( 0, 0 );
-		for ( $i = 0; $i <= self::ALTERNATIVE_SEARCH_DAYS && count( $found ) < $limit; $i++, $day = $day->modify( '+1 day' ) ) {
+		for ( $i = 0; $i <= self::ALTERNATIVE_SEARCH_DAYS; $i++, $day = $day->modify( '+1 day' ) ) {
+			if ( count( $found ) >= $limit ) {
+				break;
+			}
 			$date = $day->format( 'Y-m-d' );
 			foreach ( $this->startTimes( $service, $date, $now ) as $time ) {
 				$found[] = new DateTimeImmutable( "{$date} {$time}", $this->timezone() );
@@ -122,7 +125,7 @@ final class BookingRequests {
 
 		$distance = static fn( DateTimeImmutable $t ) => abs( $t->getTimestamp() - $requested->getTimestamp() );
 		usort( $found, static fn( $a, $b ) => $distance( $a ) <=> $distance( $b ) );
-		$nearest = array_slice( $found, 0, $limit );
+		$nearest  = array_slice( $found, 0, $limit );
 		usort( $nearest, static fn( $a, $b ) => $a <=> $b );
 		return $nearest;
 	}

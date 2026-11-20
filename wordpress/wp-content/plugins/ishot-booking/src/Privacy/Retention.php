@@ -42,7 +42,7 @@ final class Retention {
 		}
 		$cutoff = $now->setTimezone( new DateTimeZone( 'UTC' ) )->modify( "-{$months} months" )->format( 'Y-m-d H:i:s' );
 		( new Enquiries() )->deleteOlderThan( $cutoff );
-		$ids    = $wpdb->get_col(
+		$ids = $wpdb->get_col(
 			$wpdb->prepare( 'SELECT id FROM ' . Schema::bookings() . " WHERE anonymised_at IS NULL AND end_utc < %s AND kind = 'booking' ORDER BY id LIMIT %d", $cutoff, self::BATCH ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		);
 

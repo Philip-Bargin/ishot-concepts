@@ -91,7 +91,7 @@ final class EmailSettingsScreen {
 				checked( $enabled, true, false ),
 				esc_html__( 'Send this email', 'ishot-booking' ),
 				esc_html__( 'Subject', 'ishot-booking' ),
-				EmailSettingsForm::SUBJECT_MAX,
+				(int) EmailSettingsForm::SUBJECT_MAX,
 				esc_attr( (string) ( $current['subject'] ?? '' ) ),
 				esc_attr( $default['subject'] ),
 				self::invalid( $errors, "template_{$key}_subject" ), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
@@ -129,9 +129,9 @@ final class EmailSettingsScreen {
 		wp_safe_redirect(
 			add_query_arg(
 				array(
-					'page'                       => Menu::EMAIL_SLUG,
+					'page'                      => Menu::EMAIL_SLUG,
 					ActionHandler::NOTICE_PARAM => $notice,
-					'ishot_type'                 => $type,
+					'ishot_type'                => $type,
 				),
 				admin_url( 'admin.php' )
 			)
@@ -148,7 +148,7 @@ final class EmailSettingsScreen {
 
 	public static function handleSave(): void {
 		self::guard( self::POST_SAVE );
-		$errors = EmailSettingsForm::save( wp_unslash( $_POST ) );
+		$errors = EmailSettingsForm::save( wp_unslash( $_POST ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- guard() above runs check_admin_referer().
 		if ( array() !== $errors ) {
 			set_transient( self::key( 'errors' ), $errors, 5 * MINUTE_IN_SECONDS );
 		}

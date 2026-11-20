@@ -30,15 +30,24 @@ final class ClientAccounts {
 	 */
 	public static function requestForBooking( string $email, string $name ): array {
 		if ( ! (bool) apply_filters( 'ishot_booking_client_accounts', true ) ) {
-			return array( 'status' => self::NOT_CREATED, 'user_id' => null );
+			return array(
+				'status'  => self::NOT_CREATED,
+				'user_id' => null,
+			);
 		}
 		$limiter = new \IShot\Booking\Rest\RateLimiter( 'account', (int) apply_filters( 'ishot_booking_account_rate_limit', self::RATE_LIMIT ), HOUR_IN_SECONDS );
 		if ( ! $limiter->hit() ) {
-			return array( 'status' => self::NOT_CREATED, 'user_id' => null );
+			return array(
+				'status'  => self::NOT_CREATED,
+				'user_id' => null,
+			);
 		}
 		$email = sanitize_email( $email );
 		if ( '' === $email || false !== get_user_by( 'email', $email ) ) {
-			return array( 'status' => self::CHECK_EMAIL, 'user_id' => null );
+			return array(
+				'status'  => self::CHECK_EMAIL,
+				'user_id' => null,
+			);
 		}
 
 		$user_id = wp_insert_user(
@@ -52,10 +61,16 @@ final class ClientAccounts {
 			)
 		);
 		if ( is_wp_error( $user_id ) ) {
-			return array( 'status' => self::CHECK_EMAIL, 'user_id' => null );
+			return array(
+				'status'  => self::CHECK_EMAIL,
+				'user_id' => null,
+			);
 		}
 		wp_new_user_notification( $user_id, null, 'user' ); // the set-your-password email
-		return array( 'status' => self::CHECK_EMAIL, 'user_id' => $user_id );
+		return array(
+			'status'  => self::CHECK_EMAIL,
+			'user_id' => $user_id,
+		);
 	}
 
 	/**

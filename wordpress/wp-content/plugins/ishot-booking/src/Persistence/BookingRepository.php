@@ -455,8 +455,8 @@ final class BookingRepository {
 			try {
 				$result = $work();
 				$this->db->query( 'COMMIT' );
-				if ( $this->queued > 0 ) {
-					do_action( Outbox::QUEUED_HOOK );
+				if ( $this->queued > 0 ) { // @phpstan-ignore greater.alwaysFalse (incremented inside $work via log())
+					do_action( Outbox::QUEUED_HOOK ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant is 'ishot_booking_notifications_queued'.
 				}
 				return $result;
 			} catch ( TransientLockError $e ) {

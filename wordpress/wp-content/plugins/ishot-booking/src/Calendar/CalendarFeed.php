@@ -75,9 +75,9 @@ final class CalendarFeed {
 		}
 
 		global $wpdb;
-		$now  = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
-		$repo = new BookingRepository( $wpdb, Settings::int( 'granularity_minutes' ) );
-		$rows = $repo->between(
+		$now    = new DateTimeImmutable( 'now', new DateTimeZone( 'UTC' ) );
+		$repo   = new BookingRepository( $wpdb, Settings::int( 'granularity_minutes' ) );
+		$rows   = $repo->between(
 			gmdate( 'Y-m-d H:i:s', $now->getTimestamp() - self::PAST_DAYS * DAY_IN_SECONDS ),
 			gmdate( 'Y-m-d H:i:s', $now->getTimestamp() + self::FUTURE_DAYS * DAY_IN_SECONDS )
 		);

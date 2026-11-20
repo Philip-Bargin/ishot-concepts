@@ -48,7 +48,7 @@ final class Reminders {
 			$queued += (int) $this->outbox->queueTimed( (int) $b['id'], 'hold_expiring', "hold_expiring:{$b['id']}:{$b['hold_expires_at']}" );
 		}
 		if ( $queued > 0 ) {
-			do_action( Outbox::QUEUED_HOOK );
+			do_action( Outbox::QUEUED_HOOK ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant is 'ishot_booking_notifications_queued'.
 		}
 		return $queued;
 	}
