@@ -1,24 +1,13 @@
-import { logo } from "../assets.js";
+import { logos } from "../assets.js";
 
-// Renders the real logo image when one is set in assets.js (logo.src),
-// otherwise falls back to the text wordmark: bold "iSHOT" + script "Concept".
-export default function Logo({ scriptSize = 30 }) {
-  if (logo.src) {
-    return (
-      <img
-        src={logo.src}
-        alt={logo.alt}
-        style={{ height: logo.height, width: "auto", display: "block" }}
-      />
-    );
-  }
-
+// Official logo files only (never retyped). "auto" shows full colour on light grounds and
+// swaps to the reversed white file in the Night theme; "reversed" is for navy bands and photos.
+export default function Logo({ variant = "auto" }) {
+  if (variant === "reversed") return <img src={logos.reversed} alt={logos.alt} />;
   return (
     <>
-      <span className="mark">iSHOT</span>
-      <span className="script" style={{ fontSize: scriptSize }}>
-        Concept
-      </span>
+      <img className="ish-logo__full" src={logos.full} alt={logos.alt} />
+      <img className="ish-logo__rev" src={logos.reversed} alt={logos.alt} />
     </>
   );
 }

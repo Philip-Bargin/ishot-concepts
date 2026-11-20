@@ -12,3 +12,6 @@ dist-ssr/
 # local editor/agent settings
 .claude/settings.local.json
 iShot_Concept_DESIGN (1).md
+
+# generated from design-system/ by scripts/sync-design-system.mjs
+src/styles/ds/

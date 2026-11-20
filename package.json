@@ -4,17 +4,26 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "sync:ds": "node scripts/sync-design-system.mjs",
+    "predev": "npm run sync:ds",
     "dev": "vite",
+    "prebuild": "npm run sync:ds && npm run lint:tokens",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "images": "node scripts/optimize-images.mjs",
+    "lint:tokens": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
+    "@fontsource/oswald": "^5.1.1",
+    "@fontsource/space-grotesk": "^5.1.1",
+    "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
+    "sharp": "^0.33.5",
     "vite": "^5.4.8"
   }
 }
