@@ -167,7 +167,11 @@ Every button posts to `admin-post.php` with a per-booking nonce and the version 
   - notifications (Action Scheduler) and ICS
   - privacy exporter and eraser, and the retention job
   - `PaymentGateway` interface (manual deposits)
-- Next (Phase 3, theme): booking flow, my-bookings and manage-booking blocks. Emailed manage links 404 until the manage-booking page exists.
+  - My bookings API, contact form (enquiries), optional client accounts, bulk actions, CSV export
+  - manage-link standard (`#token=` + header route, CSP on the manage page)
+  - verified end to end on the dev site: Mailpit delivery and retries, WordPress's set-password flow, client access in a real browser, bulk/CSV permissions in a real browser
+- Next (Phase 3e, theme): booking flow, My bookings, manage-booking and contact pages. See `docs/phase-3e-integration.md`. Emailed manage links 404 until the manage-booking page exists.
+- Dependencies: `docs/dependency-remediation.md` (stages 2-5 pending).
 
 ## Notifications
 
