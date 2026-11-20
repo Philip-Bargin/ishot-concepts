@@ -214,7 +214,7 @@ export default function ManageBooking() {
             )}
           </div>
 
-          <aside className="fo-summary" aria-labelledby="details-title">
+          <section className="fo-summary" aria-labelledby="details-title">
             <h2 id="details-title" className="h5 fo-display">
               Details
             </h2>
@@ -232,7 +232,7 @@ export default function ManageBooking() {
               <dt>Location</dt>
               <dd>{contact.location}</dd>
             </dl>
-          </aside>
+          </section>
         </div>
       </section>
     </>

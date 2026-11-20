@@ -25,7 +25,7 @@ const HINTS = ["Choose a service to continue.", "Choose a date and a start time 
 
 function Summary({ service, date, time }) {
   return (
-    <aside className="fo-summary ish-book__aside" aria-labelledby="summary-title">
+    <section className="fo-summary ish-book__aside" aria-labelledby="summary-title">
       <h2 id="summary-title" className="h5 fo-display">
         Your booking
       </h2>
@@ -42,7 +42,7 @@ function Summary({ service, date, time }) {
         <dd>Instructions by email</dd>
       </dl>
       {time && <span className="fo-badge fo-badge--success">Available</span>}
-    </aside>
+    </section>
   );
 }
 
