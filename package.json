@@ -11,7 +11,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "images": "node scripts/optimize-images.mjs",
-    "lint:tokens": "node scripts/check-tokens.mjs"
+    "lint:tokens": "node scripts/check-tokens.mjs",
+    "wp:start": "wp-env start",
+    "wp:stop": "wp-env stop",
+    "wp:setup": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking composer install --no-interaction",
+    "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking vendor/bin/phpunit",
+    "test:php:unit": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking vendor/bin/phpunit --testsuite unit"
   },
   "dependencies": {
     "@fontsource/oswald": "^5.1.1",
@@ -23,6 +28,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
+    "@wordpress/env": "^10.14.0",
     "axe-core": "^4.10.2",
     "sharp": "^0.33.5",
     "vite": "^5.4.8"

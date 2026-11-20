@@ -15,3 +15,7 @@ iShot_Concept_DESIGN (1).md
 
 # generated from design-system/ by scripts/sync-design-system.mjs
 src/styles/ds/
+
+# wp-env / plugin dependencies
+wordpress/wp-content/plugins/ishot-booking/vendor/
+.phpunit.result.cache
