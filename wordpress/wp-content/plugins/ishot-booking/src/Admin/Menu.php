@@ -8,6 +8,7 @@ final class Menu {
 	public const LIST_SLUG  = 'ishot-bookings-list';
 	public const HOURS_SLUG = 'ishot-hours';
 	public const SET_SLUG   = 'ishot-settings';
+	public const EMAIL_SLUG = 'ishot-emails';
 
 	public static function register(): void {
 		add_menu_page(
@@ -23,6 +24,7 @@ final class Menu {
 		add_submenu_page( self::SLUG, __( 'All bookings', 'ishot-booking' ), __( 'All bookings', 'ishot-booking' ), 'view_ishot_calendar', self::LIST_SLUG, array( ListScreen::class, 'page' ) );
 		add_submenu_page( self::SLUG, __( 'Opening hours', 'ishot-booking' ), __( 'Opening hours', 'ishot-booking' ), 'manage_ishot_availability', self::HOURS_SLUG, array( SettingsScreen::class, 'hoursPage' ) );
 		add_submenu_page( self::SLUG, __( 'Booking settings', 'ishot-booking' ), __( 'Settings', 'ishot-booking' ), 'manage_ishot_settings', self::SET_SLUG, array( SettingsScreen::class, 'policyPage' ) );
+		add_submenu_page( self::SLUG, __( 'Emails and calendar', 'ishot-booking' ), __( 'Emails', 'ishot-booking' ), 'manage_ishot_settings', self::EMAIL_SLUG, array( EmailSettingsScreen::class, 'page' ) );
 	}
 
 	/** Loads the token and admin styles on the plugin's own screens only. */

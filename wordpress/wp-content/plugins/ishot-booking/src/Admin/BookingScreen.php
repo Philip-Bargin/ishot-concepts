@@ -4,6 +4,8 @@ namespace IShot\Booking\Admin;
 use DateTimeImmutable;
 use DateTimeZone;
 use IShot\Booking\Application\StaffActions;
+use IShot\Booking\Notifications\Outbox;
+use IShot\Booking\Notifications\Templates;
 use IShot\Booking\Persistence\BookingRepository;
 use IShot\Booking\Settings;
 
@@ -98,6 +100,11 @@ final class BookingScreen {
 				View::statusLabel( (string) $event['from_status'] ),
 				View::statusLabel( (string) $event['to_status'] )
 			),
+			'notification_failed' => sprintf(
+				/* translators: %s: email name */
+				__( 'Email not delivered: %s', 'ishot-booking' ),
+				Templates::defaults()[ $payload['template'] ?? '' ]['label'] ?? (string) ( $payload['template'] ?? '' )
+			),
 			default          => $event['action'],
 		};
 		$extra = array_intersect_key( $payload, array_flip( array( 'note', 'reason', 'by' ) ) );
@@ -124,6 +131,40 @@ final class BookingScreen {
 			'received' => __( 'Received', 'ishot-booking' ),
 		)[ $row['deposit_status'] ] ?? $row['deposit_status'];
 		return null === $row['deposit_amount'] ? $state : number_format_i18n( (float) $row['deposit_amount'], 2 ) . ' · ' . $state;
+	}
+
+	/** Every email queued for the booking and how delivery went. Errors are stored already redacted. */
+	private static function emails( int $id ): void {
+		$rows = ( new Outbox() )->forBooking( $id );
+		echo '<section class="ishot-panel" aria-labelledby="ishot-emails"><h2 id="ishot-emails">' . esc_html__( 'Emails', 'ishot-booking' ) . '</h2>';
+		if ( array() === $rows ) {
+			echo '<p class="ishot-muted">' . esc_html__( 'No emails yet.', 'ishot-booking' ) . '</p></section>';
+			return;
+		}
+		$labels = Templates::defaults();
+		echo '<table class="widefat striped"><thead><tr><th scope="col">' . esc_html__( 'Email', 'ishot-booking' ) . '</th><th scope="col">' . esc_html__( 'Status', 'ishot-booking' ) . '</th><th scope="col">' . esc_html__( 'Attempts', 'ishot-booking' ) . '</th><th scope="col">' . esc_html__( 'Details', 'ishot-booking' ) . '</th></tr></thead><tbody>';
+		foreach ( $rows as $r ) {
+			$status = match ( $r['status'] ) {
+				'sent'    => __( 'Sent', 'ishot-booking' ),
+				'skipped' => __( 'Switched off', 'ishot-booking' ),
+				'failed'  => __( 'Failed', 'ishot-booking' ),
+				'sending' => __( 'Sending', 'ishot-booking' ),
+				default   => (int) $r['attempts'] > 0 ? __( 'Retrying', 'ishot-booking' ) : __( 'Queued', 'ishot-booking' ),
+			};
+			$detail = match ( $r['status'] ) {
+				'sent'  => View::when( $r['sent_at'] ),
+				default => '' !== $r['last_error'] ? $r['last_error'] . ( 'pending' === $r['status'] ? ' · ' . sprintf( /* translators: %s: time */ __( 'next try %s', 'ishot-booking' ), View::when( $r['next_attempt_at'] ) ) : '' ) : '',
+			};
+			printf(
+				'<tr><td>%1$s%2$s</td><td>%3$s</td><td>%4$d</td><td>%5$s</td></tr>',
+				esc_html( $labels[ $r['template'] ]['label'] ?? $r['template'] ),
+				null !== $r['calendar_method'] ? ' <span class="ishot-muted">(' . esc_html__( 'with calendar file', 'ishot-booking' ) . ')</span>' : '',
+				esc_html( $status ),
+				(int) $r['attempts'],
+				esc_html( $detail )
+			);
+		}
+		echo '</tbody></table></section>';
 	}
 
 	public static function render( int $id, DateTimeImmutable $now ): void {
@@ -182,6 +223,8 @@ final class BookingScreen {
 			);
 		}
 		echo '</section>';
+
+		self::emails( $id );
 
 		echo '<section class="ishot-panel" aria-labelledby="ishot-history"><h2 id="ishot-history">' . esc_html__( 'History', 'ishot-booking' ) . '</h2><ol class="ishot-timeline">';
 		foreach ( $repo->events( $id ) as $event ) {

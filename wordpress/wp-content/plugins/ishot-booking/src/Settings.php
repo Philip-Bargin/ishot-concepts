@@ -28,7 +28,35 @@ final class Settings {
 			6 => array( '09:00', '18:00' ),
 		),
 		'exceptions'          => array(),
+		// Email. Empty values fall back at send time: studio name → site title,
+		// studio address → admin email, from address → WordPress's default sender.
+		'email_from_name'      => '',
+		'email_from_address'   => '',
+		'email_reply_to'       => '',
+		'email_studio_address' => '',
+		'currency'             => 'USD',
+		'deposit_instructions' => '',
+		'manage_url'           => '',
+		// Per-template overrides: template => {enabled?: bool, subject?: string, intro?: string}.
+		'templates'            => array(),
 	);
+
+	/** Where emails come from and go to, with the fallbacks applied. */
+	public static function studioName(): string {
+		$name = trim( (string) self::all()['email_from_name'] );
+		return '' !== $name ? $name : wp_specialchars_decode( (string) get_option( 'blogname' ), ENT_QUOTES );
+	}
+
+	public static function studioAddress(): string {
+		$address = sanitize_email( (string) self::all()['email_studio_address'] );
+		return '' !== $address ? $address : (string) get_option( 'admin_email' );
+	}
+
+	/** The page that reads the manage-booking token from the URL fragment (never sent to servers). */
+	public static function manageUrl(): string {
+		$url = (string) self::all()['manage_url'];
+		return '' !== $url ? $url : home_url( '/manage-booking/' );
+	}
 
 	/** @return array<string, mixed> */
 	public static function all(): array {

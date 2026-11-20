@@ -28,5 +28,8 @@ if ( ! file_exists( $ishot_booking_autoload ) ) {
 	return;
 }
 require_once $ishot_booking_autoload;
+// Action Scheduler (notification queue) must be included before plugins_loaded priority 0;
+// it registers its version and defers to the newest copy on the site (e.g. WooCommerce's).
+require_once __DIR__ . '/vendor/woocommerce/action-scheduler/action-scheduler.php';
 
 IShot\Booking\Plugin::boot( __FILE__ );

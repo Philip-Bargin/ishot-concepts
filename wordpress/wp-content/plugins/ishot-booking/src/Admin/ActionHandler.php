@@ -176,6 +176,7 @@ final class ActionHandler {
 			'slot_taken'       => __( 'That time overlaps another booking or block. Nothing was changed.', 'ishot-booking' ),
 			'invalid'          => __( 'That change is not possible for this booking. Check the details and try again.', 'ishot-booking' ),
 			'settings_invalid' => __( 'Some values need fixing. Nothing was saved.', 'ishot-booking' ),
+			'feed_key'         => __( 'A new calendar address was created. The old one no longer works.', 'ishot-booking' ),
 		);
 		return $messages[ $code ] ?? '';
 	}

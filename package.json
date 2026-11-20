@@ -14,6 +14,8 @@
     "lint:tokens": "node scripts/check-tokens.mjs",
     "wp:start": "wp-env start",
     "wp:stop": "wp-env stop",
+    "mail:start": "docker start ishot-mailpit || docker run -d --name ishot-mailpit -p 8026:8025 -p 1026:1025 axllent/mailpit",
+    "mail:stop": "docker stop ishot-mailpit",
     "wp:setup": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking composer install --no-interaction",
     "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking vendor/bin/phpunit",
     "test:php:unit": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking vendor/bin/phpunit --testsuite unit"

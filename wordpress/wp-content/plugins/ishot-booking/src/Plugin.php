@@ -3,10 +3,14 @@ namespace IShot\Booking;
 
 use IShot\Booking\Admin\ActionHandler;
 use IShot\Booking\Admin\DashboardWidget;
+use IShot\Booking\Admin\EmailSettingsScreen;
+use IShot\Booking\Calendar\CalendarFeed;
 use IShot\Booking\Admin\Menu;
 use IShot\Booking\Admin\SettingsScreen;
 use IShot\Booking\Application\HoldExpiry;
 use IShot\Booking\Catalog\ServiceCatalog;
+use IShot\Booking\Notifications\Outbox;
+use IShot\Booking\Notifications\Queue;
 use IShot\Booking\Rest\ClientController;
 use IShot\Booking\Rest\PublicController;
 use IShot\Booking\Rest\StaffController;
@@ -18,6 +22,13 @@ final class Plugin {
 		register_activation_hook( $plugin_file, array( Installer::class, 'onActivate' ) );
 		add_action( 'plugins_loaded', array( Installer::class, 'maybeUpgrade' ) );
 		register_deactivation_hook( $plugin_file, array( HoldExpiry::class, 'unschedule' ) );
+		register_deactivation_hook( $plugin_file, array( Queue::class, 'unschedule' ) );
+
+		// Notifications: the outbox is filled inside booking transactions; these deliver it.
+		add_action( Outbox::QUEUED_HOOK, array( Queue::class, 'kick' ) );
+		add_action( Queue::SEND_HOOK, array( Queue::class, 'send' ) );
+		add_action( Queue::TICK_HOOK, array( Queue::class, 'tick' ) );
+		add_action( 'action_scheduler_init', array( Queue::class, 'ensureScheduled' ) );
 		add_action( 'init', array( ServiceCatalog::class, 'register' ) );
 
 		add_filter( 'cron_schedules', array( HoldExpiry::class, 'addInterval' ) ); // phpcs:ignore WordPress.WP.CronInterval -- five minutes is intended.
@@ -29,8 +40,10 @@ final class Plugin {
 				( new PublicController() )->register();
 				( new StaffController() )->register();
 				( new ClientController() )->register();
+				( new CalendarFeed() )->register();
 			}
 		);
+		add_filter( 'rest_pre_serve_request', array( CalendarFeed::class, 'serveRaw' ), 10, 3 );
 
 		if ( is_admin() ) {
 			add_action( 'admin_menu', array( Menu::class, 'register' ) );
@@ -41,6 +54,8 @@ final class Plugin {
 			add_action( 'admin_post_' . ActionHandler::POST_UNBLOCK, array( ActionHandler::class, 'handleUnblock' ) );
 			add_action( 'admin_post_' . SettingsScreen::POST_HOURS, array( SettingsScreen::class, 'handleHours' ) );
 			add_action( 'admin_post_' . SettingsScreen::POST_POLICY, array( SettingsScreen::class, 'handlePolicy' ) );
+			add_action( 'admin_post_' . EmailSettingsScreen::POST_SAVE, array( EmailSettingsScreen::class, 'handleSave' ) );
+			add_action( 'admin_post_' . EmailSettingsScreen::POST_FEED, array( EmailSettingsScreen::class, 'handleFeedKey' ) );
 		}
 	}
 }

@@ -33,4 +33,24 @@ const scoped = rootBlocks.map((block) => block.replace(/^:root[^{]*\{/, ".ishot-
 const pluginCss = resolve(root, "wordpress/wp-content/plugins/ishot-booking/assets/css");
 mkdirSync(pluginCss, { recursive: true });
 writeFileSync(resolve(pluginCss, "tokens.css"), banner + scoped + "\n");
-console.log("sync-design-system: wrote src/styles/ds/tokens.css, bundle.css and the plugin admin tokens.css");
+
+// Email palette: email clients ignore CSS custom properties, so the booking emails inline these
+// resolved light-theme values (aliases such as `{brand-navy}` are followed to their hex).
+const json = JSON.parse(readFileSync(resolve(root, "design-system/tokens.json"), "utf8"));
+const light = Object.fromEntries(json.color.tokens.map((t) => [t.name, t.value.light]));
+const resolveColour = (v, seen = 0) => {
+  const alias = /^\{([\w-]+)\}$/.exec(v);
+  if (!alias) return v;
+  if (seen > 5 || !(alias[1] in light)) throw new Error(`sync-design-system: unresolvable colour alias ${v}`);
+  return resolveColour(light[alias[1]], seen + 1);
+};
+const emailKeys = ["paper", "mist", "ink", "ink-muted", "line", "band", "on-band", "on-band-muted", "accent", "on-accent", "highlight"];
+const email = {
+  _generated: "scripts/sync-design-system.mjs from design-system/tokens.json. Do not edit.",
+  colour: Object.fromEntries(emailKeys.map((k) => [k, resolveColour(light[k])])),
+  font: { display: json.type.families.display, text: json.type.families.text },
+};
+const pluginEmail = resolve(root, "wordpress/wp-content/plugins/ishot-booking/assets/email");
+mkdirSync(pluginEmail, { recursive: true });
+writeFileSync(resolve(pluginEmail, "theme.json"), JSON.stringify(email, null, 2) + "\n");
+console.log("sync-design-system: wrote src/styles/ds/tokens.css, bundle.css, the plugin admin tokens.css and email theme.json");

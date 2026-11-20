@@ -6,6 +6,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use IShot\Booking\Domain\SlotUnits;
 use IShot\Booking\Domain\TimeRange;
+use IShot\Booking\Notifications\Outbox;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
@@ -23,10 +24,17 @@ final class BookingRepository {
 
 	private const DATETIME = 'Y-m-d H:i:s';
 
+	private readonly Outbox $outbox;
+
+	/** Emails queued by the transaction in progress; delivery is kicked only after it commits. */
+	private int $queued = 0;
+
 	public function __construct(
 		private readonly wpdb $db,
 		private readonly int $granularity_minutes
-	) {}
+	) {
+		$this->outbox = new Outbox( $db );
+	}
 
 	/**
 	 * @return int Booking id. A repeated idempotency key returns the original booking's id.
@@ -236,11 +244,17 @@ final class BookingRepository {
 	}
 
 	/** @return array<string, mixed>|null The booking whose manage-token hash matches. */
+	/** The booking for a manage-link token hash: the one returned at creation, or one issued in an email. */
 	public function findByTokenHash( string $hash ): ?array {
-		return $this->db->get_row(
+		$row = $this->db->get_row(
 			$this->db->prepare( 'SELECT * FROM ' . Schema::bookings() . ' WHERE public_token_hash = %s', $hash ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			ARRAY_A
 		);
+		if ( null !== $row ) {
+			return $row;
+		}
+		$id = ( new ManageLinks( $this->db ) )->bookingFor( $hash );
+		return null === $id ? null : $this->find( $id );
 	}
 
 	/**
@@ -379,6 +393,7 @@ final class BookingRepository {
 		}
 	}
 
+	/** Appends to the audit log and queues the emails the event calls for, in the caller's transaction. */
 	private function log( int $booking_id, string $action, ?string $from, ?string $to, ?int $actor_user_id = null, array $payload = array() ): void {
 		$this->db->insert(
 			Schema::events(),
@@ -392,6 +407,7 @@ final class BookingRepository {
 				'created_at'    => gmdate( self::DATETIME ),
 			)
 		);
+		$this->queued += $this->outbox->recordEvent( $booking_id, (int) $this->db->insert_id, $action, $from, $to, $actor_user_id, $payload );
 	}
 
 	private function idForKey( string $key ): ?int {
@@ -415,10 +431,14 @@ final class BookingRepository {
 	 */
 	private function inTransaction( callable $work, ?callable $on_error = null ): mixed {
 		for ( $attempt = 1; ; $attempt++ ) {
+			$this->queued = 0;
 			$this->db->query( 'START TRANSACTION' );
 			try {
 				$result = $work();
 				$this->db->query( 'COMMIT' );
+				if ( $this->queued > 0 ) {
+					do_action( Outbox::QUEUED_HOOK );
+				}
 				return $result;
 			} catch ( TransientLockError $e ) {
 				$this->db->query( 'ROLLBACK' );

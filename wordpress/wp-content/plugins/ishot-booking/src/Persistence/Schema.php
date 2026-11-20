@@ -7,7 +7,7 @@ namespace IShot\Booking\Persistence;
  */
 final class Schema {
 
-	public const VERSION     = '2';
+	public const VERSION     = '3';
 	public const VERSION_KEY = 'ishot_booking_db_version';
 
 	public static function bookings(): string {
@@ -25,9 +25,21 @@ final class Schema {
 		return $wpdb->prefix . 'ishot_booking_events';
 	}
 
+	/** Notification outbox: written in the booking's transaction, delivered by the queue. */
+	public static function notifications(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'ishot_notifications';
+	}
+
+	/** Manage-link token hashes issued in emails (the raw tokens are never stored). */
+	public static function links(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'ishot_booking_links';
+	}
+
 	/** @return string[] */
 	public static function tables(): array {
-		return array( self::bookings(), self::locks(), self::events() );
+		return array( self::bookings(), self::locks(), self::events(), self::notifications(), self::links() );
 	}
 
 	/** Creates or upgrades the tables (dbDelta is idempotent). */
@@ -39,6 +51,8 @@ final class Schema {
 		$bookings = self::bookings();
 		$locks    = self::locks();
 		$events   = self::events();
+		$outbox   = self::notifications();
+		$links    = self::links();
 
 		dbDelta(
 			"CREATE TABLE {$bookings} (
@@ -90,6 +104,35 @@ CREATE TABLE {$events} (
   payload longtext NULL,
   created_at datetime NOT NULL,
   PRIMARY KEY  (id),
+  KEY booking_id (booking_id)
+) ENGINE=InnoDB {$charset};
+CREATE TABLE {$outbox} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  booking_id bigint(20) unsigned NOT NULL,
+  event_id bigint(20) unsigned NULL,
+  template varchar(40) NOT NULL,
+  recipient varchar(10) NOT NULL,
+  dedupe_key varchar(191) NOT NULL,
+  calendar_method varchar(10) NULL,
+  snapshot longtext NOT NULL,
+  status varchar(12) NOT NULL DEFAULT 'pending',
+  attempts tinyint(3) unsigned NOT NULL DEFAULT 0,
+  next_attempt_at datetime NOT NULL,
+  claimed_at datetime NULL,
+  sent_at datetime NULL,
+  last_error varchar(255) NOT NULL DEFAULT '',
+  created_at datetime NOT NULL,
+  updated_at datetime NOT NULL,
+  PRIMARY KEY  (id),
+  UNIQUE KEY dedupe_key (dedupe_key),
+  KEY due (status,next_attempt_at),
+  KEY booking_id (booking_id)
+) ENGINE=InnoDB {$charset};
+CREATE TABLE {$links} (
+  token_hash char(64) NOT NULL,
+  booking_id bigint(20) unsigned NOT NULL,
+  created_at datetime NOT NULL,
+  PRIMARY KEY  (token_hash),
   KEY booking_id (booking_id)
 ) ENGINE=InnoDB {$charset};"
 		);
