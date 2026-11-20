@@ -23,6 +23,8 @@ final class BookingRequests {
 	private const ALTERNATIVE_SEARCH_DAYS = 14;
 
 	private readonly Availability $availability;
+	private readonly HoldExpiry $expiry;
+	private bool $swept = false;
 
 	public function __construct(
 		private readonly BookingRepository $repo,
@@ -30,6 +32,15 @@ final class BookingRequests {
 		private readonly int $hold_hours
 	) {
 		$this->availability = new Availability( $policy );
+		$this->expiry       = new HoldExpiry( $repo );
+	}
+
+	/** Releases lapsed holds once per request, so they never block a time even if cron is late. */
+	public function releaseLapsedHolds( DateTimeImmutable $now ): void {
+		if ( ! $this->swept ) {
+			$this->expiry->run( $now );
+			$this->swept = true;
+		}
 	}
 
 	private function timezone(): DateTimeZone {
@@ -40,6 +51,7 @@ final class BookingRequests {
 	 * @param array{name: string, email: string, phone: string, location: string, notes: string} $client
 	 */
 	public function submit( Service $service, DateTimeImmutable $local_start, array $client, ?string $idempotency_key, DateTimeImmutable $now ): RequestOutcome {
+		$this->releaseLapsedHolds( $now );
 		$session   = new TimeRange( $local_start, $local_start->add( new DateInterval( "PT{$service->duration_min}M" ) ) );
 		$violation = $this->policy->check( $session, $now );
 		if ( null !== $violation ) {
@@ -81,6 +93,7 @@ final class BookingRequests {
 
 	/** @return string[] Free local start times 'H:i' on a studio date. */
 	public function startTimes( Service $service, string $local_date, DateTimeImmutable $now ): array {
+		$this->releaseLapsedHolds( $now );
 		return $this->availability->startTimes(
 			$local_date,
 			$service->duration_min,

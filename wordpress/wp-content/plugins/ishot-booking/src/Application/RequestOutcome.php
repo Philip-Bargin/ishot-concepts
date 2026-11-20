@@ -11,6 +11,7 @@ final class RequestOutcome {
 	public const REPLAYED = 'replayed';
 	public const REJECTED = 'rejected';
 	public const CONFLICT = 'conflict';
+	public const CHANGED  = 'changed';
 
 	/**
 	 * @param DateTimeImmutable[] $alternatives
@@ -25,6 +26,10 @@ final class RequestOutcome {
 
 	public static function created( int $id, string $token ): self {
 		return new self( self::CREATED, $id, $token );
+	}
+
+	public static function changed( int $id ): self {
+		return new self( self::CHANGED, $id );
 	}
 
 	public static function replayed( int $id ): self {

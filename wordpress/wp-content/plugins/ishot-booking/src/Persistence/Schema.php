@@ -7,7 +7,7 @@ namespace IShot\Booking\Persistence;
  */
 final class Schema {
 
-	public const VERSION     = '1';
+	public const VERSION     = '2';
 	public const VERSION_KEY = 'ishot_booking_db_version';
 
 	public static function bookings(): string {
@@ -70,6 +70,7 @@ final class Schema {
   UNIQUE KEY public_token_hash (public_token_hash),
   KEY resource_block (resource_id,block_start_utc),
   KEY status (status),
+  KEY hold_expiry (status,hold_expires_at),
   KEY client_email (client_email(100))
 ) ENGINE=InnoDB {$charset};
 CREATE TABLE {$locks} (

@@ -91,26 +91,49 @@ Error responses:
 
 **Reschedule:** the old slots are released and the new ones claimed in one transaction. On a clash, the rollback leaves the booking exactly where it was.
 
+## Client manage-booking link (`/wp-json/ishot/v1/bookings/{token}`)
+
+The 64-character token from `POST /bookings` is the client's only credential. Only its hash is stored.
+
+- **`GET`:** shows the status, service, times, deposit, `change_deadline`, `can_cancel` and `can_reschedule`.
+  - No email or phone is shown, so a forwarded link doesn't leak contact details.
+  - Responses are sent with `Cache-Control: no-store` and `X-Robots-Tag: noindex`.
+- **`PATCH {action: "cancel"}`** or **`{action: "reschedule", start: "YYYY-MM-DDTHH:MM"}`:**
+  - Allowed only while the booking holds a slot, and before `cancel_cutoff_hours` (default 72) ahead of the session.
+  - A reschedule must satisfy the same policy as a new request, and a clash returns 409 with alternatives.
+- **Errors:**
+  - unknown tokens: **404**, never 403
+  - after the cut-off: **422** `ishot_past_cutoff`
+  - cancelled or finished bookings: **422** `ishot_not_changeable`
+- **Link lifetime:** the link stops working 30 days after the session.
+- **Rate limit:** 30 requests per 10 minutes per address. Change it with the `ishot_booking_manage_rate_limit` filter.
+
+## Hold expiry
+
+Unpaid `requested` and `pending_deposit` bookings hold their slot until `hold_expires_at` (`hold_hours` after the request, default 48). Lapsed holds become `expired` and their slots are freed in two ways:
+- **Lazily**, before every availability read, booking request and manage-link request. A lapsed hold never blocks anyone, even if cron is late.
+- **By a five-minute WP-Cron sweep** (`ishot_booking_expire_holds`). On production, set `DISABLE_WP_CRON` and run `wp cron event run --due-now` from a system cron every minute.
+
+Confirming a booking clears its hold.
+
 ## Status
 
 - Done:
   - domain layer
-  - schema
-  - atomic create with conflict detection
-  - idempotent retries
+  - schema (v2)
+  - atomic create and reschedule
+  - idempotency
   - optimistic versioning
-  - audit log with actor and payload
+  - audit log
   - concurrency proof
   - activation and upgrades
   - settings
   - services post type
-  - public REST routes
-  - roles and capabilities
-  - staff REST routes (calendar, detail, actions, manual deposit flow, atomic reschedule, time blocks)
+  - public, staff and client REST routes
+  - roles
+  - hold expiry
 - Next:
   - wp-admin screens (calendar, list, detail, availability, settings, dashboard widget)
-  - client manage-booking routes (view, reschedule, cancel by token, with cut-off)
-  - hold expiry via Action Scheduler
-  - notifications and ICS
-  - privacy exporter and eraser
+  - notifications (Action Scheduler) and ICS
+  - privacy exporter and eraser, and the retention job
   - `PaymentGateway` interface

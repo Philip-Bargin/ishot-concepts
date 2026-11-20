@@ -234,6 +234,32 @@ final class BookingRepository {
 		);
 	}
 
+	/** @return array<string, mixed>|null The booking whose manage-token hash matches. */
+	public function findByTokenHash( string $hash ): ?array {
+		return $this->db->get_row(
+			$this->db->prepare( 'SELECT * FROM ' . Schema::bookings() . ' WHERE public_token_hash = %s', $hash ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+	}
+
+	/**
+	 * Unpaid requests whose hold has run out: requested or pending_deposit, hold_expires_at <= now.
+	 *
+	 * @return array<int, array{id: string, version: string}>
+	 */
+	public function lapsedHolds( string $now_utc, int $limit = 200 ): array {
+		return $this->db->get_results(
+			$this->db->prepare(
+				'SELECT id, version FROM ' . Schema::bookings() . ' WHERE status IN (%s, %s) AND hold_expires_at IS NOT NULL AND hold_expires_at <= %s ORDER BY hold_expires_at LIMIT %d', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				BookingStatus::Requested->value,
+				BookingStatus::PendingDeposit->value,
+				$now_utc,
+				$limit
+			),
+			ARRAY_A
+		);
+	}
+
 	/** @return array<int, array<string, mixed>> Audit events for a booking, oldest first. */
 	public function events( int $booking_id ): array {
 		return $this->db->get_results(
