@@ -80,6 +80,18 @@ The lockfile changed only:
 
 **Steps:** recommended only if the prototype stays in use after launch. Otherwise archive the prototype at launch (as planned) and drop it.
 
+## Compatibility requirements (verified with `npm view`, 2026-11-20)
+
+| Upgrade | Version | Needs | This machine | CI (`node-version: 24`) |
+|---|---|---|---|---|
+| `@wordpress/env` | 12.2.0 | Node ≥ 22.13 itself, but it pulls in `@wp-playground/cli` → `@php-wasm/node`, which needs **Node ≥ 24.18 and npm ≥ 11.16** | Node 24.13 / npm 11.8: **upgrade Node first** | latest 24.x: OK |
+| `vite` | 8.3.8 | Node ^20.19 or ≥ 22.12; needs `@vitejs/plugin-react` 6 (peer `vite ^8`), so upgrade both together | OK | OK |
+| `@vitejs/plugin-react` | 6.3.0 | Node ^20.19 or ≥ 22.12; peer `vite ^8` | OK | OK |
+| `sharp` | 0.35.5 | Node ≥ 20.9 (prebuilt libvips) | OK | not used in CI |
+| `react-router-dom` | 7.18.6 | Node ≥ 20; peers `react`/`react-dom` ≥ 18 (have 18.3); code changes (v7 API and future flags) | OK | OK |
+
+CI already runs on the latest Node 24 and reports `npm audit` without failing, so each stage is validated by CI before merge.
+
 ## Rule for every stage
 
 One major upgrade per branch. Run the full PHP suite, `npm run build` and a browser check before merging. Never use `npm audit fix --force`.
