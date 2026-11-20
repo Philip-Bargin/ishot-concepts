@@ -41,6 +41,8 @@ final class Plugin {
 		add_action( 'action_scheduler_init', array( Queue::class, 'ensureScheduled' ) );
 		add_action( Enquiries::SEND_HOOK, array( Enquiries::class, 'run' ) );
 		add_action( 'after_password_reset', array( Accounts\ClientAccounts::class, 'onPasswordReset' ) );
+		add_filter( 'wp_new_user_notification_email', array( Accounts\ClientAccounts::class, 'useStudioSender' ), 10, 2 );
+		add_filter( 'retrieve_password_notification_email', array( Accounts\ClientAccounts::class, 'useStudioSenderForReset' ), 10, 4 );
 
 		// Manage-booking links: /manage-booking/#token=… (see Frontend\ManageUrl).
 		add_action( 'template_redirect', array( Frontend\ManageUrl::class, 'redirectLegacy' ), 1 );

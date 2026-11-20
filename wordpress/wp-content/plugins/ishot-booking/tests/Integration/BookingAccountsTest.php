@@ -122,6 +122,15 @@ final class BookingAccountsTest extends TestCase {
 		$this->assertSame( 'new@accounts.example.com', ClientAccounts::verifiedEmail( $user->ID ) );
 	}
 
+	public function test_the_set_password_email_comes_from_the_studio_sender_not_the_wordpress_default(): void {
+		\IShot\Booking\Settings::update( array( 'email_from_address' => 'bookings@studio.example', 'email_from_name' => 'iShot Concept' ) );
+		$this->book( 'sender@accounts.example.com', '10:00', array( 'create_account' => true ) );
+
+		$mail    = array_values( array_filter( $this->mails, static fn( array $m ) => 'sender@accounts.example.com' === $m['to'] ) )[0];
+		$headers = implode( "\n", (array) $mail['headers'] );
+		$this->assertStringContainsString( 'From: iShot Concept <bookings@studio.example>', $headers );
+	}
+
 	public function test_an_existing_account_is_neither_revealed_nor_attached(): void {
 		$existing      = wp_insert_user( array( 'user_login' => uniqid( 'existing' ), 'user_email' => 'taken@accounts.example.com', 'user_pass' => wp_generate_password(), 'role' => 'ishot_client' ) );
 		$this->users[] = $existing;

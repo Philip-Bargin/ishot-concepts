@@ -58,6 +58,30 @@ final class ClientAccounts {
 		return array( 'status' => self::CHECK_EMAIL, 'user_id' => $user_id );
 	}
 
+	/**
+	 * WordPress sends the set-your-password and lost-password emails itself, from its default
+	 * wordpress@<host> sender (rejected outright on some hosts, and failing SPF/DMARC on others).
+	 * For client accounts they go out from the studio's configured sender instead, like every
+	 * other booking email.
+	 *
+	 * @param array{to: string, subject: string, message: string, headers: string|string[]} $email
+	 */
+	public static function useStudioSender( array $email, \WP_User $user ): array {
+		$from = sanitize_email( (string) \IShot\Booking\Settings::all()['email_from_address'] );
+		if ( '' === $from || ! in_array( 'ishot_client', (array) $user->roles, true ) ) {
+			return $email;
+		}
+		$headers          = array_filter( (array) ( $email['headers'] ?? array() ) );
+		$headers[]        = sprintf( 'From: %s <%s>', \IShot\Booking\Notifications\Mailer::headerText( \IShot\Booking\Settings::studioName() ), $from );
+		$email['headers'] = $headers;
+		return $email;
+	}
+
+	/** retrieve_password_notification_email passes the user third. */
+	public static function useStudioSenderForReset( array $email, string $key, string $login, \WP_User $user ): array {
+		return self::useStudioSender( $email, $user );
+	}
+
 	/** Setting a password through the emailed link proves the client owns the address. */
 	public static function onPasswordReset( \WP_User $user ): void {
 		if ( in_array( 'ishot_client', (array) $user->roles, true ) ) {
