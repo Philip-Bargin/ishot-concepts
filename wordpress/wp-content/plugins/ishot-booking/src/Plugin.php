@@ -11,6 +11,8 @@ use IShot\Booking\Application\HoldExpiry;
 use IShot\Booking\Catalog\ServiceCatalog;
 use IShot\Booking\Notifications\Outbox;
 use IShot\Booking\Notifications\Queue;
+use IShot\Booking\Privacy\PersonalData;
+use IShot\Booking\Privacy\Retention;
 use IShot\Booking\Rest\ClientController;
 use IShot\Booking\Rest\PublicController;
 use IShot\Booking\Rest\StaffController;
@@ -23,6 +25,7 @@ final class Plugin {
 		add_action( 'plugins_loaded', array( Installer::class, 'maybeUpgrade' ) );
 		register_deactivation_hook( $plugin_file, array( HoldExpiry::class, 'unschedule' ) );
 		register_deactivation_hook( $plugin_file, array( Queue::class, 'unschedule' ) );
+		register_deactivation_hook( $plugin_file, array( Retention::class, 'unschedule' ) );
 
 		// Notifications: the outbox is filled inside booking transactions; these deliver it.
 		add_action( Outbox::QUEUED_HOOK, array( Queue::class, 'kick' ) );
@@ -30,6 +33,11 @@ final class Plugin {
 		add_action( Queue::TICK_HOOK, array( Queue::class, 'tick' ) );
 		add_action( 'action_scheduler_init', array( Queue::class, 'ensureScheduled' ) );
 		add_action( 'init', array( ServiceCatalog::class, 'register' ) );
+
+		// Privacy: Tools → Export/Erase Personal Data, and the daily retention purge.
+		PersonalData::register();
+		add_action( 'action_scheduler_init', array( Retention::class, 'ensureScheduled' ) );
+		add_action( Retention::HOOK, array( Retention::class, 'run' ) );
 
 		add_filter( 'cron_schedules', array( HoldExpiry::class, 'addInterval' ) ); // phpcs:ignore WordPress.WP.CronInterval -- five minutes is intended.
 		add_action( 'init', array( HoldExpiry::class, 'ensureScheduled' ) );

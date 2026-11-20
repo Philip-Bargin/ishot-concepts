@@ -85,10 +85,11 @@ final class AdminActionsTest extends TestCase {
 		$this->actAs( 'ishot_manager' );
 
 		ActionHandler::process( self::post( $id, 'request_deposit', 1, array( 'deposit_amount' => '75' ) ) );
-		ActionHandler::process( self::post( $id, 'deposit_received', 2, array( 'note' => 'MoMo ref 991' ) ) );
+		ActionHandler::process( self::post( $id, 'deposit_received', 2, array( 'note' => 'MoMo ref 991', 'reference' => '  MP2611  20.991 ' ) ) );
 
 		$row = $this->repo->find( $id );
 		$this->assertSame( array( 'confirmed', 'received', '75.00' ), array( $row['status'], $row['deposit_status'], $row['deposit_amount'] ) );
+		$this->assertSame( array( 'manual', 'MP2611 20.991' ), array( $row['deposit_gateway'], $row['deposit_reference'] ) );
 		$events = $this->repo->events( $id );
 		$this->assertSame( array( 'note' => 'MoMo ref 991' ), json_decode( end( $events )['payload'], true ) );
 	}

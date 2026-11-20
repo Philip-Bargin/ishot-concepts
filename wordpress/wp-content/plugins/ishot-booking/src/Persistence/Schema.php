@@ -7,7 +7,7 @@ namespace IShot\Booking\Persistence;
  */
 final class Schema {
 
-	public const VERSION     = '3';
+	public const VERSION     = '4';
 	public const VERSION_KEY = 'ishot_booking_db_version';
 
 	public static function bookings(): string {
@@ -73,10 +73,13 @@ final class Schema {
   notes text NULL,
   deposit_amount decimal(10,2) NULL,
   deposit_status varchar(20) NOT NULL DEFAULT 'none',
+  deposit_gateway varchar(20) NULL,
+  deposit_reference varchar(100) NOT NULL DEFAULT '',
   hold_expires_at datetime NULL,
   public_token_hash char(64) NULL,
   idempotency_key varchar(64) NULL,
   version int(10) unsigned NOT NULL DEFAULT 1,
+  anonymised_at datetime NULL,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   PRIMARY KEY  (id),
@@ -85,7 +88,8 @@ final class Schema {
   KEY resource_block (resource_id,block_start_utc),
   KEY status (status),
   KEY hold_expiry (status,hold_expires_at),
-  KEY client_email (client_email(100))
+  KEY client_email (client_email(100)),
+  KEY retention (anonymised_at,end_utc)
 ) ENGINE=InnoDB {$charset};
 CREATE TABLE {$locks} (
   resource_id int(10) unsigned NOT NULL,

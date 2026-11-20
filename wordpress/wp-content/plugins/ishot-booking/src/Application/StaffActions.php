@@ -3,6 +3,7 @@ namespace IShot\Booking\Application;
 
 use DateTimeImmutable;
 use IShot\Booking\Domain\BookingStatus;
+use IShot\Booking\Payments\Payments;
 use IShot\Booking\Persistence\BookingRepository;
 use IShot\Booking\Persistence\SlotConflict;
 use IShot\Booking\Persistence\StaleBooking;
@@ -28,7 +29,7 @@ final class StaffActions {
 	public function __construct( private readonly BookingRepository $repo ) {}
 
 	/**
-	 * @param array{start?: DateTimeImmutable, deposit_amount?: float|null, note?: string, reason?: string} $args
+	 * @param array{start?: DateTimeImmutable, deposit_amount?: float|null, reference?: string, note?: string, reason?: string} $args
 	 * @throws InvalidArgumentException A transition the lifecycle forbids, or a missing argument.
 	 * @throws StaleBooking             Someone else changed the booking first.
 	 * @throws SlotConflict             Reschedule target is taken.
@@ -62,7 +63,7 @@ final class StaffActions {
 				),
 				$note
 			),
-			'deposit_received' => $this->repo->transition( $id, BookingStatus::Confirmed, $version, $actor, $confirm + array( 'deposit_status' => 'received' ), $note ),
+			'deposit_received' => $this->repo->transition( $id, BookingStatus::Confirmed, $version, $actor, $confirm + self::depositReceived( (string) ( $args['reference'] ?? '' ) ), $note ),
 			'cancel'           => $this->repo->transition( $id, BookingStatus::Cancelled, $version, $actor, array(), array( 'by' => 'studio' ) + $reason ),
 			'reschedule'       => $this->repo->reschedule(
 				$id,
@@ -72,5 +73,15 @@ final class StaffActions {
 			),
 			default            => throw new InvalidArgumentException( "Unknown action {$action}." ),
 		};
+	}
+
+	/** @return array<string, string> Columns recording who took the deposit and its payment reference. */
+	private static function depositReceived( string $reference ): array {
+		$gateway = Payments::active();
+		return array(
+			'deposit_status'    => 'received',
+			'deposit_gateway'   => $gateway->id(),
+			'deposit_reference' => $gateway->normaliseReference( $reference ),
+		);
 	}
 }

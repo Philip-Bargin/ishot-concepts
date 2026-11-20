@@ -69,8 +69,9 @@ final class ActionHandler {
 		}
 
 		$args = array(
-			'note'   => sanitize_textarea_field( (string) ( $post['note'] ?? '' ) ),
-			'reason' => sanitize_textarea_field( (string) ( $post['reason'] ?? '' ) ),
+			'note'      => sanitize_textarea_field( (string) ( $post['note'] ?? '' ) ),
+			'reason'    => sanitize_textarea_field( (string) ( $post['reason'] ?? '' ) ),
+			'reference' => sanitize_text_field( (string) ( $post['reference'] ?? '' ) ),
 		);
 		if ( isset( $post['deposit_amount'] ) && is_numeric( $post['deposit_amount'] ) && (float) $post['deposit_amount'] >= 0 ) {
 			$args['deposit_amount'] = (float) $post['deposit_amount'];

@@ -19,6 +19,8 @@ final class Settings {
 		'granularity_minutes' => 30,
 		'hold_hours'          => 48,
 		'cancel_cutoff_hours' => 72,
+		// Months after a session ends before the client's details are anonymised; 0 keeps them.
+		'retention_months'    => 24,
 		'weekly_hours'        => array(
 			1 => array( '09:00', '18:00' ),
 			2 => array( '09:00', '18:00' ),

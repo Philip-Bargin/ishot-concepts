@@ -31,6 +31,7 @@ final class SettingsFormTest extends TestCase {
 				'horizon_days'        => '90',
 				'hold_hours'          => '72',
 				'cancel_cutoff_hours' => '48',
+				'retention_months'    => '36',
 			)
 		);
 
@@ -39,6 +40,19 @@ final class SettingsFormTest extends TestCase {
 		$this->assertSame( 90, Settings::all()['horizon_days'] );
 		$this->assertSame( 72, Settings::all()['hold_hours'] );
 		$this->assertSame( 48, Settings::all()['cancel_cutoff_hours'] );
+		$this->assertSame( 36, Settings::all()['retention_months'] );
+	}
+
+	public function test_retention_accepts_zero_and_rejects_more_than_ten_years(): void {
+		$base = array(
+			'lead_time_hours'     => '24',
+			'horizon_days'        => '90',
+			'hold_hours'          => '72',
+			'cancel_cutoff_hours' => '48',
+		);
+		$this->assertSame( array( 'retention_months' ), array_keys( SettingsForm::savePolicy( $base + array( 'retention_months' => '121' ) ) ) );
+		$this->assertSame( array(), SettingsForm::savePolicy( $base + array( 'retention_months' => '0' ) ) );
+		$this->assertSame( 0, Settings::all()['retention_months'] );
 	}
 
 	public function test_out_of_range_policy_is_rejected_and_nothing_changes(): void {
@@ -48,6 +62,7 @@ final class SettingsFormTest extends TestCase {
 				'horizon_days'        => '0',
 				'hold_hours'          => 'abc',
 				'cancel_cutoff_hours' => '48',
+				'retention_months'    => '36',
 			)
 		);
 
@@ -62,6 +77,7 @@ final class SettingsFormTest extends TestCase {
 				'horizon_days'        => '90',
 				'hold_hours'          => '72',
 				'cancel_cutoff_hours' => '48',
+				'retention_months'    => '36',
 				'granularity_minutes' => '15',
 			)
 		);
@@ -122,6 +138,7 @@ final class SettingsFormTest extends TestCase {
 				'horizon_days'        => '90',
 				'hold_hours'          => '72',
 				'cancel_cutoff_hours' => '48',
+				'retention_months'    => '36',
 			)
 		);
 		SettingsForm::saveHours( array( 'weekly' => self::week() ) );

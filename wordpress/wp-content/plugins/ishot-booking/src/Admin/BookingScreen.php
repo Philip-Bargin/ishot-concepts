@@ -64,7 +64,7 @@ final class BookingScreen {
 				esc_attr( (string) ( $row['deposit_amount'] ?? ( null === $row['service_id'] ? '' : get_post_meta( (int) $row['service_id'], 'deposit_amount', true ) ) ) )
 			),
 			'deposit_received' => sprintf(
-				'<label for="ishot-ref-%1$d">%2$s</label> <input id="ishot-ref-%1$d" type="text" name="note" maxlength="500" placeholder="%3$s">',
+				'<label for="ishot-ref-%1$d">%2$s</label> <input id="ishot-ref-%1$d" type="text" name="reference" maxlength="100" placeholder="%3$s">',
 				$id,
 				esc_html__( 'Payment reference', 'ishot-booking' ),
 				esc_attr__( 'e.g. mobile money ref', 'ishot-booking' )
@@ -105,6 +105,7 @@ final class BookingScreen {
 				__( 'Email not delivered: %s', 'ishot-booking' ),
 				Templates::defaults()[ $payload['template'] ?? '' ]['label'] ?? (string) ( $payload['template'] ?? '' )
 			),
+			'anonymised'     => __( 'Client details anonymised', 'ishot-booking' ),
 			default          => $event['action'],
 		};
 		$extra = array_intersect_key( $payload, array_flip( array( 'note', 'reason', 'by' ) ) );
@@ -130,7 +131,10 @@ final class BookingScreen {
 			'awaiting' => __( 'Awaiting payment', 'ishot-booking' ),
 			'received' => __( 'Received', 'ishot-booking' ),
 		)[ $row['deposit_status'] ] ?? $row['deposit_status'];
-		return null === $row['deposit_amount'] ? $state : number_format_i18n( (float) $row['deposit_amount'], 2 ) . ' · ' . $state;
+		$text = null === $row['deposit_amount'] ? $state : number_format_i18n( (float) $row['deposit_amount'], 2 ) . ' · ' . $state;
+		$ref  = (string) ( $row['deposit_reference'] ?? '' );
+		/* translators: %s: payment reference */
+		return '' === $ref ? $text : $text . ' · ' . sprintf( __( 'ref. %s', 'ishot-booking' ), $ref );
 	}
 
 	/** Every email queued for the booking and how delivery went. Errors are stored already redacted. */

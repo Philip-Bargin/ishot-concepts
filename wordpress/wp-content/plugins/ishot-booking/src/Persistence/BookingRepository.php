@@ -104,7 +104,7 @@ final class BookingRepository {
 	}
 
 	/** Columns a status change may also update. Times and identity change only through reschedule(). */
-	private const TRANSITION_COLUMNS = array( 'deposit_status', 'deposit_amount', 'hold_expires_at' );
+	private const TRANSITION_COLUMNS = array( 'deposit_status', 'deposit_amount', 'deposit_gateway', 'deposit_reference', 'hold_expires_at' );
 
 	/**
 	 * Moves a booking to a new status. Releasing statuses (cancelled, expired, completed, no-show)

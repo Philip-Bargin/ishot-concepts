@@ -143,9 +143,11 @@ final class RestStaffTest extends TestCase {
 		$this->assertSame( 'awaiting', $asked->get_data()['deposit']['status'] );
 		$this->assertSame( 50.0, $asked->get_data()['deposit']['amount'] );
 
-		$paid = $this->act( $id, 'deposit_received', 2, array( 'note' => 'Orange Money ref 8812' ) );
+		$paid = $this->act( $id, 'deposit_received', 2, array( 'reference' => 'OM-8812' ) );
 		$this->assertSame( 'confirmed', $paid->get_data()['status'] );
 		$this->assertSame( 'received', $paid->get_data()['deposit']['status'] );
+		$this->assertSame( 'manual', $paid->get_data()['deposit']['gateway'] );
+		$this->assertSame( 'OM-8812', $paid->get_data()['deposit']['reference'] );
 	}
 
 	public function test_a_stale_version_gets_409_and_changes_nothing(): void {

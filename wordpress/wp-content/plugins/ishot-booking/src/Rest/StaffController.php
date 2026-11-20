@@ -82,6 +82,7 @@ final class StaffController {
 					),
 					'note'           => self::textArg( 500 ),
 					'reason'         => self::textArg( 500 ),
+					'reference'      => self::textArg( 100 ),
 				),
 			)
 		);
@@ -190,7 +191,9 @@ final class StaffController {
 			'notes'           => (string) $row['notes'],
 			'deposit'         => array(
 				'amount' => null === $row['deposit_amount'] ? null : (float) $row['deposit_amount'],
-				'status' => $row['deposit_status'],
+				'status'    => $row['deposit_status'],
+				'gateway'   => $row['deposit_gateway'] ?? null,
+				'reference' => (string) ( $row['deposit_reference'] ?? '' ),
 			),
 			'hold_expires_at' => Format::iso( $row['hold_expires_at'] ),
 			'version'         => (int) $row['version'],
@@ -238,8 +241,9 @@ final class StaffController {
 		}
 
 		$args = array(
-			'note'   => (string) $request['note'],
-			'reason' => (string) $request['reason'],
+			'note'      => (string) $request['note'],
+			'reason'    => (string) $request['reason'],
+			'reference' => (string) $request['reference'],
 		);
 		if ( null !== $request['deposit_amount'] ) {
 			$args['deposit_amount'] = (float) $request['deposit_amount'];

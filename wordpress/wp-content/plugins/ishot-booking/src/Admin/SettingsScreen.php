@@ -102,6 +102,7 @@ final class SettingsScreen {
 			'horizon_days'        => array( __( 'Booking window', 'ishot-booking' ), __( 'days ahead that clients can book', 'ishot-booking' ) ),
 			'hold_hours'          => array( __( 'Hold time', 'ishot-booking' ), __( 'hours an unconfirmed request keeps its slot', 'ishot-booking' ) ),
 			'cancel_cutoff_hours' => array( __( 'Change cut-off', 'ishot-booking' ), __( 'hours before a session after which clients must contact the studio to cancel or move it', 'ishot-booking' ) ),
+			'retention_months'    => array( __( 'Keep client details', 'ishot-booking' ), __( 'months after a session before the client’s name, contact details and notes are anonymised (0 keeps them)', 'ishot-booking' ) ),
 		);
 		echo '<div class="wrap ishot-admin"><h1>' . esc_html__( 'Booking settings', 'ishot-booking' ) . '</h1>';
 		ActionHandler::notice();

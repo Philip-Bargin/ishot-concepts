@@ -19,6 +19,7 @@ final class SettingsForm {
 		'horizon_days'        => array( 1, 730 ),
 		'hold_hours'          => array( 1, 336 ),
 		'cancel_cutoff_hours' => array( 0, 720 ),
+		'retention_months'    => array( 0, 120 ),
 	);
 
 	/**

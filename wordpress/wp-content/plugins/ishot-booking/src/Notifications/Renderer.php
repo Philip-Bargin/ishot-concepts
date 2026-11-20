@@ -7,6 +7,7 @@ use IShot\Booking\Admin\View;
 use IShot\Booking\Calendar\Ics;
 use IShot\Booking\Calendar\IcsEvent;
 use IShot\Booking\Persistence\ManageLinks;
+use IShot\Booking\Payments\Payments;
 use IShot\Booking\Settings;
 
 /**
@@ -105,8 +106,7 @@ final class Renderer {
 	private function extraParagraphs( string $template, array $snap, array $values, ?string $method ): array {
 		$out = array();
 		if ( in_array( $template, array( 'deposit_requested', 'deposit_reminder' ), true ) ) {
-			$instructions = trim( (string) Settings::all()['deposit_instructions'] );
-			$out[]        = '' !== $instructions ? $instructions : __( 'Reply to this email and we will send you the payment details.', 'ishot-booking' );
+			$out[] = Payments::active()->instructions( $snap );
 		}
 		if ( 'confirmed' === $template && 'received' === $snap['deposit_status'] && '' !== $values['{deposit_amount}'] ) {
 			/* translators: %s: deposit amount */
