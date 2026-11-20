@@ -109,6 +109,13 @@ final class ManageUrlTest extends TestCase {
 		$this->assertSame( 404, self::call( 'GET', '/manage', str_repeat( 'c', 64 ) )->get_status() );
 	}
 
+	public function test_the_standard_route_ignores_a_token_put_in_the_query_string(): void {
+		$token   = $this->book( '10:00' );
+		$request = new WP_REST_Request( 'GET', '/ishot/v1/manage' );
+		$request->set_query_params( array( 'token' => $token ) );
+		$this->assertSame( 404, rest_get_server()->dispatch( $request )->get_status(), 'never accept the token from a URL' );
+	}
+
 	public function test_links_from_emails_already_sent_keep_working(): void {
 		$token  = $this->book( '10:00' );
 		global $wpdb;

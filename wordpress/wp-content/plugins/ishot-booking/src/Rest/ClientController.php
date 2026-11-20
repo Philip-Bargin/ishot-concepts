@@ -80,14 +80,16 @@ final class ClientController {
 
 	/** The token from the header (standard) or the path (deprecated route); '' if neither. */
 	private static function token( WP_REST_Request $request ): string {
-		if ( null !== $request['token'] ) {
-			return (string) $request['token'];
+		// Only the deprecated route's path segment counts; a ?token= query string never does.
+		$path = $request->get_url_params()['token'] ?? null;
+		if ( null !== $path ) {
+			return (string) $path;
 		}
 		return ManageUrl::tokenFromHeader( $request->get_header( 'x_ishot_manage_token' ) );
 	}
 
 	private static function withDeprecation( WP_REST_Response|WP_Error $response, WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		if ( $response instanceof WP_REST_Response && null !== $request['token'] ) {
+		if ( $response instanceof WP_REST_Response && isset( $request->get_url_params()['token'] ) ) {
 			$response->header( 'Deprecation', 'true' );
 			$response->header( 'Link', '<' . rest_url( PublicController::NAMESPACE . '/manage' ) . '>; rel="successor-version"' );
 		}
