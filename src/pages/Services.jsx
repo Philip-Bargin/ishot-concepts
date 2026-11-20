@@ -1,95 +1,67 @@
-import { useNavigate } from "react-router-dom";
-import { services } from "../data.js";
-import { images } from "../assets.js";
-import { PageHero } from "../components/ui.jsx";
+import { Link } from "react-router-dom";
+import { photos } from "../assets.js";
+import { pad2, process, services } from "../data.js";
+import { usePageTitle } from "../lib/hooks.js";
 import Reveal from "../components/Reveal.jsx";
+import { CtaBand, FeatureList, PageTitle, Photo, Placeholder, SectionHeading, ServiceTiles } from "../components/ui.jsx";
 
 export default function Services() {
-  const navigate = useNavigate();
+  usePageTitle("Services");
 
   return (
-    <div className="page-enter">
-      <PageHero
-        eyebrow="What We Do"
-        title="Our Services"
-        subtitle="Crafted experiences for every moment worth remembering."
-        bg={images.servicesHero}
-      />
+    <>
+      <PageTitle eyebrow="What we do" title="Our services" lead="Six ways we tell your story, each one planned around you." />
 
-      <section
-        className="container section-pad"
-        style={{ display: "flex", flexDirection: "column", gap: "clamp(40px,7vw,96px)" }}
-      >
-        {services.map((s, i) => {
-          const reversed = i % 2 === 1;
-          return (
-            <Reveal
-              key={s.id}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
-                gap: "clamp(28px,4vw,60px)",
-                alignItems: "center",
-                direction: reversed ? "rtl" : "ltr",
-              }}
-            >
-              <div className="zoom" style={{ direction: "ltr", borderRadius: 8, boxShadow: "var(--sh-2)" }}>
-                <img
-                  src={s.img}
-                  loading="lazy"
-                  alt={s.title}
-                  style={{ width: "100%", height: "clamp(280px,36vw,420px)", objectFit: "cover" }}
-                />
-              </div>
-              <div style={{ direction: "ltr" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                  <span
-                    className="display"
-                    style={{ fontSize: 40, color: "rgba(23,45,96,.16)", lineHeight: 1, fontWeight: 700 }}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span className="eyebrow" style={{ fontSize: 11 }}>
-                    {s.tag}
-                  </span>
-                </div>
-                <h2 className="display" style={{ fontSize: "clamp(26px,3.2vw,40px)", lineHeight: 1.14, color: "var(--ink)", margin: "0 0 16px" }}>
-                  {s.title}
-                </h2>
-                <p style={{ font: "400 16px/1.75 Montserrat, sans-serif", color: "var(--gray)", margin: "0 0 24px" }}>
-                  {s.long}
-                </p>
-                <button className="btn btn--primary btn--sm" onClick={() => navigate("/contact")}>
-                  Book This Session <span className="arw">→</span>
-                </button>
-              </div>
-            </Reveal>
-          );
-        })}
+      <section className="fo-section fo-band" aria-label="Featured services">
+        <div className="fo-container">
+          <ServiceTiles items={services.slice(0, 4)} />
+        </div>
       </section>
 
-      <section
-        className="grain"
-        style={{
-          position: "relative",
-          overflow: "hidden",
-          background: "radial-gradient(120% 140% at 50% 0%, #1c3573 0%, #172d60 50%, #0b1836 100%)",
-          textAlign: "center",
-          padding: "clamp(56px,8vw,96px) clamp(20px,5vw,40px)",
-        }}
-      >
-        <Reveal className="container container--narrow" style={{ position: "relative" }}>
-          <h2 className="display" style={{ fontSize: "clamp(28px,4vw,44px)", color: "#fff", margin: "0 0 14px" }}>
-            Not sure which fits?
+      <section className="fo-section" aria-labelledby="details-title">
+        <div className="fo-container fo-container--content">
+          <h2 id="details-title" className="fo-sr">
+            Service details
           </h2>
-          <p className="lead" style={{ color: "var(--on-dark-2)", margin: "0 0 30px" }}>
-            Let's shape a concept around your vision.
-          </p>
-          <button className="btn btn--primary btn--lg" onClick={() => navigate("/contact")}>
-            Start a Concept <span className="arw">→</span>
-          </button>
-        </Reveal>
+          {services.map((s, i) => (
+            <article key={s.id} id={s.id} className={`ish-detail ish-split${i % 2 ? " ish-split--reverse" : ""}`} aria-labelledby={`${s.id}-title`}>
+              {s.photo ? <Photo photo={photos[s.photo]} ratio="portrait" /> : <Placeholder ratio="portrait" />}
+              <div className="ish-stack ish-stack--lg">
+                <p className="fo-eyebrow ish-detail__eyebrow">
+                  <span className="fo-numeral">{pad2(i + 1)}</span> {s.tag}
+                </p>
+                <span className="fo-catbar" data-cat={s.cat} aria-hidden="true" />
+                <h3 id={`${s.id}-title`} className="ish-h3">
+                  {s.title}
+                </h3>
+                <p className="body-lg fo-muted">{s.long}</p>
+                <div className="ish-actions">
+                  <Link to={`/book?service=${s.id}`} className="fo-btn fo-btn--secondary">
+                    Book this
+                  </Link>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
-    </div>
+
+      <section className="fo-section fo-mist" aria-labelledby="process-title">
+        <div className="fo-container fo-container--content">
+          <Reveal>
+            <SectionHeading eyebrow="How we work" title="Our process" id="process-title" />
+            <FeatureList items={process} />
+          </Reveal>
+        </div>
+      </section>
+
+      <CtaBand
+        eyebrow="Not sure which fits?"
+        title="Let's shape your concept"
+        text="Tell us your idea and we'll plan a session around it."
+        to="/contact"
+        label="Start a concept"
+      />
+    </>
   );
 }

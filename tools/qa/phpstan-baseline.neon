@@ -1,0 +1,355 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Method IShot\\Booking\\Accounts\\ClientAccounts\:\:useStudioSender\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Accounts/ClientAccounts.php
+
+		-
+			message: '#^Method IShot\\Booking\\Accounts\\ClientAccounts\:\:useStudioSenderForReset\(\) has parameter \$email with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Accounts/ClientAccounts.php
+
+		-
+			message: '#^Method IShot\\Booking\\Accounts\\ClientAccounts\:\:useStudioSenderForReset\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Accounts/ClientAccounts.php
+
+		-
+			message: '#^Method IShot\\Booking\\Admin\\BookingScreen\:\:actor\(\) has parameter \$event with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Admin/BookingScreen.php
+
+		-
+			message: '#^Method IShot\\Booking\\Admin\\BookingScreen\:\:eventLabel\(\) has parameter \$event with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Admin/BookingScreen.php
+
+		-
+			message: '#^Method IShot\\Booking\\Admin\\BookingScreen\:\:fields\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Admin/BookingScreen.php
+
+		-
+			message: '#^Method IShot\\Booking\\Admin\\BookingsTable\:\:get_columns\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Admin/BookingsTable.php
+
+		-
+			message: '#^Method IShot\\Booking\\Admin\\BookingsTable\:\:get_views\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Admin/BookingsTable.php
+
+		-
+			message: '#^Method IShot\\Booking\\Admin\\CsvExport\:\:log\(\) has parameter \$filters with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Admin/CsvExport.php
+
+		-
+			message: '#^Method IShot\\Booking\\Admin\\CsvExport\:\:log\(\) has parameter \$rows with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Admin/CsvExport.php
+
+		-
+			message: '#^Method IShot\\Booking\\Admin\\CsvExport\:\:url\(\) has parameter \$filters with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Admin/CsvExport.php
+
+		-
+			message: '#^Method IShot\\Booking\\Admin\\EmailSettingsScreen\:\:error\(\) has parameter \$errors with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Admin/EmailSettingsScreen.php
+
+		-
+			message: '#^Method IShot\\Booking\\Admin\\EmailSettingsScreen\:\:invalid\(\) has parameter \$errors with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Admin/EmailSettingsScreen.php
+
+		-
+			message: '#^Method IShot\\Booking\\Admin\\SettingsScreen\:\:fieldError\(\) has parameter \$errors with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Admin/SettingsScreen.php
+
+		-
+			message: '#^Method IShot\\Booking\\Application\\HoldExpiry\:\:addInterval\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Application/HoldExpiry.php
+
+		-
+			message: '#^Method IShot\\Booking\\Catalog\\ServiceCatalog\:\:capabilities\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Catalog/ServiceCatalog.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\ContentAdmin\:\:columns\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/ContentAdmin.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\ContentAdmin\:\:input\(\) has parameter \$field with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/ContentAdmin.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\ContentTypes\:\:capabilities\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/ContentTypes.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\ContentTypes\:\:labels\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/ContentTypes.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Fields\:\:boolean\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Fields.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Fields\:\:fromInput\(\) has parameter \$field with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Fields.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Fields\:\:integer\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Fields.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Fields\:\:money\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Fields.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Fields\:\:schema\(\) has parameter \$field with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Fields.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Fields\:\:schema\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Fields.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Fields\:\:text\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Fields.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:attachmentState\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:category\(\) has parameter \$c with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:hash\(\) has parameter \$value with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:importPhotos\(\) has parameter \$portfolio with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:post\(\) has parameter \$fields with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:post\(\) has parameter \$meta with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:post\(\) has parameter \$terms with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:postState\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:project\(\) has parameter \$p with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:service\(\) has parameter \$s with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:termSlugs\(\) has parameter \$slugs with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:termState\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:upsert\(\) has parameter \$state with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Content\\Importer\:\:upsert\(\) has parameter \$want with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Property IShot\\Booking\\Content\\Importer\:\:\$options type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Notifications\\Dispatcher\:\:auditFailure\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Notifications/Dispatcher.php
+
+		-
+			message: '#^Method IShot\\Booking\\Notifications\\Outbox\:\:insert\(\) has parameter \$extra with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Notifications/Outbox.php
+
+		-
+			message: '#^Method IShot\\Booking\\Notifications\\Reminders\:\:due\(\) has parameter \$args with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Notifications/Reminders.php
+
+		-
+			message: '#^Method IShot\\Booking\\Notifications\\Renderer\:\:details\(\) has parameter \$snap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Notifications/Renderer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Notifications\\Renderer\:\:details\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Notifications/Renderer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Notifications\\Renderer\:\:event\(\) has parameter \$snap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Notifications/Renderer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Notifications\\Renderer\:\:extraParagraphs\(\) has parameter \$snap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Notifications/Renderer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Notifications\\Renderer\:\:extraParagraphs\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Notifications/Renderer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Notifications\\Renderer\:\:googleLink\(\) has parameter \$snap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Notifications/Renderer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Notifications\\Renderer\:\:values\(\) has parameter \$snap with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Notifications/Renderer.php
+
+		-
+			message: '#^Method IShot\\Booking\\Notifications\\Rules\:\:statusChanged\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Notifications/Rules.php
+
+		-
+			message: '#^Method IShot\\Booking\\Persistence\\BookingRepository\:\:findByTokenHash\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Persistence/BookingRepository.php
+
+		-
+			message: '#^Method IShot\\Booking\\Persistence\\BookingRepository\:\:log\(\) has parameter \$payload with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Persistence/BookingRepository.php
+
+		-
+			message: '#^Method IShot\\Booking\\Privacy\\PersonalData\:\:addEraser\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Privacy/PersonalData.php
+
+		-
+			message: '#^Method IShot\\Booking\\Privacy\\PersonalData\:\:addExporter\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Privacy/PersonalData.php
+
+		-
+			message: '#^Method IShot\\Booking\\Privacy\\PersonalData\:\:isUpcoming\(\) has parameter \$row with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Privacy/PersonalData.php
+
+		-
+			message: '#^Method IShot\\Booking\\Settings\:\:update\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: ../../wordpress/wp-content/plugins/ishot-booking/src/Settings.php

@@ -1,439 +1,244 @@
-import { useState } from "react";
-import { contact, serviceOptions } from "../data.js";
-import { images } from "../assets.js";
-import { PageHero } from "../components/ui.jsx";
-import Reveal from "../components/Reveal.jsx";
+import { useRef, useState } from "react";
+import { CircleAlert, CircleCheck } from "lucide-react";
+import { contact, enquiryTypes } from "../data.js";
+import { MAX, validate } from "../lib/validation.js";
+import { usePageTitle } from "../lib/hooks.js";
+import Icon from "../components/Icon.jsx";
+import SocialLinks from "../components/SocialLinks.jsx";
+import { CtaBand, ErrorSummary, Field, SectionHeading } from "../components/ui.jsx";
 
-const EMPTY = { name: "", phone: "", email: "", service: "", date: "", location: "", message: "" };
+const EMPTY = { name: "", email: "", phone: "", enquiry: "", date: "", message: "", consent: false };
+const REQUIRED = ["name", "email", "enquiry", "consent"];
+const LABELS = { name: "Full name", email: "Email address", enquiry: "Enquiry type", consent: "Consent" };
 
-const validators = {
-  name: (v) => (v.trim() ? "" : "Please enter your name."),
-  email: (v) =>
-    !v.trim() ? "Please enter your email." : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? "" : "Enter a valid email address.",
-  service: (v) => (v ? "" : "Please choose a service."),
-};
-
-function validate(form) {
-  const errors = {};
-  for (const key of Object.keys(validators)) {
-    const msg = validators[key](form[key]);
-    if (msg) errors[key] = msg;
-  }
-  return errors;
-}
-
-const iconWrap = {
-  width: 46,
-  height: 46,
-  borderRadius: "50%",
-  background: "#F7F9FC",
-  border: "1px solid var(--border)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flex: "none",
-};
-
-export default function Contact() {
+function ContactForm() {
   const [form, setForm] = useState(EMPTY);
   const [touched, setTouched] = useState({});
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState("");
-  const [hp, setHp] = useState(""); // honeypot — real users leave this blank
+  const [submitted, setSubmitted] = useState(false); // a submit was attempted: show all errors + summary
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [failure, setFailure] = useState("");
+  const [botcheck, setBotcheck] = useState(""); // honeypot: real people leave it empty
+  const summaryRef = useRef(null);
 
-  const errors = validate(form);
-  const showError = (k) => touched[k] && errors[k];
+  const errors = validate(form, REQUIRED);
+  const errorFor = (k) => ((submitted || touched[k]) && errors[k]) || undefined;
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
+  const blur = (k) => () => setTouched((t) => ({ ...t, [k]: true }));
 
-  const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const onBlur = (k) => () => setTouched((t) => ({ ...t, [k]: true }));
-
-  const submit = async () => {
-    if (submitting) return;
-    const errs = validate(form);
-    if (Object.keys(errs).length) {
-      setTouched({ name: true, email: true, service: true });
-      const first = ["name", "email", "service"].find((k) => errs[k]);
-      if (first) document.getElementById(`f-${first}`)?.focus();
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (sending) return;
+    setSubmitted(true);
+    if (Object.keys(errors).length) {
+      requestAnimationFrame(() => summaryRef.current?.focus());
       return;
     }
-
-    // Bots that fill the hidden honeypot get a silent "success" — no email sent.
-    if (hp) {
-      setSubmitted(true);
+    if (botcheck) {
+      setSent(true); // silent success for bots; nothing is sent
       return;
     }
-
     const accessKey = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY;
     if (!accessKey) {
-      setError(
-        `Booking submissions aren't configured yet. Please email us directly at ${contact.email}.`
-      );
+      setFailure(`Online enquiries aren't switched on yet. Please email us at ${contact.email}.`);
       return;
     }
-
-    setError("");
-    setSubmitting(true);
+    setFailure("");
+    setSending(true);
     try {
       const res = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           access_key: accessKey,
-          subject: `New booking inquiry — ${form.name}`,
-          from_name: "iShot Concept Website",
-          name: form.name,
-          email: form.email,
-          phone: form.phone || "—",
-          service: form.service,
-          preferred_date: form.date || "—",
-          shoot_location: form.location || "—",
-          message: form.message || "—",
+          botcheck, // Web3Forms rejects the submission server-side if this is filled
+          subject: `New enquiry: ${form.enquiry}`,
+          from_name: "iShot Concept website",
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim() || "Not given",
+          enquiry: form.enquiry,
+          preferred_date: form.date || "Not given",
+          message: form.message.trim() || "Not given",
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Request failed");
-      }
-      setSubmitted(true);
-      setForm(EMPTY);
-      setTouched({});
-    } catch (err) {
-      setError(
-        `Sorry — we couldn't send your inquiry just now. Please try again, or email us at ${contact.email}.`
-      );
+      if (!res.ok || !data.success) throw new Error(data.message || "Request failed");
+      setSent(true);
+    } catch {
+      setFailure(`We couldn't send your message just now. Please try again, or email us at ${contact.email}.`);
     } finally {
-      setSubmitting(false);
+      setSending(false);
     }
   };
 
   const reset = () => {
-    setSubmitted(false);
     setForm(EMPTY);
     setTouched({});
-    setError("");
+    setSubmitted(false);
+    setSent(false);
+    setFailure("");
   };
 
-  // Labelled field with inline error messaging.
-  // NOTE: a plain function (not a nested component) so React keeps the
-  // inputs mounted across renders and doesn't drop focus on each keystroke.
-  const field = (k, label, required, control) => (
-    <div>
-      <label className="field-label" htmlFor={`f-${k}`}>
-        {label} {required && <span style={{ color: "#F26A22" }}>*</span>}
-      </label>
-      {control}
-      {showError(k) && (
-        <p role="alert" style={{ margin: "7px 0 0", font: "500 12.5px Montserrat, sans-serif", color: "#c2410c" }}>
-          {errors[k]}
-        </p>
-      )}
-    </div>
-  );
-
-  const fieldStyle = (k) => (showError(k) ? { borderColor: "#c2410c", boxShadow: "0 0 0 3px rgba(194,65,12,.12)" } : undefined);
+  if (sent) {
+    return (
+      <div className="fo-alert fo-alert--success" role="status">
+        <Icon as={CircleCheck} />
+        <div className="ish-stack">
+          <strong>Message sent.</strong>
+          <p>Thank you. We'll reply by email shortly to talk through your session.</p>
+          <button type="button" className="fo-btn fo-btn--text" onClick={reset}>
+            Send another message
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="page-enter">
-      <PageHero
-        eyebrow="Get In Touch"
-        title="Let's Create That Magic"
-        subtitle="Tell us about your moment and we'll craft the perfect session."
-        bg={images.contactHero}
-      />
+    <form className="ish-form" onSubmit={onSubmit} noValidate aria-labelledby="form-title">
+      <h2 id="form-title" className="fo-h2">
+        Send an enquiry
+      </h2>
+      {submitted && <ErrorSummary errors={errors} labels={LABELS} innerRef={summaryRef} />}
 
-      <section
-        className="container section-pad"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
-          gap: "clamp(28px,4vw,52px)",
-          alignItems: "start",
-        }}
-      >
-        {/* FORM / SUCCESS */}
-        <Reveal
-          style={{
-            background: "#fff",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            padding: "clamp(26px,4vw,44px)",
-            boxShadow: "var(--sh-2)",
-          }}
-        >
-          {submitted ? (
-            <div style={{ textAlign: "center", padding: "28px 8px", animation: "ish-fade .3s ease" }} aria-live="polite">
-              <div
-                style={{
-                  width: 66,
-                  height: 66,
-                  margin: "0 auto 22px",
-                  borderRadius: "50%",
-                  background: "#47A743",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 8px 22px rgba(71,167,67,.35)",
-                }}
-              >
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </div>
-              <h2 className="display" style={{ fontSize: 28, color: "var(--ink)", margin: "0 0 10px" }}>
-                Inquiry sent!
-              </h2>
-              <p style={{ font: "400 16px/1.6 Montserrat, sans-serif", color: "var(--gray)", margin: "0 0 26px" }}>
-                Thank you — we'll be in touch shortly to confirm your session details.
-              </p>
-              <button className="btn btn--outline-blue btn--sm" onClick={reset}>
-                Send another inquiry
-              </button>
-            </div>
-          ) : (
-            <div>
-              <h2 className="display" style={{ fontSize: 26, color: "var(--ink)", margin: "0 0 26px" }}>
-                Booking Inquiry
-              </h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 20 }}>
-                {field(
-                  "name",
-                  "Full Name",
-                  true,
-                  <input
-                    id="f-name"
-                    className="field"
-                    style={fieldStyle("name")}
-                    value={form.name}
-                    onChange={setField("name")}
-                    onBlur={onBlur("name")}
-                    placeholder="Your name"
-                    autoComplete="name"
-                    aria-required="true"
-                    aria-invalid={!!showError("name")}
-                  />
-                )}
-                {field(
-                  "phone",
-                  "Phone Number",
-                  false,
-                  <input
-                    id="f-phone"
-                    className="field"
-                    value={form.phone}
-                    onChange={setField("phone")}
-                    placeholder="0881405259"
-                    type="tel"
-                    autoComplete="tel"
-                    inputMode="tel"
-                  />
-                )}
-                {field(
-                  "email",
-                  "Email Address",
-                  true,
-                  <input
-                    id="f-email"
-                    className="field"
-                    style={fieldStyle("email")}
-                    value={form.email}
-                    onChange={setField("email")}
-                    onBlur={onBlur("email")}
-                    placeholder="you@email.com"
-                    type="email"
-                    autoComplete="email"
-                    inputMode="email"
-                    aria-required="true"
-                    aria-invalid={!!showError("email")}
-                  />
-                )}
-                {field(
-                  "service",
-                  "Service Type",
-                  true,
-                  <select
-                    id="f-service"
-                    className="field"
-                    style={{ cursor: "pointer", ...fieldStyle("service") }}
-                    value={form.service}
-                    onChange={setField("service")}
-                    onBlur={onBlur("service")}
-                    aria-required="true"
-                    aria-invalid={!!showError("service")}
-                  >
-                    <option value="">Select a service</option>
-                    {serviceOptions.map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </select>
-                )}
-                {field(
-                  "date",
-                  "Preferred Date",
-                  false,
-                  <input id="f-date" className="field" type="date" value={form.date} onChange={setField("date")} />
-                )}
-                {field(
-                  "location",
-                  "Shoot Location",
-                  false,
-                  <input
-                    id="f-location"
-                    className="field"
-                    value={form.location}
-                    onChange={setField("location")}
-                    placeholder="Studio / Outdoor / City"
-                  />
-                )}
-              </div>
-              <div style={{ marginTop: 20 }}>
-                <label className="field-label" htmlFor="f-message">
-                  Message / Concept Details
-                </label>
-                <textarea
-                  id="f-message"
-                  className="field"
-                  value={form.message}
-                  onChange={setField("message")}
-                  placeholder="Tell us about your vision…"
-                />
-              </div>
-
-              {/* Honeypot: hidden from real users, catches bots. */}
-              <input
-                type="text"
-                name="botcheck"
-                tabIndex={-1}
-                autoComplete="off"
-                value={hp}
-                onChange={(e) => setHp(e.target.value)}
-                aria-hidden="true"
-                style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
-              />
-
-              {error && (
-                <p
-                  role="alert"
-                  style={{
-                    margin: "20px 0 0",
-                    padding: "12px 14px",
-                    borderRadius: 6,
-                    background: "#FEF2F2",
-                    border: "1px solid #FCA5A5",
-                    font: "500 13.5px/1.5 Montserrat, sans-serif",
-                    color: "#b91c1c",
-                  }}
-                >
-                  {error}
-                </p>
-              )}
-
-              <button
-                className="btn btn--primary"
-                onClick={submit}
-                disabled={submitting}
-                style={{ marginTop: 24, width: "100%", height: 50, fontSize: 15 }}
-              >
-                {submitting && (
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      width: 18,
-                      height: 18,
-                      border: "2px solid rgba(255,255,255,.4)",
-                      borderTopColor: "#fff",
-                      borderRadius: "50%",
-                      animation: "ish-spin .7s linear infinite",
-                    }}
-                  />
-                )}
-                {submitting ? "Sending…" : "Send Booking Inquiry"}
-                {!submitting && <span className="arw">→</span>}
-              </button>
-              <p style={{ font: "400 12px Montserrat, sans-serif", color: "var(--gray-muted)", margin: "14px 0 0", textAlign: "center" }}>
-                <span style={{ color: "#F26A22" }}>*</span> Required. We'll never share your details.
-              </p>
-            </div>
+      <div className="ish-form__row">
+        <Field id="f-name" label="Full name" required error={errorFor("name")}>
+          {(p) => <input {...p} className="fo-input" value={form.name} onChange={set("name")} onBlur={blur("name")} autoComplete="name" maxLength={MAX.name} />}
+        </Field>
+        <Field id="f-email" label="Email address" required error={errorFor("email")}>
+          {(p) => (
+            <input {...p} className="fo-input" type="email" inputMode="email" value={form.email} onChange={set("email")} onBlur={blur("email")} autoComplete="email" maxLength={MAX.email} />
           )}
-        </Reveal>
+        </Field>
+      </div>
+      <div className="ish-form__row">
+        <Field id="f-phone" label="Phone number" help="Optional. We may call or WhatsApp you.">
+          {(p) => <input {...p} className="fo-input" type="tel" inputMode="tel" value={form.phone} onChange={set("phone")} autoComplete="tel" maxLength={MAX.phone} />}
+        </Field>
+        <Field id="f-enquiry" label="Enquiry type" required error={errorFor("enquiry")}>
+          {(p) => (
+            <select {...p} className="fo-select" value={form.enquiry} onChange={set("enquiry")} onBlur={blur("enquiry")}>
+              <option value="">Choose one</option>
+              {enquiryTypes.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+          )}
+        </Field>
+      </div>
+      <Field id="f-date" label="Preferred date" help="Optional. We'll confirm availability.">
+        {(p) => <input {...p} className="fo-input" type="date" value={form.date} onChange={set("date")} />}
+      </Field>
+      <Field id="f-message" label="Message">
+        {(p) => (
+          <textarea {...p} className="fo-textarea" value={form.message} onChange={set("message")} placeholder="Tell us about your moment or idea" maxLength={MAX.message} />
+        )}
+      </Field>
 
-        {/* DETAILS */}
-        <Reveal delay={120}>
-          <h2 className="display" style={{ fontSize: 26, color: "var(--ink)", margin: "0 0 24px" }}>
-            Contact Details
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 28 }}>
-            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-              <span style={iconWrap} aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#329AD3" strokeWidth="2">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-              </span>
+      <div className="fo-field">
+        <label className="fo-check" htmlFor="f-consent">
+          <input
+            id="f-consent"
+            type="checkbox"
+            checked={form.consent}
+            onChange={set("consent")}
+            onBlur={blur("consent")}
+            aria-required="true"
+            aria-invalid={errorFor("consent") ? true : undefined}
+            aria-describedby={errorFor("consent") ? "f-consent-error" : undefined}
+          />
+          <span>
+            I agree to iShot Concept using these details to reply to my enquiry. <span className="fo-req" aria-hidden="true">*</span>
+          </span>
+        </label>
+        {errorFor("consent") && (
+          <p id="f-consent-error" className="fo-error">
+            <Icon as={CircleAlert} />
+            {errors.consent}
+          </p>
+        )}
+      </div>
+
+      <div className="fo-sr" aria-hidden="true">
+        <label htmlFor="f-botcheck">Leave this field empty</label>
+        <input id="f-botcheck" type="text" tabIndex={-1} autoComplete="off" value={botcheck} onChange={(e) => setBotcheck(e.target.value)} />
+      </div>
+
+      {failure && (
+        <div className="fo-alert fo-alert--danger" role="alert">
+          <Icon as={CircleAlert} />
+          <p>{failure}</p>
+        </div>
+      )}
+
+      <div className="ish-actions">
+        <button type="submit" className="fo-btn fo-btn--primary" aria-busy={sending || undefined}>
+          Send message
+        </button>
+        <p className="fo-help">
+          <span aria-hidden="true">*</span> Required. We never share your details.
+        </p>
+      </div>
+    </form>
+  );
+}
+
+export default function Contact() {
+  usePageTitle("Contact");
+
+  return (
+    <>
+      <section className="fo-section ish-title" aria-labelledby="contact-title">
+        <div className="fo-container fo-container--content ish-split ish-split--top">
+          <div className="ish-stack ish-stack--lg">
+            <p className="fo-eyebrow">Get in touch</p>
+            <h1 id="contact-title" className="fo-h1">
+              Let's talk
+            </h1>
+            <p className="lead fo-muted">Tell us about your moment and we'll shape the right session.</p>
+            <div className="ish-contact-list">
               <div>
-                <div style={{ font: "600 15px Montserrat, sans-serif", color: "var(--ink)" }}>{contact.location}</div>
-                <div style={{ font: "400 13px Montserrat, sans-serif", color: "var(--gray-muted)" }}>Studio &amp; on-location</div>
+                <p className="h5 fo-display">Studio</p>
+                <p className="small fo-muted">{contact.location} · studio & on-location</p>
               </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-              <span style={iconWrap} aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#329AD3" strokeWidth="2">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
-                </svg>
-              </span>
               <div>
-                <a href={`tel:${contact.phone}`} style={{ font: "600 15px Montserrat, sans-serif", color: "var(--ink)", textDecoration: "none" }}>
+                <p className="h5 fo-display">Phone</p>
+                <a className="small" href={`tel:${contact.phone}`}>
                   {contact.phone}
                 </a>
-                <div style={{ font: "400 13px Montserrat, sans-serif", color: "var(--gray-muted)" }}>Call or WhatsApp</div>
+                <p className="small fo-muted">Call or WhatsApp</p>
               </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-              <span style={iconWrap} aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#329AD3" strokeWidth="2">
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="M22 7l-10 6L2 7" />
-                </svg>
-              </span>
               <div>
-                <a href={`mailto:${contact.email}`} style={{ font: "600 15px Montserrat, sans-serif", color: "var(--ink)", textDecoration: "none" }}>
+                <p className="h5 fo-display">Email</p>
+                <a className="small" href={`mailto:${contact.email}`}>
                   {contact.email}
                 </a>
-                <div style={{ font: "400 13px Montserrat, sans-serif", color: "var(--gray-muted)" }}>Email us anytime</div>
               </div>
             </div>
-
-            <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-              <span style={iconWrap} aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#329AD3" strokeWidth="2">
-                  <rect x="2" y="2" width="20" height="20" rx="5" />
-                  <circle cx="12" cy="12" r="4" />
-                  <circle cx="17.5" cy="6.5" r="1" fill="#329AD3" stroke="none" />
-                </svg>
-              </span>
-              <div>
-                <div style={{ font: "600 15px Montserrat, sans-serif", color: "var(--ink)" }}>{contact.instagram}</div>
-                <div style={{ font: "400 13px Montserrat, sans-serif", color: "var(--gray-muted)" }}>Follow the work</div>
-              </div>
+            <div className="ish-social">
+              <SocialLinks />
             </div>
           </div>
+          <ContactForm />
+        </div>
+      </section>
 
-          <div style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)", boxShadow: "var(--sh-1)" }}>
+      <section className="fo-section" aria-labelledby="map-title">
+        <div className="fo-container">
+          <SectionHeading eyebrow="Find us" title={contact.location} id="map-title" />
+          <div className="fo-img ish-r-wide">
             <iframe
-              title={`Google Map showing ${contact.location}`}
+              title={`Map of ${contact.location}`}
               src="https://www.google.com/maps?q=Monrovia,+Liberia&z=12&output=embed"
-              width="100%"
-              height="240"
-              style={{ border: 0, display: "block" }}
               loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
             />
           </div>
-        </Reveal>
+        </div>
       </section>
-    </div>
+
+      <CtaBand eyebrow="Know your date?" title="Book a session" text="Pick a service, a date and a time in a few steps." label="Start booking" />
+    </>
   );
 }

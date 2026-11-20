@@ -1,0 +1,306 @@
+/*
+ * iShot Booking admin screens. Design-system tokens only (tokens.css, scoped to .ishot-admin);
+ * checked by `npm run lint:tokens`. wp-admin keeps its own controls; this layer adds the
+ * studio's type, square edges, hairline rules and status colours.
+ */
+
+.ishot-admin {
+	color: var(--ink);
+}
+
+.ishot-admin h1.ishot-title,
+.ishot-admin .ishot-panel h2,
+.ishot-admin .ishot-weeknav h2,
+.ishot-admin .ishot-day h3 {
+	font-family: var(--font-display);
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.ishot-admin .ishot-title {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-2);
+}
+
+.ishot-muted {
+	color: var(--ink-muted);
+}
+
+/* Panels: hairline rules instead of shadows, square corners. */
+.ishot-detail {
+	display: grid;
+	gap: var(--space-3);
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+	align-items: start;
+}
+
+.ishot-panel {
+	background: var(--paper);
+	border: var(--border-hairline) solid var(--line);
+	border-radius: var(--radius-none);
+	padding: var(--space-3);
+	margin-block: var(--space-3);
+}
+
+.ishot-detail .ishot-panel {
+	margin-block: 0;
+}
+
+.ishot-panel h2 {
+	margin-top: 0;
+	padding-bottom: var(--space-1);
+	border-bottom: var(--border-hairline) solid var(--line);
+}
+
+.ishot-dl {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: var(--space-1) var(--space-3);
+	margin: 0;
+}
+
+.ishot-dl dt {
+	color: var(--ink-muted);
+}
+
+.ishot-dl dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+/* Actions: one form per action, stacked, each with its own fields. */
+.ishot-action {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-1);
+	padding-block: var(--space-2);
+	border-bottom: var(--border-hairline) solid var(--line);
+}
+
+.ishot-action:last-child {
+	border-bottom: 0;
+}
+
+.ishot-admin .button,
+.ishot-admin input,
+.ishot-admin select {
+	border-radius: var(--radius-none);
+}
+
+.ishot-admin .button.ishot-button-danger {
+	color: var(--danger);
+	border-color: var(--danger);
+}
+
+.ishot-admin .button.ishot-button-danger:hover,
+.ishot-admin .button.ishot-button-danger:focus {
+	background: var(--danger-soft);
+	color: var(--danger);
+	border-color: var(--danger);
+}
+
+/* Status badges. */
+.ishot-badge {
+	display: inline-block;
+	padding: var(--space-0-5) var(--space-1);
+	border: var(--border-hairline) solid currentColor;
+	font-size: 12px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	line-height: 1.4;
+	white-space: nowrap;
+	vertical-align: middle;
+}
+
+.ishot-badge--requested { color: var(--accent); background: var(--accent-soft); }
+.ishot-badge--pending_deposit { color: var(--warning); background: var(--mist); }
+.ishot-badge--confirmed { color: var(--success); background: var(--success-soft); }
+.ishot-badge--completed { color: var(--ink-muted); background: var(--mist); }
+.ishot-badge--expired { color: var(--ink-muted); background: var(--paper); }
+.ishot-badge--cancelled,
+.ishot-badge--no_show { color: var(--danger); background: var(--danger-soft); }
+
+/* Timeline. */
+.ishot-timeline {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.ishot-timeline li {
+	display: grid;
+	gap: var(--space-0-5);
+	padding: var(--space-1) 0 var(--space-1) var(--space-2);
+	border-left: 2px solid var(--line);
+	margin: 0;
+}
+
+.ishot-timeline time {
+	color: var(--ink-muted);
+	font-size: 12px;
+}
+
+/* Calendar week. */
+.ishot-weeknav {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--space-1) var(--space-2);
+	margin-block: var(--space-2);
+}
+
+.ishot-weeknav h2 {
+	margin: 0;
+	font-size: 18px;
+}
+
+.ishot-week {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 11rem), 1fr));
+	gap: 0;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	border-top: var(--border-hairline) solid var(--line);
+	border-left: var(--border-hairline) solid var(--line);
+}
+
+.ishot-day {
+	margin: 0;
+	padding: var(--space-2);
+	min-height: 8rem;
+	background: var(--paper);
+	border-right: var(--border-hairline) solid var(--line);
+	border-bottom: var(--border-hairline) solid var(--line);
+}
+
+.ishot-day--today {
+	box-shadow: inset 0 3px 0 var(--highlight);
+}
+
+.ishot-day h3 {
+	display: grid;
+	gap: var(--space-0-5);
+	margin: 0 0 var(--space-1);
+	font-size: 14px;
+}
+
+.ishot-day h3 small {
+	white-space: nowrap;
+	font-family: var(--font-text);
+	font-weight: 400;
+	text-transform: none;
+	color: var(--ink-muted);
+}
+
+.ishot-day ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ishot-item {
+	margin: 0 0 var(--space-1);
+	padding: var(--space-1);
+	border-left: 3px solid var(--accent);
+	background: var(--mist);
+}
+
+.ishot-item a {
+	color: var(--ink);
+	text-decoration: none;
+}
+
+.ishot-item a:hover,
+.ishot-item a:focus {
+	text-decoration: underline;
+}
+
+.ishot-item__time {
+	display: block;
+	font-weight: 600;
+}
+
+.ishot-item--confirmed { border-left-color: var(--success); }
+.ishot-item--pending_deposit { border-left-color: var(--warning); }
+.ishot-item--completed,
+.ishot-item--no_show { border-left-color: var(--line-strong); }
+.ishot-item--block {
+	border-left-color: var(--ink-muted);
+	background: var(--paper);
+	border-top: var(--border-hairline) dashed var(--line-strong);
+	border-right: var(--border-hairline) dashed var(--line-strong);
+	border-bottom: var(--border-hairline) dashed var(--line-strong);
+}
+
+.ishot-inline {
+	display: inline;
+}
+
+.ishot-blockform input[type="datetime-local"] {
+	min-height: 32px;
+}
+
+/* Settings forms. */
+.ishot-hours {
+	max-width: 44rem;
+	margin-bottom: var(--space-3);
+}
+
+.ishot-field-error {
+	margin: var(--space-0-5) 0 0;
+	color: var(--danger);
+	font-weight: 600;
+}
+
+/* Dashboard widget. */
+.ishot-stats {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: var(--space-1);
+	margin: 0 0 var(--space-2);
+}
+
+.ishot-stats li {
+	margin: 0;
+}
+
+.ishot-stats a {
+	display: grid;
+	padding: var(--space-1);
+	border: var(--border-hairline) solid var(--line);
+	color: var(--ink);
+	text-decoration: none;
+}
+
+.ishot-stats strong {
+	font-family: var(--font-display);
+	font-size: 24px;
+	line-height: 1.2;
+}
+
+.ishot-today {
+	margin: 0 0 var(--space-2);
+}
+
+.ishot-today li {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--space-1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.ishot-stats a,
+	.ishot-item {
+		transition: background-color var(--duration-fast) var(--ease-standard);
+	}
+}
+
+.ishot-stats a:hover,
+.ishot-stats a:focus {
+	background: var(--mist);
+}

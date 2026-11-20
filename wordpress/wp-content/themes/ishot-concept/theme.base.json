@@ -1,0 +1,215 @@
+{
+  "$comment": "Hand-maintained half of theme.json. `npm run sync:ds` merges this with the presets generated from design-system/tokens.json (palette, font families and faces, font sizes, spacing sizes, layout widths) and writes theme.json. Edit this file, never theme.json. Values here must reference presets or design-system custom properties, never raw colours.",
+  "$schema": "https://schemas.wp.org/wp/6.7/theme.json",
+  "version": 3,
+  "settings": {
+    "appearanceTools": false,
+    "useRootPaddingAwareAlignments": true,
+    "border": {
+      "color": true,
+      "radius": false,
+      "style": false,
+      "width": false
+    },
+    "color": {
+      "custom": false,
+      "customDuotone": false,
+      "customGradient": false,
+      "defaultDuotone": false,
+      "defaultGradients": false,
+      "defaultPalette": false,
+      "duotone": [],
+      "gradients": [],
+      "link": true
+    },
+    "shadow": {
+      "defaultPresets": false,
+      "presets": []
+    },
+    "spacing": {
+      "blockGap": true,
+      "margin": true,
+      "padding": true,
+      "defaultSpacingSizes": false,
+      "units": [
+        "px",
+        "%",
+        "vw",
+        "vh"
+      ]
+    },
+    "typography": {
+      "customFontSize": false,
+      "defaultFontSizes": false,
+      "dropCap": false,
+      "fontStyle": false,
+      "fontWeight": false,
+      "letterSpacing": false,
+      "lineHeight": false,
+      "textDecoration": false,
+      "textTransform": false,
+      "writingMode": false
+    }
+  },
+  "styles": {
+    "color": {
+      "background": "var(--wp--preset--color--paper)",
+      "text": "var(--wp--preset--color--ink)"
+    },
+    "spacing": {
+      "blockGap": "var(--wp--preset--spacing--2)",
+      "padding": {
+        "left": "var(--gutter-mobile)",
+        "right": "var(--gutter-mobile)"
+      }
+    },
+    "typography": {
+      "fontFamily": "var(--wp--preset--font-family--text)",
+      "fontSize": "var(--wp--preset--font-size--body)",
+      "lineHeight": "1.5"
+    },
+    "elements": {
+      "heading": {
+        "color": {
+          "text": "var(--wp--preset--color--ink)"
+        },
+        "typography": {
+          "fontFamily": "var(--wp--preset--font-family--display)",
+          "fontWeight": "700",
+          "letterSpacing": "-0.02em",
+          "lineHeight": "1.1",
+          "textTransform": "uppercase"
+        }
+      },
+      "h1": {
+        "typography": {
+          "fontSize": "var(--wp--preset--font-size--h-1)"
+        }
+      },
+      "h2": {
+        "typography": {
+          "fontSize": "var(--wp--preset--font-size--h-2)"
+        }
+      },
+      "h3": {
+        "typography": {
+          "fontSize": "var(--wp--preset--font-size--h-3)"
+        }
+      },
+      "h4": {
+        "typography": {
+          "fontSize": "var(--wp--preset--font-size--h-4)"
+        }
+      },
+      "h5": {
+        "typography": {
+          "fontSize": "var(--wp--preset--font-size--h-5)"
+        }
+      },
+      "h6": {
+        "typography": {
+          "fontSize": "var(--wp--preset--font-size--h-6)",
+          "letterSpacing": "0.02em"
+        }
+      },
+      "link": {
+        "color": {
+          "text": "var(--wp--preset--color--ink)"
+        },
+        "typography": {
+          "textDecoration": "underline"
+        },
+        ":hover": {
+          "color": {
+            "text": "var(--wp--preset--color--accent)"
+          }
+        }
+      },
+      "button": {
+        "border": {
+          "radius": "0",
+          "width": "var(--border-hairline)",
+          "style": "solid",
+          "color": "var(--wp--preset--color--ink)"
+        },
+        "color": {
+          "background": "var(--wp--preset--color--ink)",
+          "text": "var(--wp--preset--color--paper)"
+        },
+        "spacing": {
+          "padding": {
+            "top": "var(--space-1-5)",
+            "bottom": "var(--space-1-5)",
+            "left": "var(--space-3)",
+            "right": "var(--space-3)"
+          }
+        },
+        "typography": {
+          "fontFamily": "var(--wp--preset--font-family--text)",
+          "fontSize": "var(--wp--preset--font-size--button)",
+          "fontWeight": "500",
+          "letterSpacing": "0.1em",
+          "lineHeight": "20px",
+          "textTransform": "uppercase"
+        },
+        ":hover": {
+          "border": {
+            "color": "var(--wp--preset--color--highlight)"
+          },
+          "color": {
+            "background": "var(--wp--preset--color--highlight)",
+            "text": "var(--wp--preset--color--on-highlight)"
+          }
+        },
+        ":focus": {
+          "outline": {
+            "color": "var(--wp--preset--color--accent)",
+            "offset": "2px",
+            "style": "solid",
+            "width": "var(--border-rule)"
+          }
+        }
+      },
+      "caption": {
+        "color": {
+          "text": "var(--wp--preset--color--ink-muted)"
+        },
+        "typography": {
+          "fontSize": "var(--wp--preset--font-size--caption)"
+        }
+      }
+    },
+    "blocks": {
+      "core/image": {
+        "border": {
+          "radius": "0"
+        }
+      },
+      "core/quote": {
+        "border": {
+          "left": {
+            "color": "var(--wp--preset--color--line)",
+            "style": "solid",
+            "width": "var(--border-rule)"
+          }
+        },
+        "spacing": {
+          "padding": {
+            "left": "var(--space-3)"
+          }
+        },
+        "typography": {
+          "fontFamily": "var(--wp--preset--font-family--display)",
+          "fontSize": "var(--wp--preset--font-size--quote)",
+          "fontWeight": "700"
+        }
+      },
+      "core/separator": {
+        "color": {
+          "text": "var(--wp--preset--color--line)"
+        }
+      }
+    }
+  },
+  "templateParts": []
+}

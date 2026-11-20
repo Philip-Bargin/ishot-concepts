@@ -1,0 +1,15 @@
+/*
+Theme Name:        iShot Concept
+Theme URI:         https://ishotconcept.com
+Description:       Block theme for the iShot Concept photography studio, built on the iShot design system. Bookings are handled by the iShot Booking plugin.
+Author:            iShot Concept
+Version:           0.1.0
+Requires at least: 6.5
+Tested up to:      6.7
+Requires PHP:      8.1
+License:           GPL-2.0-or-later
+License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain:       ishot-concept
+*/
+
+/* Styles live in assets/css/ (tokens.css and bundle.css are generated; theme.css holds core overrides). */
