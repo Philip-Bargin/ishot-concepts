@@ -3,6 +3,7 @@ namespace IShot\Booking;
 
 use IShot\Booking\Catalog\ServiceCatalog;
 use IShot\Booking\Rest\PublicController;
+use IShot\Booking\Rest\StaffController;
 
 /** Wires the plugin into WordPress. */
 final class Plugin {
@@ -11,6 +12,12 @@ final class Plugin {
 		register_activation_hook( $plugin_file, array( Installer::class, 'onActivate' ) );
 		add_action( 'plugins_loaded', array( Installer::class, 'maybeUpgrade' ) );
 		add_action( 'init', array( ServiceCatalog::class, 'register' ) );
-		add_action( 'rest_api_init', static fn() => ( new PublicController() )->register() );
+		add_action(
+			'rest_api_init',
+			static function () {
+				( new PublicController() )->register();
+				( new StaffController() )->register();
+			}
+		);
 	}
 }

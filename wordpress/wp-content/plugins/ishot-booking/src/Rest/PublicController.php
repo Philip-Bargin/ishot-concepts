@@ -21,9 +21,6 @@ final class PublicController {
 
 	public const NAMESPACE = 'ishot/v1';
 
-	private const DATE_PATTERN     = '^\d{4}-\d{2}-\d{2}$';
-	private const DATETIME_PATTERN = '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$';
-
 	public function register(): void {
 		register_rest_route(
 			self::NAMESPACE,
@@ -50,7 +47,7 @@ final class PublicController {
 					),
 					'date'    => array(
 						'type'     => 'string',
-						'pattern'  => self::DATE_PATTERN,
+						'pattern'  => Format::DATE_PATTERN,
 						'required' => true,
 					),
 				),
@@ -73,7 +70,7 @@ final class PublicController {
 					'start'    => array(
 						'description' => 'Studio-local start, YYYY-MM-DDTHH:MM.',
 						'type'        => 'string',
-						'pattern'     => self::DATETIME_PATTERN,
+						'pattern'     => Format::DATETIME_PATTERN,
 						'required'    => true,
 					),
 					'name'     => array(
@@ -141,16 +138,6 @@ final class PublicController {
 		return new DateTimeImmutable( 'now', wp_timezone() );
 	}
 
-	private static function iso( DateTimeImmutable $t ): string {
-		return $t->setTimezone( wp_timezone() )->format( DATE_ATOM );
-	}
-
-	/** Parses a strict studio-local date-time; null for impossible dates such as 2026-02-30. */
-	private static function localDateTime( string $value ): ?DateTimeImmutable {
-		$parsed = DateTimeImmutable::createFromFormat( '!Y-m-d\TH:i', $value, wp_timezone() );
-		return ( false !== $parsed && $parsed->format( 'Y-m-d\TH:i' ) === $value ) ? $parsed : null;
-	}
-
 	private static function unknownService(): WP_Error {
 		return new WP_Error( 'ishot_unknown_service', __( 'That service is not available to book.', 'ishot-booking' ), array( 'status' => 422 ) );
 	}
@@ -165,7 +152,7 @@ final class PublicController {
 			return self::unknownService();
 		}
 		$date = (string) $request['date'];
-		if ( null === self::localDateTime( "{$date}T00:00" ) ) {
+		if ( null === Format::localDateTime( "{$date}T00:00" ) ) {
 			return new WP_Error( 'rest_invalid_param', __( 'Invalid date.', 'ishot-booking' ), array( 'status' => 400 ) );
 		}
 
@@ -195,7 +182,7 @@ final class PublicController {
 			return new WP_Error( 'rest_invalid_param', __( 'Invalid Idempotency-Key header.', 'ishot-booking' ), array( 'status' => 400 ) );
 		}
 
-		$start = self::localDateTime( (string) $request['start'] );
+		$start = Format::localDateTime( (string) $request['start'] );
 		if ( null === $start ) {
 			return new WP_Error( 'rest_invalid_param', __( 'Invalid start time.', 'ishot-booking' ), array( 'status' => 400 ) );
 		}
@@ -227,7 +214,7 @@ final class PublicController {
 				__( 'That time has just been booked. Here are the nearest free times.', 'ishot-booking' ),
 				array(
 					'status'       => 409,
-					'alternatives' => array_map( array( self::class, 'iso' ), $outcome->alternatives ),
+					'alternatives' => array_map( array( Format::class, 'iso' ), $outcome->alternatives ),
 				)
 			),
 			RequestOutcome::REPLAYED => new WP_REST_Response( $this->summary( $outcome->booking_id ) + array( 'replayed' => true ), 200 ),
@@ -239,11 +226,10 @@ final class PublicController {
 	private function summary( int $booking_id ): array {
 		global $wpdb;
 		$row = ( new BookingRepository( $wpdb, Settings::int( 'granularity_minutes' ) ) )->find( $booking_id );
-		$utc = new \DateTimeZone( 'UTC' );
 		return array(
 			'status' => (string) $row['status'],
-			'start'  => self::iso( new DateTimeImmutable( $row['start_utc'], $utc ) ),
-			'end'    => self::iso( new DateTimeImmutable( $row['end_utc'], $utc ) ),
+			'start'  => Format::iso( $row['start_utc'] ),
+			'end'    => Format::iso( $row['end_utc'] ),
 		);
 	}
 }

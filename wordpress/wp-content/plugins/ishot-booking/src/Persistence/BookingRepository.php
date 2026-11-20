@@ -2,7 +2,10 @@
 namespace IShot\Booking\Persistence;
 
 use IShot\Booking\Domain\BookingStatus;
+use DateTimeImmutable;
+use DateTimeZone;
 use IShot\Booking\Domain\SlotUnits;
+use IShot\Booking\Domain\TimeRange;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
@@ -91,26 +94,27 @@ final class BookingRepository {
 		);
 	}
 
+	/** Columns a status change may also update. Times and identity change only through reschedule(). */
+	private const TRANSITION_COLUMNS = array( 'deposit_status', 'deposit_amount', 'hold_expires_at' );
+
 	/**
 	 * Moves a booking to a new status. Releasing statuses (cancelled, expired, completed, no-show)
 	 * free its slot units in the same transaction.
 	 *
-	 * @throws InvalidArgumentException Unknown booking or a transition the lifecycle forbids.
+	 * @param array<string, scalar|null> $changes Extra columns to set (TRANSITION_COLUMNS only).
+	 * @param array<string, mixed>       $payload Context for the audit log (e.g. a reason or payment reference).
+	 * @throws InvalidArgumentException Unknown booking, a transition the lifecycle forbids, or a disallowed column.
 	 * @throws StaleBooking             The booking changed since $expected_version was read.
 	 */
-	public function transition( int $id, BookingStatus $to, int $expected_version, ?int $actor_user_id = null ): void {
+	public function transition( int $id, BookingStatus $to, int $expected_version, ?int $actor_user_id = null, array $changes = array(), array $payload = array() ): void {
+		$unknown = array_diff( array_keys( $changes ), self::TRANSITION_COLUMNS );
+		if ( array() !== $unknown ) {
+			throw new InvalidArgumentException( 'A status change cannot set: ' . implode( ', ', $unknown ) );
+		}
+
 		$this->inTransaction(
-			function () use ( $id, $to, $expected_version, $actor_user_id ): void {
-				$row = $this->db->get_row(
-					$this->db->prepare( 'SELECT status, version FROM ' . Schema::bookings() . ' WHERE id = %d FOR UPDATE', $id ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-					ARRAY_A
-				);
-				if ( null === $row ) {
-					throw new InvalidArgumentException( "Booking {$id} does not exist." );
-				}
-				if ( (int) $row['version'] !== $expected_version ) {
-					throw new StaleBooking( "Booking {$id} was changed by someone else. Reload and try again." );
-				}
+			function () use ( $id, $to, $expected_version, $actor_user_id, $changes, $payload ): void {
+				$row  = $this->lockForUpdate( $id, $expected_version );
 				$from = BookingStatus::from( $row['status'] );
 				if ( ! $from->canTransitionTo( $to ) ) {
 					throw new InvalidArgumentException( "A {$from->value} booking cannot become {$to->value}." );
@@ -118,18 +122,123 @@ final class BookingRepository {
 
 				$this->db->update(
 					Schema::bookings(),
-					array(
-						'status'     => $to->value,
-						'version'    => $expected_version + 1,
-						'updated_at' => gmdate( self::DATETIME ),
+					array_merge(
+						$changes,
+						array(
+							'status'     => $to->value,
+							'version'    => $expected_version + 1,
+							'updated_at' => gmdate( self::DATETIME ),
+						)
 					),
 					array( 'id' => $id )
 				);
 				if ( ! $to->holdsSlot() ) {
 					$this->db->delete( Schema::locks(), array( 'booking_id' => $id ) );
 				}
-				$this->log( $id, 'status_changed', $from->value, $to->value, $actor_user_id );
+				$this->log( $id, 'status_changed', $from->value, $to->value, $actor_user_id, $payload );
 			}
+		);
+	}
+
+	/**
+	 * Moves a live booking to a new start, keeping its duration and buffers. The old units are
+	 * released and the new ones claimed in one transaction: if any new unit is taken, the
+	 * rollback restores the original locks and times exactly. (Releasing first lets a booking
+	 * move by less than its own length.)
+	 *
+	 * @throws SlotConflict             Part of the new time is held by another booking.
+	 * @throws StaleBooking             The booking changed since $expected_version was read.
+	 * @throws InvalidArgumentException Unknown booking, or one that no longer holds a slot.
+	 */
+	public function reschedule( int $id, DateTimeImmutable $new_start, int $expected_version, ?int $actor_user_id = null ): void {
+		$this->inTransaction(
+			function () use ( $id, $new_start, $expected_version, $actor_user_id ): void {
+				$row    = $this->lockForUpdate( $id, $expected_version );
+				$status = BookingStatus::from( $row['status'] );
+				if ( ! $status->holdsSlot() ) {
+					throw new InvalidArgumentException( "A {$status->value} booking cannot be rescheduled." );
+				}
+
+				$utc      = new DateTimeZone( 'UTC' );
+				$ts       = static fn( string $column ) => ( new DateTimeImmutable( $row[ $column ], $utc ) )->getTimestamp();
+				$duration = $ts( 'end_utc' ) - $ts( 'start_utc' );
+				$before   = $ts( 'start_utc' ) - $ts( 'block_start_utc' );
+				$after    = $ts( 'block_end_utc' ) - $ts( 'end_utc' );
+
+				$start   = $new_start->setTimezone( $utc );
+				$end     = $start->modify( "+{$duration} seconds" );
+				$blocked = new TimeRange( $start->modify( "-{$before} seconds" ), $end->modify( "+{$after} seconds" ) );
+
+				$this->db->delete( Schema::locks(), array( 'booking_id' => $id ) );
+				$this->lockUnits( (int) $row['resource_id'], SlotUnits::cover( $blocked, $this->granularity_minutes ), $id );
+
+				$this->db->update(
+					Schema::bookings(),
+					array(
+						'start_utc'       => $start->format( self::DATETIME ),
+						'end_utc'         => $end->format( self::DATETIME ),
+						'block_start_utc' => $blocked->start->format( self::DATETIME ),
+						'block_end_utc'   => $blocked->end->format( self::DATETIME ),
+						'version'         => $expected_version + 1,
+						'updated_at'      => gmdate( self::DATETIME ),
+					),
+					array( 'id' => $id )
+				);
+				$this->log(
+					$id,
+					'rescheduled',
+					$status->value,
+					$status->value,
+					$actor_user_id,
+					array(
+						'from' => $row['start_utc'],
+						'to'   => $start->format( self::DATETIME ),
+					)
+				);
+			}
+		);
+	}
+
+	/**
+	 * Row lock for a change: the booking must exist and still be at the version the caller saw.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function lockForUpdate( int $id, int $expected_version ): array {
+		$row = $this->db->get_row(
+			$this->db->prepare( 'SELECT * FROM ' . Schema::bookings() . ' WHERE id = %d FOR UPDATE', $id ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
+		);
+		if ( null === $row ) {
+			throw new InvalidArgumentException( "Booking {$id} does not exist." );
+		}
+		if ( (int) $row['version'] !== $expected_version ) {
+			throw new StaleBooking( "Booking {$id} was changed by someone else. Reload and try again." );
+		}
+		return $row;
+	}
+
+	/**
+	 * Bookings and blocks whose buffered range overlaps [from, to), UTC, in start order.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	public function between( string $from_utc, string $to_utc ): array {
+		return $this->db->get_results(
+			$this->db->prepare(
+				'SELECT * FROM ' . Schema::bookings() . ' WHERE block_start_utc < %s AND block_end_utc > %s ORDER BY start_utc, id', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				$to_utc,
+				$from_utc
+			),
+			ARRAY_A
+		);
+	}
+
+	/** @return array<int, array<string, mixed>> Audit events for a booking, oldest first. */
+	public function events( int $booking_id ): array {
+		return $this->db->get_results(
+			$this->db->prepare( 'SELECT * FROM ' . Schema::events() . ' WHERE booking_id = %d ORDER BY id', $booking_id ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			ARRAY_A
 		);
 	}
 
@@ -177,7 +286,7 @@ final class BookingRepository {
 		}
 	}
 
-	private function log( int $booking_id, string $action, ?string $from, ?string $to, ?int $actor_user_id = null ): void {
+	private function log( int $booking_id, string $action, ?string $from, ?string $to, ?int $actor_user_id = null, array $payload = array() ): void {
 		$this->db->insert(
 			Schema::events(),
 			array(
@@ -186,6 +295,7 @@ final class BookingRepository {
 				'action'        => $action,
 				'from_status'   => $from,
 				'to_status'     => $to,
+				'payload'       => array() === $payload ? null : wp_json_encode( $payload ),
 				'created_at'    => gmdate( self::DATETIME ),
 			)
 		);

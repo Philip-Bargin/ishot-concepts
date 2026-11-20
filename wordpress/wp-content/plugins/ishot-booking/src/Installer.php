@@ -23,6 +23,7 @@ final class Installer {
 			throw new RuntimeException( 'iShot Booking needs the InnoDB database engine, which this database does not provide. Ask your host to enable it.' );
 		}
 		Schema::install();
+		Roles::install();
 	}
 
 	/** Activation-hook wrapper: on failure, deactivate and explain instead of half-installing. */
@@ -40,5 +41,6 @@ final class Installer {
 		if ( get_option( Schema::VERSION_KEY ) !== Schema::VERSION ) {
 			Schema::install();
 		}
+		Roles::maybeUpgrade();
 	}
 }
