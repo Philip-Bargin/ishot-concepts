@@ -59,3 +59,5 @@ The backend for all of it is built and tested; this is the contract the front en
 - **Account:** a guest asks for an account, sets the password from Mailpit, and sees the earlier guest booking in My bookings.
 - **Manage page:** the token is gone from `location.href` after load, no request carries it in a URL (check the network log), and a third-party script injected for testing is blocked by CSP.
 - **Contact form:** an enquiry reaches Mailpit with `Reply-To` set to the sender.
+
+Outstanding manual acceptance checks (real devices, screen readers, OS-level reduced motion) are listed in `docs/outstanding-acceptance.md` §2.
