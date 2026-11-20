@@ -8,6 +8,7 @@ export const navItems = [
   { to: "/services", label: "Services" },
   { to: "/portfolio", label: "Portfolio" },
   { to: "/creative-direction", label: "Creative direction" },
+  { to: "/journal", label: "Journal" },
   { to: "/contact", label: "Contact" },
   { to: "/book", label: "Book a session" },
 ];

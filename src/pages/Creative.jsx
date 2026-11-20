@@ -53,8 +53,8 @@ export default function Creative() {
         <div className="fo-container">
           <SectionHeading eyebrow="Selected" title="Featured concepts" id="concepts-title" />
           <div className="fo-grid">
-            <OverlayCard to="/portfolio/creative" photo={photos.phoneBirthday} cat="creative" title="Birthday call concept" />
-            <OverlayCard to="/portfolio/creative" photo={photos.gownStair} cat="creative" title="Evening gown editorial" />
+            <OverlayCard to="/work/birthday-call-concept" photo={photos.phoneBirthday} cat="creative" title="Birthday call concept" />
+            <OverlayCard to="/work/studio-portrait-series" photo={photos.graduate} cat="portraits" title="Studio portrait series" />
           </div>
         </div>
       </section>

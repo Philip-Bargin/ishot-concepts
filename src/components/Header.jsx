@@ -24,6 +24,9 @@ export default function Header() {
           <SocialLinks />
         </nav>
         <div className="fo-header__actions">
+          <Link to="/account" className="fo-navlink ish-signin">
+            My bookings
+          </Link>
           <Link to="/book" className="fo-btn fo-btn--primary fo-btn--sm">
             Book now
           </Link>

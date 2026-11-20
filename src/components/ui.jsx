@@ -1,7 +1,7 @@
 // Thin React wrappers that emit the design system's exact `fo-` markup.
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Briefcase, Camera, CircleAlert, Heart, Pause, Play, Sparkles, Sun, Video } from "lucide-react";
+import { Briefcase, Camera, CircleAlert, CircleCheck, CircleX, Clock, Heart, Info, Pause, Play, Sparkles, Sun, Video } from "lucide-react";
 import { srcFor, srcSetFor } from "../assets.js";
 import { pad2 } from "../data.js";
 import Icon from "./Icon.jsx";
@@ -266,5 +266,58 @@ export function ErrorSummary({ errors, labels, innerRef, prefix = "f" }) {
         </ul>
       </div>
     </div>
+  );
+}
+
+/** Visible label for prototype-only data (sample posts, projects, bookings). */
+export function PrototypeNotice({ children }) {
+  return (
+    <div className="fo-alert ish-alert--info ish-measure">
+      <Icon as={Info} />
+      <p>
+        <strong>Sample content.</strong> {children}
+      </p>
+    </div>
+  );
+}
+
+const dateFmt = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
+export const formatPostDate = (iso) => dateFmt.format(new Date(`${iso}T00:00:00`));
+
+/** Journal teaser: 3:2 image · category · read time · title · 2-line excerpt · date. */
+export function BlogCard({ post, headingLevel: H = "h3" }) {
+  return (
+    <Link className="fo-card" to={`/journal/${post.slug}`}>
+      <Photo photo={post.photo} ratio="blog" sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw" alt="" />
+      <span className="fo-card__meta">
+        <span className="fo-eyebrow">{post.category}</span>
+        <span aria-hidden="true">·</span>
+        <span>{post.readMins} min read</span>
+      </span>
+      <H className="fo-card__title">{post.title}</H>
+      <p className="fo-card__text ish-clamp-2">{post.excerpt}</p>
+      <time className="fo-card__meta" dateTime={post.date}>
+        {formatPostDate(post.date)}
+      </time>
+    </Link>
+  );
+}
+
+const STATUS = {
+  requested: { label: "Requested", icon: Clock, cls: "fo-badge--accent" },
+  awaiting_deposit: { label: "Awaiting deposit", icon: Clock, cls: "fo-badge--warning" },
+  confirmed: { label: "Confirmed", icon: CircleCheck, cls: "fo-badge--success" },
+  completed: { label: "Completed", icon: CircleCheck, cls: "" },
+  cancelled: { label: "Cancelled", icon: CircleX, cls: "" },
+};
+
+/** Booking status: always an icon and a word, never colour alone. */
+export function StatusBadge({ status }) {
+  const s = STATUS[status] ?? STATUS.requested;
+  return (
+    <span className={`fo-badge ${s.cls}`}>
+      <Icon as={s.icon} size={12} />
+      {s.label}
+    </span>
   );
 }

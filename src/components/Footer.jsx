@@ -44,6 +44,7 @@ export default function Footer() {
               {item.label}
             </Link>
           ))}
+          <Link to="/account">My bookings</Link>
         </nav>
 
         <nav className="fo-footer__col" aria-labelledby="footer-services">

@@ -64,7 +64,8 @@ export default function Home() {
               Read our story <Icon as={ArrowRight} />
             </Link>
           </div>
-          <div className="ish-strip">
+          {/* Scrolls sideways on mobile, so it must be keyboard-focusable (WCAG 2.1.1). */}
+          <div className="ish-strip" role="region" aria-label="Studio photographs, scroll sideways" tabIndex={0}>
             {strip.map(([photo, ratio]) => (
               <Photo key={photo.file} photo={photo} ratio={ratio} alt="" sizes="(min-width: 768px) 20vw, 42vw" />
             ))}

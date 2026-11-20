@@ -1,82 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CalendarPlus, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, Info, MessageCircle } from "lucide-react";
+import { CalendarPlus, CircleAlert, CircleCheck, Info, MessageCircle } from "lucide-react";
 import { contact, pad2 } from "../data.js";
 import { MAX, validate } from "../lib/validation.js";
 import { usePageTitle } from "../lib/hooks.js";
 import Icon from "../components/Icon.jsx";
 import { ErrorSummary, Field } from "../components/ui.jsx";
+import SlotPicker from "../components/SlotPicker.jsx";
 import {
   attemptBooking,
   bookingServices,
   buildIcs,
   endTime,
-  firstBookableDay,
   formatDate,
   formatDateLong,
   formatDuration,
-  formatMonth,
-  lastBookableDay,
-  monthCells,
-  slotsFor,
 } from "../prototype/bookingMock.js";
 
 const STEPS = ["Service", "Date & time", "Your details", "Confirm"];
-const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const EMPTY = { name: "", email: "", phone: "", location: "", notes: "", consent: false };
 const REQUIRED = ["name", "email", "consent"];
 const LABELS = { name: "Full name", email: "Email address", consent: "Consent" };
 const HINTS = ["Choose a service to continue.", "Choose a date and a start time to continue.", "", ""];
-
-const monthStart = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
-
-function Calendar({ month, onMonth, selected, onSelect }) {
-  const first = monthStart(firstBookableDay());
-  const last = monthStart(lastBookableDay());
-  const canPrev = month > first;
-  const canNext = month < last;
-  const shift = (n) => onMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
-
-  return (
-    <div className="ish-cal">
-      <div className="ish-cal__head">
-        <button type="button" className="fo-icon-btn" onClick={() => shift(-1)} disabled={!canPrev} aria-label="Previous month">
-          <Icon as={ChevronLeft} />
-        </button>
-        <p className="h5 fo-display" aria-live="polite">
-          {formatMonth(month)}
-        </p>
-        <button type="button" className="fo-icon-btn" onClick={() => shift(1)} disabled={!canNext} aria-label="Next month">
-          <Icon as={ChevronRight} />
-        </button>
-      </div>
-      <div className="ish-cal__grid" role="group" aria-label={`Dates in ${formatMonth(month)}`}>
-        {DOW.map((d) => (
-          <span key={d} className="ish-cal__dow fo-eyebrow" aria-hidden="true">
-            {d}
-          </span>
-        ))}
-        {monthCells(month).map((cell, i) =>
-          cell ? (
-            <button
-              key={cell.iso}
-              type="button"
-              className="ish-cal__day"
-              disabled={!cell.open}
-              aria-pressed={selected === cell.iso}
-              aria-label={formatDateLong(cell.iso)}
-              onClick={() => onSelect(cell.iso)}
-            >
-              {cell.day}
-            </button>
-          ) : (
-            <span key={`blank-${i}`} aria-hidden="true" />
-          )
-        )}
-      </div>
-    </div>
-  );
-}
 
 function Summary({ service, date, time }) {
   return (
@@ -110,7 +55,6 @@ export default function Book() {
   const [serviceId, setServiceId] = useState(preset?.id ?? null);
   const [date, setDate] = useState(null);
   const [time, setTime] = useState(null);
-  const [month, setMonth] = useState(() => monthStart(firstBookableDay()));
   const [details, setDetails] = useState(EMPTY);
   const [touched, setTouched] = useState({});
   const [detailsSubmitted, setDetailsSubmitted] = useState(false);
@@ -125,7 +69,6 @@ export default function Book() {
   const mounted = useRef(false);
 
   const service = bookingServices.find((s) => s.id === serviceId);
-  const slots = useMemo(() => (date && service ? slotsFor(date, service.durationMin, taken) : []), [date, service, taken]);
   const errors = validate(details, REQUIRED);
   const errorFor = (k) => ((detailsSubmitted || touched[k]) && errors[k]) || undefined;
   const stepValid = [Boolean(service), Boolean(date && time), Object.keys(errors).length === 0, true][step];
@@ -296,35 +239,17 @@ export default function Book() {
               )}
 
               {step === 1 && (
-                <>
-                  <Calendar
-                    month={month}
-                    onMonth={setMonth}
-                    selected={date}
-                    onSelect={(iso) => {
-                      setDate(iso);
-                      setTime(null);
-                    }}
-                  />
-                  {date &&
-                    (slots.some((s) => !s.booked) ? (
-                      <div className="ish-stack">
-                        <p className="fo-label" id="slots-label">
-                          Start times on {formatDate(date)}
-                        </p>
-                        <div className="fo-slots" role="group" aria-labelledby="slots-label">
-                          {slots.map((s) => (
-                            <button key={s.time} type="button" className="fo-slot" disabled={s.booked} aria-pressed={time === s.time} onClick={() => setTime(s.time)}>
-                              {s.time}
-                              {s.booked && <span className="ish-slot__note">booked</span>}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="body fo-muted">No times left on this day. Try another date.</p>
-                    ))}
-                </>
+                <SlotPicker
+                  service={service}
+                  date={date}
+                  time={time}
+                  taken={taken}
+                  onDate={(iso) => {
+                    setDate(iso);
+                    setTime(null);
+                  }}
+                  onTime={setTime}
+                />
               )}
 
               {step === 2 && (
