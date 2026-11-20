@@ -9,6 +9,10 @@ use IShot\Booking\Admin\Menu;
 use IShot\Booking\Admin\SettingsScreen;
 use IShot\Booking\Application\HoldExpiry;
 use IShot\Booking\Catalog\ServiceCatalog;
+use IShot\Booking\Content\ContentAdmin;
+use IShot\Booking\Content\ContentTypes;
+use IShot\Booking\Content\Fields;
+use IShot\Booking\Content\ImportCommand;
 use IShot\Booking\Notifications\Outbox;
 use IShot\Booking\Notifications\Queue;
 use IShot\Booking\Privacy\PersonalData;
@@ -34,6 +38,15 @@ final class Plugin {
 		add_action( 'action_scheduler_init', array( Queue::class, 'ensureScheduled' ) );
 		add_action( 'init', array( ServiceCatalog::class, 'register' ) );
 
+		// Content: projects, testimonials, categories (and every content field, services included).
+		add_action( 'init', array( ContentTypes::class, 'register' ) );
+		add_action( 'init', array( self::class, 'maybeFlushRewrites' ), 20 );
+		add_action( 'wp_after_insert_post', array( ContentTypes::class, 'afterInsert' ), 10, 2 );
+		add_filter( 'is_protected_meta', array( self::class, 'protectContentMeta' ), 10, 2 );
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			\WP_CLI::add_command( 'ishot import-prototype', ImportCommand::class );
+		}
+
 		// Privacy: Tools → Export/Erase Personal Data, and the daily retention purge.
 		PersonalData::register();
 		add_action( 'action_scheduler_init', array( Retention::class, 'ensureScheduled' ) );
@@ -54,6 +67,7 @@ final class Plugin {
 		add_filter( 'rest_pre_serve_request', array( CalendarFeed::class, 'serveRaw' ), 10, 3 );
 
 		if ( is_admin() ) {
+			ContentAdmin::register();
 			add_action( 'admin_menu', array( Menu::class, 'register' ) );
 			add_action( 'admin_enqueue_scripts', array( Menu::class, 'enqueue' ) );
 			add_action( 'wp_dashboard_setup', array( DashboardWidget::class, 'register' ) );
@@ -65,5 +79,22 @@ final class Plugin {
 			add_action( 'admin_post_' . EmailSettingsScreen::POST_SAVE, array( EmailSettingsScreen::class, 'handleSave' ) );
 			add_action( 'admin_post_' . EmailSettingsScreen::POST_FEED, array( EmailSettingsScreen::class, 'handleFeedKey' ) );
 		}
+	}
+
+	/** Bump when a rewrite slug changes; the rules are rebuilt once, after every type is registered. */
+	private const REWRITE_VERSION = '1';
+
+	public static function maybeFlushRewrites(): void {
+		if ( get_option( 'ishot_booking_rewrite_version' ) !== self::REWRITE_VERSION ) {
+			flush_rewrite_rules( false );
+			update_option( 'ishot_booking_rewrite_version', self::REWRITE_VERSION, false );
+		}
+	}
+
+	/** Content fields are edited in the Details box, not the raw Custom Fields panel (which skips validation). */
+	public static function protectContentMeta( bool $protected, string $meta_key ): bool {
+		static $keys = null;
+		$keys      ??= array_keys( array_merge( ...array_map( array( Fields::class, 'for' ), ContentAdmin::TYPES ) ) );
+		return $protected || in_array( $meta_key, $keys, true );
 	}
 }

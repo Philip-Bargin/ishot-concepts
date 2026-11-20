@@ -205,3 +205,36 @@ Adding a gateway later (PayPal, mobile money) needs no schema change. Implement 
 - **What erasure keeps:** upcoming live bookings (requested, awaiting deposit, confirmed). The erasure screen says which ones and why; cancel them first, or erase again after the session.
 - **Retention:** a daily Action Scheduler job (`ishot_booking_retention`) anonymises bookings whose session ended more than **Keep client details** months ago (Bookings → Settings; default 24; 0 turns it off).
 - **Policy text:** suggested wording is added to Settings → Privacy → Policy guide.
+
+## Content types (Phase 3d)
+
+Registered by the plugin, so content survives a theme change. Every field is defined once in `src/Content/Fields.php`, which drives the REST schema (validation), the wp-admin **Details** box and the importer.
+
+| Type | URL | Edited by | Fields |
+|---|---|---|---|
+| `ishot_service` (Services) | `/services/{slug}` | `edit_ishot_services` (managers, admins) | short title, tag, icon, what's included (one per line), session length, buffers, from price, deposit, bookable |
+| `ishot_project` (Projects) | `/work/{slug}` | `edit_ishot_content` | client (only with their agreement), shoot date, location, ordered gallery (media picker); featured image = cover |
+| `ishot_testimonial` (Testimonials) | not public on its own | `edit_ishot_content` | quote, client name/initials, session type, rating 0–5, **consent** |
+| `ishot_category` (Categories) | `/portfolio/{slug}` | `edit_ishot_content` | name, description, colour (one of the four logo aperture colours); shared by services, projects and media |
+
+- **Content status:** every service, project and testimonial has *Approved* or *Placeholder*. Imported prototype copy is *Placeholder*. A list column and an edit-screen notice show it until the owner switches it to *Approved*.
+- **Consent:** a testimonial without "The client agreed to publication" can't stay published on any path (editor, Quick Edit, Bulk Edit, scheduled). It goes back to draft.
+- **Validation:** out-of-range or wrong-format values are rejected (REST returns 400; the Details box keeps the old value and shows the error). The fields are hidden from the raw Custom Fields panel, which would skip validation.
+- Photographers, clients, authors and editors can't create or edit any of these, or assign categories.
+
+## Importing the prototype content
+
+```
+npm run wp:import            # exports the seed, then imports into the dev site
+wp ishot import-prototype --seed=<prototype-content.json> --images=<dir> [--dry-run] [--force] [--publish]
+```
+
+- `npm run seed:export` writes `wordpress/seed/prototype-content.json` from the React app's `src/data.js`, `src/assets.js` and the sample projects. It contains 7 categories, 6 photos (alt text, focus point, portfolio order), 6 services and 2 projects.
+- Images are the prototype's 2400px WebP files (`public/images/opt`). WordPress generates the other sizes.
+- **Never imported:**
+  - testimonials (none are real yet);
+  - journal posts and bookings (sample copy);
+  - prices and deposits (owner to supply), so services are never made bookable;
+  - contact details.
+- **Repeatable:** each item carries an import key, so a re-run never duplicates anything. Items unchanged since the last import are updated when the seed changes. Items edited in WordPress are kept and reported, unless you pass `--force`.
+- **Drafts by default:** new posts are drafts unless you pass `--publish`. A re-run never changes a post's status. An item with the same slug created by hand is adopted and treated as edited, so it is not overwritten.

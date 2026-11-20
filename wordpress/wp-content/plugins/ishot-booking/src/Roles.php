@@ -13,16 +13,17 @@ namespace IShot\Booking;
  * | manage_ishot_availability   | Opening hours and exceptions                                   |
  * | manage_ishot_settings       | Booking policy settings                                        |
  * | edit_ishot_services         | Services and prices                                            |
+ * | edit_ishot_content          | Projects, testimonials and portfolio categories                |
  * | read_own_ishot_bookings     | A client's own bookings ("My bookings")                        |
  */
 final class Roles {
 
-	public const VERSION     = '1';
+	public const VERSION     = '2';
 	public const VERSION_KEY = 'ishot_booking_roles_version';
 
 	public const STAFF_CAPS = array( 'view_ishot_calendar', 'edit_ishot_bookings', 'block_ishot_time' );
 
-	public const MANAGER_CAPS = array( 'manage_ishot_bookings', 'manage_ishot_availability', 'manage_ishot_settings', 'edit_ishot_services' );
+	public const MANAGER_CAPS = array( 'manage_ishot_bookings', 'manage_ishot_availability', 'manage_ishot_settings', 'edit_ishot_services', 'edit_ishot_content' );
 
 	public const ALL_CAPS = array( ...self::STAFF_CAPS, ...self::MANAGER_CAPS );
 

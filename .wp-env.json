@@ -18,7 +18,9 @@
       "port": 8888,
       "mappings": {
         "wp-content/mu-plugins/ishot-mailpit.php": "./wordpress/dev/mu-plugins/ishot-mailpit.php",
-        "wp-content/ishot-dev": "./wordpress/dev"
+        "wp-content/ishot-dev": "./wordpress/dev",
+        "wp-content/ishot-seed": "./wordpress/seed",
+        "wp-content/ishot-prototype-images": "./public/images/opt"
       }
     },
     "tests": {

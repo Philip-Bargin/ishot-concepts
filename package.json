@@ -18,7 +18,9 @@
     "mail:stop": "docker stop ishot-mailpit",
     "wp:setup": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking composer install --no-interaction",
     "test:php": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking vendor/bin/phpunit",
-    "test:php:unit": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking vendor/bin/phpunit --testsuite unit"
+    "test:php:unit": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking vendor/bin/phpunit --testsuite unit",
+    "seed:export": "node scripts/export-wp-seed.mjs",
+    "wp:import": "npm run seed:export && wp-env run cli wp ishot import-prototype --seed=wp-content/ishot-seed/prototype-content.json --images=wp-content/ishot-prototype-images"
   },
   "dependencies": {
     "@fontsource/oswald": "^5.1.1",

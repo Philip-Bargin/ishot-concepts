@@ -4,21 +4,12 @@ namespace IShot\Booking\Catalog;
 use WP_Post;
 
 /**
- * The ishot_service post type and its booking meta. Owned by the plugin, not the theme, so
+ * The ishot_service post type (its meta is defined in Content\Fields). Owned by the plugin, not the theme, so
  * services and their bookings survive a theme change.
  */
 final class ServiceCatalog {
 
 	public const POST_TYPE = 'ishot_service';
-
-	private const META = array(
-		'duration_min'      => array( 'integer', 60 ),
-		'buffer_before_min' => array( 'integer', 0 ),
-		'buffer_after_min'  => array( 'integer', 0 ),
-		'price_from'        => array( 'number', 0 ),
-		'deposit_amount'    => array( 'number', 0 ),
-		'bookable'          => array( 'boolean', false ),
-	);
 
 	public static function register(): void {
 		register_post_type(
@@ -30,6 +21,7 @@ final class ServiceCatalog {
 				),
 				'public'       => true,
 				'show_in_rest' => true,
+				'rest_base'    => 'ishot-services',
 				'has_archive'  => false,
 				'rewrite'      => array( 'slug' => 'services' ),
 				'menu_icon'    => 'dashicons-camera',
@@ -39,20 +31,7 @@ final class ServiceCatalog {
 				'capabilities' => self::capabilities(),
 			)
 		);
-
-		foreach ( self::META as $key => [ $type, $default ] ) {
-			register_post_meta(
-				self::POST_TYPE,
-				$key,
-				array(
-					'type'          => $type,
-					'single'        => true,
-					'default'       => $default,
-					'show_in_rest'  => true,
-					'auth_callback' => static fn( $allowed, $meta_key, $post_id ) => current_user_can( 'edit_post', (int) $post_id ),
-				)
-			);
-		}
+		// Meta (booking settings and display fields) is registered from Content\Fields by Content\ContentTypes.
 	}
 
 	/** Every primitive post capability for the type collapses to edit_ishot_services. */
