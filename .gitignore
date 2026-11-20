@@ -1,13 +1,14 @@
-node_modules
-dist
-dist-ssr
+node_modules/
+dist/
+dist-ssr/
 *.local
 .env
 .env.*
 !.env.example
 .DS_Store
-.vite
+.vite/
 .gstack/
 
 # local editor/agent settings
 .claude/settings.local.json
+iShot_Concept_DESIGN (1).md
