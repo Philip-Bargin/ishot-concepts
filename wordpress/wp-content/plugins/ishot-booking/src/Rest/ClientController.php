@@ -7,6 +7,7 @@ use IShot\Booking\Application\ChangeRefused;
 use IShot\Booking\Application\ClientBookings;
 use IShot\Booking\Application\RequestOutcome;
 use IShot\Booking\Catalog\ServiceCatalog;
+use IShot\Booking\Frontend\ManageUrl;
 use IShot\Booking\Persistence\BookingRepository;
 use IShot\Booking\Persistence\StaleBooking;
 use IShot\Booking\Settings;
@@ -23,6 +24,41 @@ use WP_REST_Server;
 final class ClientController {
 
 	public function register(): void {
+		$change_args = array(
+			'action' => array(
+				'type'     => 'string',
+				'enum'     => array( 'cancel', 'reschedule' ),
+				'required' => true,
+			),
+			'start'  => array(
+				'description' => 'New studio-local start for a reschedule, YYYY-MM-DDTHH:MM.',
+				'type'        => 'string',
+				'pattern'     => Format::DATETIME_PATTERN,
+			),
+		);
+
+		// The standard route: the token travels in the X-Ishot-Manage-Token header, never in a URL
+		// (see Frontend\ManageUrl).
+		register_rest_route(
+			PublicController::NAMESPACE,
+			'/manage',
+			array(
+				array(
+					'methods'             => WP_REST_Server::READABLE,
+					'callback'            => array( $this, 'show' ),
+					'permission_callback' => '__return_true',
+				),
+				array(
+					'methods'             => WP_REST_Server::EDITABLE,
+					'callback'            => array( $this, 'change' ),
+					'permission_callback' => '__return_true',
+					'args'                => $change_args,
+				),
+			)
+		);
+
+		// Deprecated: the token in the path ends up in access logs. Kept for links and clients
+		// made during testing; responses point to /manage.
 		register_rest_route(
 			PublicController::NAMESPACE,
 			'/bookings/(?P<token>[0-9a-f]{64})',
@@ -36,21 +72,26 @@ final class ClientController {
 					'methods'             => WP_REST_Server::EDITABLE,
 					'callback'            => array( $this, 'change' ),
 					'permission_callback' => '__return_true',
-					'args'                => array(
-						'action' => array(
-							'type'     => 'string',
-							'enum'     => array( 'cancel', 'reschedule' ),
-							'required' => true,
-						),
-						'start'  => array(
-							'description' => 'New studio-local start for a reschedule, YYYY-MM-DDTHH:MM.',
-							'type'        => 'string',
-							'pattern'     => Format::DATETIME_PATTERN,
-						),
-					),
+					'args'                => $change_args,
 				),
 			)
 		);
+	}
+
+	/** The token from the header (standard) or the path (deprecated route); '' if neither. */
+	private static function token( WP_REST_Request $request ): string {
+		if ( null !== $request['token'] ) {
+			return (string) $request['token'];
+		}
+		return ManageUrl::tokenFromHeader( $request->get_header( 'x_ishot_manage_token' ) );
+	}
+
+	private static function withDeprecation( WP_REST_Response|WP_Error $response, WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		if ( $response instanceof WP_REST_Response && null !== $request['token'] ) {
+			$response->header( 'Deprecation', 'true' );
+			$response->header( 'Link', '<' . rest_url( PublicController::NAMESPACE . '/manage' ) . '>; rel="successor-version"' );
+		}
+		return $response;
 	}
 
 	private function bookings(): ClientBookings {
@@ -110,24 +151,32 @@ final class ClientController {
 	}
 
 	public function show( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$limited = self::limited();
-		if ( null !== $limited ) {
-			return $limited;
-		}
-		$now      = new DateTimeImmutable( 'now' );
-		$bookings = $this->bookings();
-		$row      = $bookings->find( (string) $request['token'], $now );
-		return null === $row ? self::notFound() : self::present( $bookings, $row, $now );
+		return self::withDeprecation( $this->doShow( $request, self::token( $request ) ), $request );
 	}
 
 	public function change( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		return self::withDeprecation( $this->doChange( $request, self::token( $request ) ), $request );
+	}
+
+	private function doShow( WP_REST_Request $request, string $token ): WP_REST_Response|WP_Error {
 		$limited = self::limited();
 		if ( null !== $limited ) {
 			return $limited;
 		}
 		$now      = new DateTimeImmutable( 'now' );
 		$bookings = $this->bookings();
-		$row      = $bookings->find( (string) $request['token'], $now );
+		$row      = $bookings->find( $token, $now );
+		return null === $row ? self::notFound() : self::present( $bookings, $row, $now );
+	}
+
+	private function doChange( WP_REST_Request $request, string $token ): WP_REST_Response|WP_Error {
+		$limited = self::limited();
+		if ( null !== $limited ) {
+			return $limited;
+		}
+		$now      = new DateTimeImmutable( 'now' );
+		$bookings = $this->bookings();
+		$row      = $bookings->find( $token, $now );
 		if ( null === $row ) {
 			return self::notFound();
 		}
@@ -161,6 +210,6 @@ final class ClientController {
 			return new WP_Error( 'ishot_stale', __( 'This booking was just updated. Reload the page and try again.', 'ishot-booking' ), array( 'status' => 409 ) );
 		}
 
-		return self::present( $bookings, $bookings->find( (string) $request['token'], $now ), $now );
+		return self::present( $bookings, $bookings->find( $token, $now ), $now );
 	}
 }

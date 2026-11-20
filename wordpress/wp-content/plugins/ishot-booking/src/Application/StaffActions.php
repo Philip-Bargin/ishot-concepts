@@ -29,7 +29,7 @@ final class StaffActions {
 	public function __construct( private readonly BookingRepository $repo ) {}
 
 	/**
-	 * @param array{start?: DateTimeImmutable, deposit_amount?: float|null, reference?: string, note?: string, reason?: string} $args
+	 * @param array{start?: DateTimeImmutable, deposit_amount?: float|null, reference?: string, note?: string, reason?: string, bulk?: bool} $args
 	 * @throws InvalidArgumentException A transition the lifecycle forbids, or a missing argument.
 	 * @throws StaleBooking             Someone else changed the booking first.
 	 * @throws SlotConflict             Reschedule target is taken.
@@ -42,8 +42,10 @@ final class StaffActions {
 			throw new InvalidArgumentException( 'Booking actions apply to client bookings only.' );
 		}
 
-		$note   = array_filter( array( 'note' => $args['note'] ?? '' ) );
-		$reason  = array_filter( array( 'reason' => $args['reason'] ?? '' ) );
+		// Bulk changes are marked in the audit log so they can be told apart from single clicks.
+		$tag     = empty( $args['bulk'] ) ? array() : array( 'bulk' => true );
+		$note    = array_filter( array( 'note' => $args['note'] ?? '' ) ) + $tag;
+		$reason  = array_filter( array( 'reason' => $args['reason'] ?? '' ) ) + $tag;
 		$confirm = array( 'hold_expires_at' => null );
 
 		match ( $action ) {

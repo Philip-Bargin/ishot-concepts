@@ -2,6 +2,7 @@
 namespace IShot\Booking\Rest;
 
 use DateTimeImmutable;
+use IShot\Booking\Accounts\ClientAccounts;
 use IShot\Booking\Application\BookingRequests;
 use IShot\Booking\Application\RequestOutcome;
 use IShot\Booking\Catalog\Service;
@@ -114,6 +115,11 @@ final class PublicController {
 						'enum'        => array( true ),
 						'required'    => true,
 					),
+					'create_account' => array(
+						'description' => 'Guest asks for a client account (emailed a set-your-password link).',
+						'type'        => 'boolean',
+						'default'     => false,
+					),
 					// Honeypot: hidden from people, filled in by bots.
 					'website'  => array(
 						'type'      => 'string',
@@ -218,8 +224,34 @@ final class PublicController {
 				)
 			),
 			RequestOutcome::REPLAYED => new WP_REST_Response( $this->summary( $outcome->booking_id ) + array( 'replayed' => true ), 200 ),
-			default                  => new WP_REST_Response( $this->summary( $outcome->booking_id ) + array( 'token' => $outcome->token ), 201 ),
+			default                  => new WP_REST_Response( $this->summary( $outcome->booking_id ) + array( 'token' => $outcome->token ) + $this->account( $outcome->booking_id, $request ), 201 ),
 		};
+	}
+
+	/**
+	 * Links a new booking to a client: the signed-in client's own account, or (when a guest asks)
+	 * a new account that becomes theirs once they set its password from the email.
+	 *
+	 * @return array{account?: string}
+	 */
+	private function account( int $booking_id, WP_REST_Request $request ): array {
+		global $wpdb;
+		$repo = new BookingRepository( $wpdb, Settings::int( 'granularity_minutes' ) );
+		if ( is_user_logged_in() ) {
+			// Only client accounts own bookings; staff booking on someone's behalf stay unlinked.
+			if ( current_user_can( 'read_own_ishot_bookings' ) && $repo->linkToUser( $booking_id, get_current_user_id() ) ) {
+				return array( 'account' => ClientAccounts::LINKED );
+			}
+			return array();
+		}
+		if ( true !== $request['create_account'] ) {
+			return array();
+		}
+		$result = ClientAccounts::requestForBooking( (string) $request['email'], (string) $request['name'] );
+		if ( null !== $result['user_id'] ) {
+			$repo->linkToUser( $booking_id, $result['user_id'] );
+		}
+		return array( 'account' => $result['status'] );
 	}
 
 	/** @return array<string, string> */

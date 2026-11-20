@@ -6,6 +6,7 @@ use DateTimeZone;
 use IShot\Booking\Admin\View;
 use IShot\Booking\Calendar\Ics;
 use IShot\Booking\Calendar\IcsEvent;
+use IShot\Booking\Frontend\ManageUrl;
 use IShot\Booking\Persistence\ManageLinks;
 use IShot\Booking\Payments\Payments;
 use IShot\Booking\Settings;
@@ -39,7 +40,7 @@ final class Renderer {
 		if ( Templates::CTA_MANAGE === $tpl['cta'] && $client ) {
 			$issued    = $this->links->issue( (int) $snap['id'] );
 			$link_hash = $issued['hash'];
-			$button    = array( __( 'View or change your booking', 'ishot-booking' ), Settings::manageUrl() . '#token=' . $issued['token'] );
+			$button    = array( __( 'View or change your booking', 'ishot-booking' ), ManageUrl::for( $issued['token'] ) );
 		} elseif ( Templates::CTA_ADMIN === $tpl['cta'] && ! $client ) {
 			$button = array( __( 'Open the booking', 'ishot-booking' ), View::detailUrl( (int) $snap['id'] ) );
 		}

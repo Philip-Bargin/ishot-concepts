@@ -40,6 +40,11 @@ final class Plugin {
 		add_action( Queue::TICK_HOOK, array( Queue::class, 'tick' ) );
 		add_action( 'action_scheduler_init', array( Queue::class, 'ensureScheduled' ) );
 		add_action( Enquiries::SEND_HOOK, array( Enquiries::class, 'run' ) );
+		add_action( 'after_password_reset', array( Accounts\ClientAccounts::class, 'onPasswordReset' ) );
+
+		// Manage-booking links: /manage-booking/#token=… (see Frontend\ManageUrl).
+		add_action( 'template_redirect', array( Frontend\ManageUrl::class, 'redirectLegacy' ), 1 );
+		add_action( 'send_headers', array( Frontend\ManageUrl::class, 'protectManagePage' ) );
 		add_action( 'init', array( ServiceCatalog::class, 'register' ) );
 
 		// Content: projects, testimonials, categories (and every content field, services included).
@@ -74,6 +79,8 @@ final class Plugin {
 
 		if ( is_admin() ) {
 			ContentAdmin::register();
+			add_action( 'admin_init', array( Admin\ListScreen::class, 'handleBulk' ) );
+			add_action( 'admin_post_' . Admin\CsvExport::POST, array( Admin\CsvExport::class, 'handle' ) );
 			add_action( 'admin_menu', array( Menu::class, 'register' ) );
 			add_action( 'admin_enqueue_scripts', array( Menu::class, 'enqueue' ) );
 			add_action( 'wp_dashboard_setup', array( DashboardWidget::class, 'register' ) );

@@ -328,6 +328,13 @@ final class BookingRepository {
 		);
 	}
 
+	/** Links an unclaimed booking to a client account; a booking already linked never moves. */
+	public function linkToUser( int $booking_id, int $user_id ): bool {
+		return 1 === $this->db->query(
+			$this->db->prepare( 'UPDATE ' . Schema::bookings() . " SET client_user_id = %d WHERE id = %d AND kind = 'booking' AND client_user_id IS NULL", $user_id, $booking_id ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		);
+	}
+
 	public function countWithStatus( BookingStatus $status ): int {
 		return (int) $this->db->get_var(
 			$this->db->prepare( 'SELECT COUNT(*) FROM ' . Schema::bookings() . " WHERE kind = 'booking' AND status = %s", $status->value ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared

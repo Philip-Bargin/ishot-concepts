@@ -106,9 +106,18 @@ Error responses:
 
 **Reschedule:** the old slots are released and the new ones claimed in one transaction. On a clash, the rollback leaves the booking exactly where it was.
 
-## Client manage-booking link (`/wp-json/ishot/v1/bookings/{token}`)
+## Client manage-booking link (`/wp-json/ishot/v1/manage`)
 
-The 64-character token from `POST /bookings` is the client's only credential. Only its hash is stored.
+The 64-character token from `POST /bookings`, or from any client email, is the client's only credential. Only its hash is stored.
+
+**URL convention (`src/Frontend/ManageUrl.php`):** every link is `https://<site>/manage-booking/#token=<token>`.
+- **The token stays in the URL fragment.** Browsers never send fragments to servers, so the token never reaches access logs, proxies, analytics or `Referer`.
+- **How the page uses it:** it reads `location.hash` and calls `GET`/`PATCH /wp-json/ishot/v1/manage` with the token in the **`X-Ishot-Manage-Token` header**. It then clears the hash with `history.replaceState`.
+- **The page itself** is served with `Referrer-Policy: no-referrer`, `Cache-Control: no-store, private` and `X-Robots-Tag: noindex`.
+- **Backward compatibility:**
+  - Links already emailed (`/manage-booking/#token=…`) keep working, including the per-email tokens in `ishot_booking_links`.
+  - Older shapes, `/manage/<token>` (the prototype's) and `/manage-booking/?token=<token>`, get a 302 to the fragment form with the same privacy headers.
+  - `GET`/`PATCH /bookings/{token}` still answers. It's **deprecated** because the token sits in the path: responses carry `Deprecation: true` and a `Link` to `/manage`. Remove it once the Phase 3e page ships.
 
 - **`GET`:** shows the status, service, times, deposit, `change_deadline`, `can_cancel` and `can_reschedule`.
   - No email or phone is shown, so a forwarded link doesn't leak contact details.
@@ -238,3 +247,55 @@ wp ishot import-prototype --seed=<prototype-content.json> --images=<dir> [--dry-
   - contact details.
 - **Repeatable:** each item carries an import key, so a re-run never duplicates anything. Items unchanged since the last import are updated when the seed changes. Items edited in WordPress are kept and reported, unless you pass `--force`.
 - **Drafts by default:** new posts are drafts unless you pass `--publish`. A re-run never changes a post's status. An item with the same slug created by hand is adopted and treated as edited, so it is not overwritten.
+
+## My bookings (`GET /wp-json/ishot/v1/me/bookings`)
+
+For signed-in client accounts (`read_own_ishot_bookings`).
+- **Signed out:** 401. **Any other role:** 403.
+- **Always scoped to the caller:** no parameter can name another user. The list holds:
+  - bookings linked to the account;
+  - unclaimed guest bookings under an email address the account has **verified**, meaning it set its password from the emailed link. Verification is tied to the address, so changing the account email withdraws access until the new address is verified.
+- **Parameters:** `page`, `per_page` (1-50, default 10), `when` = `all|upcoming|past`.
+- **Response:** totals in the `X-WP-Total` and `X-WP-TotalPages` headers, `Cache-Control: no-store, private`. No token hashes, idempotency keys or versions.
+
+## Optional client account at booking time
+
+`POST /bookings` accepts `create_account: true`. Guests can still book without it.
+- **Signed-in client:** the booking is linked to their account (`"account": "linked"`). Bookings made by signed-in staff are never linked to the staff account.
+- **Guest asking for an account:**
+  - **Unused email:** an `ishot_client` account is created with a random password, and WordPress emails a set-your-password link. Nobody is signed in, and the username isn't the email address.
+  - **Email that already has an account:** nothing is created, linked or emailed.
+  - Both cases answer `"account": "check_email"`, so the form can't be used to find out who has an account.
+- **Limits:** 3 account requests per address per hour (`ishot_booking_account_rate_limit`); above that the booking still succeeds with `"account": "not_created"`. No account is made for honeypot hits, policy rejections or clashes. Turn the feature off with `ishot_booking_client_accounts` → false.
+
+## Contact form (`POST /wp-json/ishot/v1/contact`)
+
+Replaces Web3Forms, so no third-party form key is published.
+- **Fields:**
+  - `name` (1-100)
+  - `email`
+  - `phone` (optional, ≤30)
+  - `enquiry` (optional, ≤100)
+  - `message` (10-2000)
+  - `consent: true` (required)
+  - honeypot `website`
+- **Responses:** **202** `{"status":"received"}`, also returned to bots, which have nothing stored. **400** on invalid input. **429** above 5 per 30 minutes per address (`ishot_booking_contact_rate_limit`).
+- **Delivery:**
+  - Stored first in `ishot_enquiries`, then emailed to the studio address with `Reply-To` set to the sender, so a mail outage delays an enquiry but never loses it.
+  - Failed sends retry after 5, 15, 60 and 240 minutes, then the enquiry is marked `failed`.
+  - **Bookings → Enquiries** (managers) lists every enquiry and flags failures.
+  - Nothing is emailed to the address typed into the form, so it can't be used as a spam relay.
+- **Privacy:** enquiries appear in Export Personal Data, are deleted by Erase Personal Data, and are purged by the retention job after **Keep client details** months.
+
+## Bulk actions and CSV export (Bookings → All bookings)
+
+- **Bulk actions:** Confirm, Mark completed, Mark no-show (photographers and managers), and Cancel (managers).
+  - Each booking is checked with the same rule as its detail screen: lifecycle, "only after the session started" for complete and no-show, and capability. Ineligible bookings are skipped and reported, never forced.
+  - At most 100 per run. The list form posts with the `bulk-bookings` nonce, and the result is shown after a redirect.
+  - Every change goes through `StaffActions` and is audited with `bulk: true`.
+  - Deposit received (needs a payment reference) and reschedule (needs a time) are not offered in bulk.
+- **Export CSV:** managers only (`manage_ishot_bookings`), behind a nonce, following the current filters.
+  - Columns: booking, status, service, start/end, client, email, phone, location, deposit, deposit status, payment reference, requested.
+  - Notes, token hashes and keys are left out.
+  - Cells starting with `= + - @`, tab or carriage return are prefixed with `'` (formula-injection guard).
+  - Each export is logged in the `ishot_booking_export_log` option: who, when, how many rows, which filters.

@@ -22,12 +22,32 @@ final class BookingsTable extends WP_List_Table {
 	}
 
 	public function get_columns(): array {
-		return array(
+		$columns = array(
+			'cb'      => '<input type="checkbox">',
 			'when'    => __( 'When', 'ishot-booking' ),
 			'client'  => __( 'Client', 'ishot-booking' ),
 			'service' => __( 'Service', 'ishot-booking' ),
 			'status'  => __( 'Status', 'ishot-booking' ),
 			'deposit' => __( 'Deposit', 'ishot-booking' ),
+		);
+		if ( array() === BulkActions::available() ) {
+			unset( $columns['cb'] );
+		}
+		return $columns;
+	}
+
+	/** @return array<string, string> Only the bulk actions this user may take. */
+	protected function get_bulk_actions(): array {
+		return BulkActions::available();
+	}
+
+	/** @param array<string, mixed> $item */
+	protected function column_cb( $item ): string {
+		return sprintf(
+			'<label class="screen-reader-text" for="ishot-cb-%1$d">%2$s</label><input type="checkbox" id="ishot-cb-%1$d" name="booking[]" value="%1$d">',
+			(int) $item['id'],
+			/* translators: %s: client name */
+			esc_html( sprintf( __( 'Select booking for %s', 'ishot-booking' ), $item['client_name'] ) )
 		);
 	}
 
