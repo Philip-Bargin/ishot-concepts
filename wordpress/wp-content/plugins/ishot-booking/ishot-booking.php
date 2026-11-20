@@ -28,3 +28,5 @@ if ( ! file_exists( $ishot_booking_autoload ) ) {
 	return;
 }
 require_once $ishot_booking_autoload;
+
+IShot\Booking\Plugin::boot( __FILE__ );
