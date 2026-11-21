@@ -1,0 +1,20 @@
+{
+  "_generated": "scripts/sync-design-system.mjs from design-system/tokens.json. Do not edit.",
+  "colour": {
+    "paper": "#ffffff",
+    "mist": "#f1f3f8",
+    "ink": "#172d60",
+    "ink-muted": "#4a5675",
+    "line": "#dce1ea",
+    "band": "#172d60",
+    "on-band": "#ffffff",
+    "on-band-muted": "#c5cdde",
+    "accent": "#0071bf",
+    "on-accent": "#ffffff",
+    "highlight": "#f26a22"
+  },
+  "font": {
+    "display": "Oswald, \"Arial Narrow\", \"Helvetica Neue\", Arial, sans-serif",
+    "text": "\"Space Grotesk\", \"Helvetica Neue\", Arial, system-ui, sans-serif"
+  }
+}

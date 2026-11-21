@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<ruleset name="iShot">
+	<description>WordPress Coding Standards (Extra) and PHP 8.1+ compatibility for the iShot plugin and theme.</description>
+
+	<file>../../wordpress/wp-content/plugins/ishot-booking/ishot-booking.php</file>
+	<file>../../wordpress/wp-content/plugins/ishot-booking/src</file>
+	<file>../../wordpress/wp-content/themes/ishot-concept</file>
+
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/assets/*</exclude-pattern>
+
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+	<arg name="parallel" value="8"/>
+
+	<config name="minimum_wp_version" value="6.5"/>
+	<config name="testVersion" value="8.1-"/>
+
+	<rule ref="WordPress-Extra">
+		<!--
+			Deliberate project conventions (documented in docs/code-quality.md):
+			- PSR-4 autoloading: one class per file named after the class (Booking/Foo.php), not class-foo.php.
+			- camelCase method names, matching PSR-12 and the namespaced, autoloaded architecture.
+		-->
+		<exclude name="WordPress.Files.FileName"/>
+		<exclude name="WordPress.NamingConventions.ValidFunctionName.MethodNameInvalid"/>
+		<!--
+			Exception messages are never printed raw: every place that shows one to a user escapes it
+			(esc_html, WP_Error JSON). Escaping at throw time would double-escape those outputs.
+		-->
+		<exclude name="WordPress.Security.EscapeOutput.ExceptionNotEscaped"/>
+	</rule>
+
+	<rule ref="PHPCompatibilityWP"/>
+	<!--
+		PHPCompatibility 9.x predates PHP 8.1 enums and reads `self`/`$this` inside an enum method as
+		a plain function. The enums are BookingStatus and PolicyViolation (PHP 8.1+ is required).
+	-->
+	<rule ref="PHPCompatibility.FunctionDeclarations.NewParamTypeDeclarations.SelfOutsideClassScopeFound">
+		<exclude-pattern>*/src/Domain/BookingStatus.php</exclude-pattern>
+		<exclude-pattern>*/src/Domain/PolicyViolation.php</exclude-pattern>
+	</rule>
+	<rule ref="PHPCompatibility.Variables.ForbiddenThisUseContexts.OutsideObjectContext">
+		<exclude-pattern>*/src/Domain/BookingStatus.php</exclude-pattern>
+		<exclude-pattern>*/src/Domain/PolicyViolation.php</exclude-pattern>
+	</rule>
+
+	<!-- The plugin's own capabilities (src/Roles.php). -->
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array">
+				<element value="view_ishot_calendar"/>
+				<element value="edit_ishot_bookings"/>
+				<element value="block_ishot_time"/>
+				<element value="manage_ishot_bookings"/>
+				<element value="manage_ishot_availability"/>
+				<element value="manage_ishot_settings"/>
+				<element value="edit_ishot_services"/>
+				<element value="edit_ishot_content"/>
+				<element value="read_own_ishot_bookings"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="ishot-booking"/>
+				<element value="ishot-concept"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="ishot"/>
+				<element value="IShot"/>
+			</property>
+		</properties>
+	</rule>
+</ruleset>

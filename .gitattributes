@@ -1,0 +1,13 @@
+# Keep code LF everywhere (WPCS checks line endings; Windows checkouts must not turn them into CRLF).
+*.php text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.neon text eol=lf
+*.xml text eol=lf
+*.dist text eol=lf
+*.html text eol=lf
+*.md text eol=lf

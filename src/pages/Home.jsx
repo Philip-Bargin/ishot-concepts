@@ -1,398 +1,160 @@
-import { useNavigate } from "react-router-dom";
-import { services } from "../data.js";
-import { images } from "../assets.js";
-import { Eyebrow, SectionHead } from "../components/ui.jsx";
+import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
+import { photos, portfolio } from "../assets.js";
+import { categories, contact, promises, services, stats } from "../data.js";
+import { usePageTitle } from "../lib/hooks.js";
+import HeroSlideshow from "../components/HeroSlideshow.jsx";
+import Gallery from "../components/Gallery.jsx";
 import Reveal from "../components/Reveal.jsx";
+import Icon from "../components/Icon.jsx";
+import Testimonials from "../components/Testimonials.jsx";
+import Founder from "../components/Founder.jsx";
+import { founderPlaceholder, testimonialPlaceholders } from "../prototype/sampleContent.js";
+import { CategoryCard, CtaBand, FeatureList, Marquee, Photo, SectionHeading, ServiceTiles, Stats } from "../components/ui.jsx";
 
-const whyCards = [
-  {
-    bg: "#FBE4D5",
-    stroke: "#F26A22",
-    title: "High-Quality Images",
-    blurb: "Crisp, cinematic, gallery-grade photography every single time.",
-    icon: (
-      <>
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-        <circle cx="12" cy="13" r="4" />
-      </>
-    ),
-  },
-  {
-    bg: "#DCECF7",
-    stroke: "#0071BF",
-    title: "Unique Editing & Retouch",
-    blurb: "A signature style that makes every image unmistakably yours.",
-    icon: <path d="M12 2l2.4 7.4H22l-6 4.5 2.3 7.1L12 16.6 5.7 21l2.3-7.1-6-4.5h7.6z" />,
-  },
-  {
-    bg: "#E9F5E8",
-    stroke: "#47A743",
-    title: "Fast Delivery",
-    blurb: "Quick turnaround without ever compromising on quality.",
-    icon: <path d="M13 2L3 14h7l-1 8 10-12h-7z" />,
-  },
-  {
-    bg: "#DFF0F9",
-    stroke: "#329AD3",
-    title: "Creative Storytelling",
-    blurb: "Concepts and direction that turn a shoot into a story worth telling.",
-    icon: (
-      <>
-        <rect x="2" y="2" width="20" height="20" rx="2.18" />
-        <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5" />
-      </>
-    ),
-  },
+const slides = [photos.phoneBirthday, photos.gownStair, photos.graduate, photos.denimSmile];
+// About strip: 1:2 · 1:2 · 2:3 (centre) · 1:2 · 1:2. Decorative here (each photo is described in Recent work).
+const strip = [
+  [photos.denimSmile, "strip"],
+  [photos.burgundyLounge, "strip"],
+  [photos.graduate, "tall"],
+  [photos.redFurSofa, "strip"],
+  [photos.gownStair, "strip"],
 ];
+const featuredCategories = [
+  { slug: "portraits", photo: photos.burgundyLounge },
+  { slug: "creative", photo: photos.phoneBirthday },
+  { slug: "studio", photo: photos.graduate },
+  { slug: "outdoor", photo: photos.denimSmile },
+].map((c) => ({ ...c, ...categories.find((k) => k.slug === c.slug) }));
 
 export default function Home() {
-  const navigate = useNavigate();
+  usePageTitle(null);
 
   return (
-    <div className="page-enter">
-      {/* HERO */}
-      <section
-        className="grain vignette"
-        style={{
-          position: "relative",
-          minHeight: "min(88vh,760px)",
-          display: "flex",
-          alignItems: "center",
-          overflow: "hidden",
-          background: "#0b1836",
-        }}
-      >
-        <img
-          className="kenburns"
-          src={images.homeHero}
-          alt=""
-          aria-hidden="true"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(100deg,rgba(11,24,54,.94) 0%,rgba(23,45,96,.7) 52%,rgba(23,45,96,.28) 100%)",
-          }}
-        />
-        <div className="container" style={{ position: "relative", width: "100%" }}>
-          <div style={{ maxWidth: 760 }}>
-            <Reveal>
-              <div style={{ marginBottom: 22 }}>
-                <Eyebrow variant="teal">Monrovia · Liberia</Eyebrow>
-              </div>
-            </Reveal>
-            <Reveal delay={90}>
-              <h1
-                className="display display--hero"
-                style={{ fontSize: "clamp(40px,7vw,82px)", color: "#fff", margin: "0 0 24px", maxWidth: 780 }}
-              >
-                Your moments deserve more than just pictures — they deserve to be{" "}
-                <em style={{ color: "#F26A22", fontStyle: "italic" }}>celebrated.</em>
-              </h1>
-            </Reveal>
-            <Reveal delay={180}>
-              <p className="lead" style={{ color: "var(--on-dark-2)", margin: "0 0 36px", maxWidth: 540 }}>
-                A premium photography brand capturing timeless moments with creativity, precision, and style.
-              </p>
-            </Reveal>
-            <Reveal delay={260}>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
-                <button className="btn btn--primary btn--lg" onClick={() => navigate("/contact")}>
-                  Book Your Session <span className="arw">→</span>
-                </button>
-                <button className="btn btn--ghost-teal btn--lg" onClick={() => navigate("/portfolio")}>
-                  View Portfolio
-                </button>
-              </div>
-            </Reveal>
+    <>
+      <HeroSlideshow slides={slides}>
+        <p className="fo-eyebrow">Monrovia · Liberia</p>
+        <h1 className="fo-hero__title">
+          <span className="ish-hero__line">iShot</span> <span className="ish-hero__line">Concept</span>
+        </h1>
+        <div className="fo-hero__row">
+          <p className="small ish-hero__tagline">Premium photography that turns your moments into timeless visual stories.</p>
+          <div className="ish-actions">
+            <Link to="/book" className="fo-btn fo-btn--primary">
+              Book a session
+            </Link>
+            <Link to="/portfolio" className="fo-btn fo-btn--outline">
+              View gallery
+            </Link>
           </div>
         </div>
+      </HeroSlideshow>
 
-        {/* scroll cue */}
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            left: "50%",
-            bottom: 26,
-            transform: "translateX(-50%)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 8,
-            color: "var(--on-dark-3)",
-          }}
-        >
-          <span style={{ font: "600 11px Montserrat, sans-serif", letterSpacing: "0.24em", textTransform: "uppercase" }}>
-            Scroll
-          </span>
-          <span style={{ width: 1, height: 34, background: "linear-gradient(var(--teal-light), transparent)" }} />
+      {/* Statement / about */}
+      <section className="fo-section fo-section--tall" aria-labelledby="statement-title">
+        <div className="fo-container">
+          <div className="ish-stack ish-center ish-measure">
+            <p className="fo-eyebrow">Who we are</p>
+            <h2 id="statement-title" className="fo-statement">
+              Your moments, made timeless
+            </h2>
+            <p className="body-lg fo-muted">
+              iShot Concept captures emotion, identity and legacy, from intimate portraits to bold creative concepts. Every
+              frame is crafted with intention, precision and a distinctly African creative excellence.
+            </p>
+            <Link to="/about" className="fo-btn fo-btn--text">
+              Read our story <Icon as={ArrowRight} />
+            </Link>
+          </div>
+          {/* Scrolls sideways on mobile, so it must be keyboard-focusable (WCAG 2.1.1). */}
+          <div className="ish-strip" role="region" aria-label="Studio photographs, scroll sideways" tabIndex={0}>
+            {strip.map(([photo, ratio]) => (
+              <Photo key={photo.file} photo={photo} ratio={ratio} alt="" sizes="(min-width: 768px) 20vw, 42vw" />
+            ))}
+          </div>
+          <Stats items={stats} />
         </div>
       </section>
 
-      {/* WHO WE ARE */}
-      <section
-        className="container section-pad"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
-          gap: "clamp(32px,6vw,72px)",
-          alignItems: "center",
-        }}
-      >
-        <Reveal>
-          <div style={{ marginBottom: 18 }}>
-            <Eyebrow>Who We Are</Eyebrow>
-          </div>
-          <h2 className="display" style={{ fontSize: "clamp(28px,3.6vw,46px)", lineHeight: 1.1, margin: "0 0 22px" }}>
-            A creative brand turning moments into timeless visual experiences.
-          </h2>
-          <p style={{ font: "400 17px/1.75 Montserrat, sans-serif", color: "var(--gray)", margin: "0 0 16px" }}>
-            iShot Concept is more than a studio. We capture emotion, identity, legacy, and culturally rich stories —
-            from intimate portraits to grand celebrations, executive brands to bold creative concepts.
-          </p>
-          <p style={{ font: "400 17px/1.75 Montserrat, sans-serif", color: "var(--gray)", margin: "0 0 30px" }}>
-            Every frame is crafted with intention, precision, and a distinctly African creative excellence.
-          </p>
-          <button className="btn btn--secondary btn--sm" onClick={() => navigate("/about")}>
-            Read Our Story <span className="arw">→</span>
-          </button>
-        </Reveal>
-        <Reveal delay={120} style={{ position: "relative" }}>
-          <div className="zoom" style={{ borderRadius: 8, boxShadow: "var(--sh-2)" }}>
-            <img
-              src={images.homeStudio}
-              alt="iShot Concept studio session"
-              style={{ width: "100%", height: "clamp(320px,44vw,500px)", objectFit: "cover" }}
-            />
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              left: -16,
-              bottom: -18,
-              background: "#172D60",
-              color: "#fff",
-              padding: "20px 24px",
-              borderRadius: 8,
-              boxShadow: "var(--sh-3)",
-            }}
-          >
-            <div className="display" style={{ fontSize: 34, color: "#F26A22", lineHeight: 1 }}>
-              100%
-            </div>
-            <div style={{ font: "500 12px Montserrat, sans-serif", letterSpacing: "0.04em", color: "var(--on-dark-2)", marginTop: 4 }}>
-              Moments, remembered
-            </div>
-          </div>
-        </Reveal>
-      </section>
-
-      {/* VISION & MISSION */}
-      <section style={{ background: "#172D60" }}>
-        <div
-          className="container section-pad"
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 24 }}
-        >
-          {[
-            {
-              ring: "#329AD3",
-              inner: <div style={{ width: 20, height: 20, border: "2px solid #329AD3", borderRadius: "50%" }} />,
-              title: "Our Vision",
-              body:
-                "To become Africa's most trusted premium photography brand — turning everyday moments into legacy, and ideas into unforgettable visual stories with global reach.",
-            },
-            {
-              ring: "#F26A22",
-              inner: <div style={{ width: 16, height: 16, background: "#F26A22", borderRadius: "50%" }} />,
-              title: "Our Mission",
-              body:
-                "To capture timeless moments with creativity, precision, and style — delivering imagery that our clients are proud to remember, feel, and celebrate for a lifetime.",
-            },
-          ].map((v, i) => (
-            <Reveal
-              key={v.title}
-              delay={i * 120}
-              style={{ background: "#101F44", border: "1px solid #223B78", borderRadius: 8, padding: "clamp(28px,4vw,40px)" }}
-            >
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  border: `2px solid ${v.ring}`,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: 22,
-                }}
-              >
-                {v.inner}
-              </div>
-              <h3 className="display" style={{ fontSize: 27, color: "#fff", margin: "0 0 12px" }}>
-                {v.title}
-              </h3>
-              <p style={{ font: "400 16px/1.75 Montserrat, sans-serif", color: "var(--on-dark-2)", margin: 0 }}>
-                {v.body}
-              </p>
-            </Reveal>
-          ))}
+      {/* Services */}
+      <section className="fo-section fo-band" aria-labelledby="services-title">
+        <div className="fo-container">
+          <SectionHeading
+            eyebrow="What we do"
+            title="Our services"
+            id="services-title"
+            action={
+              <Link to="/book" className="fo-btn fo-btn--primary">
+                Book now
+              </Link>
+            }
+          />
+          <ServiceTiles items={services.slice(0, 4)} />
         </div>
       </section>
 
-      {/* SERVICES */}
-      <section className="container section-pad">
-        <SectionHead
-          eyebrow="What We Do"
-          title="Our Services"
-          lead="Six core offerings, each crafted to tell your story with intention and style."
-        />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 24 }}>
-          {services.map((s, i) => (
-            <Reveal key={s.id} delay={(i % 3) * 90}>
-              <button
-                className="card zoom"
-                onClick={() => navigate("/services")}
-                style={{ display: "block", width: "100%", textAlign: "left", padding: 0, cursor: "pointer", overflow: "hidden" }}
-              >
-                <div style={{ position: "relative", height: 210, overflow: "hidden" }}>
-                  <img src={s.img} loading="lazy" alt={s.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: 4, background: "#F26A22" }} />
-                </div>
-                <div style={{ padding: 26 }}>
-                  <span className="eyebrow" style={{ fontSize: 11, marginBottom: 12 }}>
-                    {s.tag}
-                  </span>
-                  <h3 className="display" style={{ fontSize: 24, lineHeight: 1.2, color: "var(--ink)", margin: "10px 0 10px" }}>
-                    {s.title}
-                  </h3>
-                  <p style={{ font: "400 15px/1.65 Montserrat, sans-serif", color: "var(--gray)", margin: "0 0 16px" }}>
-                    {s.blurb}
-                  </p>
-                  <span style={{ font: "600 14px Montserrat, sans-serif", color: "#0071BF" }}>
-                    Explore <span className="arw">→</span>
-                  </span>
-                </div>
-              </button>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* PORTFOLIO STRIP */}
-      <section style={{ background: "#F7F9FC" }}>
-        <div className="container section-pad">
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 16,
-              alignItems: "flex-end",
-              justifyContent: "space-between",
-              marginBottom: 40,
-            }}
-          >
-            <Reveal>
-              <div style={{ marginBottom: 12 }}>
-                <Eyebrow>Visual Stories</Eyebrow>
-              </div>
-              <h2 className="display" style={{ fontSize: "clamp(28px,3.6vw,48px)", margin: 0 }}>
-                Selected Work
-              </h2>
-            </Reveal>
-            <Reveal delay={100}>
-              <button className="btn btn--outline-blue btn--sm" onClick={() => navigate("/portfolio")}>
-                See Our Work <span className="arw">→</span>
-              </button>
-            </Reveal>
-          </div>
-          <Reveal className="work-strip">
-            <div className="feature zoom" style={{ borderRadius: 8 }}>
-              <img src={images.work1} alt="Featured work" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            </div>
-            {[images.work2, images.work3, images.work4, images.work5].map((src, i) => (
-              <div key={i} className="zoom" style={{ borderRadius: 8 }}>
-                <img
-                  src={src}
-                  alt="Portfolio sample"
-                  loading="lazy"
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              </div>
+      {/* Categories */}
+      <section className="fo-section" aria-labelledby="categories-title">
+        <div className="fo-container">
+          <SectionHeading
+            eyebrow="Portfolio"
+            title="Explore the work"
+            id="categories-title"
+            action={
+              <Link to="/portfolio" className="fo-btn fo-btn--text">
+                View all <Icon as={ArrowRight} />
+              </Link>
+            }
+          />
+          <Reveal className="fo-grid">
+            {featuredCategories.map((c) => (
+              <CategoryCard key={c.slug} to={`/portfolio/${c.slug}`} photo={c.photo} cat={c.slug} title={c.label} text={c.blurb} />
             ))}
           </Reveal>
         </div>
       </section>
 
-      {/* WHY CHOOSE US */}
-      <section className="container section-pad">
-        <SectionHead eyebrow="The iShot Promise" title="Why Choose Us" maxWidth={600} />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 24 }}>
-          {whyCards.map((c, i) => (
-            <Reveal
-              key={c.title}
-              delay={(i % 4) * 80}
-              className="lift"
-              style={{ textAlign: "center", padding: "36px 22px", border: "1px solid var(--border)", borderRadius: 8, background: "#fff" }}
-            >
-              <div
-                style={{
-                  width: 58,
-                  height: 58,
-                  margin: "0 auto 20px",
-                  borderRadius: "50%",
-                  background: c.bg,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={c.stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  {c.icon}
-                </svg>
+      {/* Recent work */}
+      <section className="fo-section fo-mist" aria-labelledby="recent-title">
+        <div className="fo-container">
+          <SectionHeading
+            eyebrow="Recent work"
+            title="Selected frames"
+            id="recent-title"
+            action={
+              <div className="ish-actions">
+                <Link to="/portfolio" className="fo-btn fo-btn--text">
+                  Full portfolio <Icon as={ArrowRight} />
+                </Link>
+                <a href={contact.instagramUrl} target="_blank" rel="noopener noreferrer" className="fo-btn fo-btn--text">
+                  Instagram <span aria-hidden="true">↗</span>
+                  <span className="fo-sr"> (opens in a new tab)</span>
+                </a>
               </div>
-              <h3 className="display" style={{ fontSize: 20, color: "var(--ink)", margin: "0 0 8px" }}>
-                {c.title}
-              </h3>
-              <p style={{ font: "400 14px/1.65 Montserrat, sans-serif", color: "var(--gray)", margin: 0 }}>{c.blurb}</p>
-            </Reveal>
-          ))}
+            }
+          />
+          <Gallery items={portfolio} />
         </div>
       </section>
 
-      {/* CTA BAND */}
-      <section className="grain vignette" style={{ position: "relative", overflow: "hidden", background: "#0b1836" }}>
-        <img
-          src={images.homeCta}
-          alt=""
-          aria-hidden="true"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.24 }}
-        />
-        <div
-          style={{
-            position: "relative",
-            maxWidth: 900,
-            margin: "0 auto",
-            padding: "clamp(64px,9vw,112px) clamp(20px,5vw,40px)",
-            textAlign: "center",
-          }}
-        >
+      {/* Why us */}
+      <section className="fo-section" aria-labelledby="why-title">
+        <div className="fo-container ish-split">
           <Reveal>
-            <h2 className="display" style={{ fontSize: "clamp(32px,5vw,58px)", color: "#fff", margin: "0 0 20px", lineHeight: 1.08 }}>
-              Let's Create That <em style={{ color: "#F26A22", fontStyle: "italic" }}>Magic</em>
-            </h2>
-            <p className="lead" style={{ color: "var(--on-dark-2)", margin: "0 0 34px" }}>
-              Your story is waiting to be told. Let's make it unforgettable.
-            </p>
-            <button className="btn btn--primary btn--xl" onClick={() => navigate("/contact")}>
-              Book Your Session <span className="arw">→</span>
-            </button>
+            <SectionHeading eyebrow="The iShot promise" title="Why clients choose us" id="why-title" />
+            <FeatureList items={promises} />
           </Reveal>
+          <Photo photo={photos.redFurSofa} ratio="portrait" alt="" />
         </div>
       </section>
-    </div>
+
+      {/* Testimonials (band) sits between two paper sections so no two band grounds touch. */}
+      <Testimonials items={testimonialPlaceholders} />
+      <Founder person={founderPlaceholder} />
+
+      <CtaBand />
+      <Marquee words={categories.map((c) => c.label)} />
+    </>
   );
 }

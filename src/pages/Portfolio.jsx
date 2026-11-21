@@ -1,107 +1,69 @@
-import { useState, useMemo, useCallback } from "react";
-import { filters, portfolio } from "../data.js";
-import { images } from "../assets.js";
-import { PageHero } from "../components/ui.jsx";
-import Reveal from "../components/Reveal.jsx";
-import Lightbox from "../components/Lightbox.jsx";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { portfolio } from "../assets.js";
+import { categories, categoryLabel, pad2 } from "../data.js";
+import { usePageTitle } from "../lib/hooks.js";
+import Gallery from "../components/Gallery.jsx";
+import { CtaBand, PageTitle } from "../components/ui.jsx";
+
+const PAGE_SIZE = 16;
+const chips = [{ slug: "all", label: "All" }, ...categories];
 
 export default function Portfolio() {
-  const [filter, setFilter] = useState("All");
-  const [lightbox, setLightbox] = useState(null); // index into `filtered`
+  const { category } = useParams();
+  const navigate = useNavigate();
+  const active = categories.some((c) => c.slug === category) ? category : "all";
+  const [shown, setShown] = useState(PAGE_SIZE);
+  usePageTitle(active === "all" ? "Portfolio" : `${categoryLabel(active)} · Portfolio`);
 
-  const filtered = useMemo(
-    () => (filter === "All" ? portfolio : portfolio.filter((p) => p.cat === filter)),
-    [filter]
-  );
+  useEffect(() => setShown(PAGE_SIZE), [active]);
 
-  const changeFilter = (f) => {
-    setFilter(f);
-    setLightbox(null);
-  };
-
-  const next = useCallback(
-    () => setLightbox((i) => (i == null ? i : (i + 1) % filtered.length)),
-    [filtered.length]
-  );
-  const prev = useCallback(
-    () => setLightbox((i) => (i == null ? i : (i - 1 + filtered.length) % filtered.length)),
-    [filtered.length]
-  );
+  const filtered = active === "all" ? portfolio : portfolio.filter((p) => p.cat === active);
+  const visible = filtered.slice(0, shown);
+  const choose = (slug) => navigate(slug === "all" ? "/portfolio" : `/portfolio/${slug}`, { replace: true });
 
   return (
-    <div className="page-enter">
-      <PageHero
-        eyebrow="Our Work"
-        title="Visual Stories"
-        subtitle="A curated look at moments we've captured and concepts we've created."
-        bg={images.portfolioHero}
-      />
+    <>
+      <PageTitle compact eyebrow="Our work" title="Portfolio" />
 
-      <section
-        className="container"
-        style={{ paddingTop: "clamp(44px,6vw,80px)", paddingBottom: "clamp(56px,8vw,104px)" }}
-      >
-        {/* filter pills */}
-        <Reveal
-          role="group"
-          aria-label="Filter portfolio by category"
-          style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginBottom: 40 }}
-        >
-          {filters.map((f) => {
-            const active = filter === f;
-            return (
-              <button
-                key={f}
-                className="filter-pill"
-                aria-pressed={active}
-                onClick={() => changeFilter(f)}
-                style={{
-                  background: active ? "#F26A22" : "#FFFFFF",
-                  color: active ? "#FFFFFF" : "var(--ink)",
-                  border: `1.5px solid ${active ? "#F26A22" : "var(--border)"}`,
-                }}
-              >
-                {f}
+      <section className="fo-section" aria-labelledby="gallery-title">
+        <div className="fo-container">
+          <h2 id="gallery-title" className="fo-sr">
+            {active === "all" ? "All work" : categoryLabel(active)}
+          </h2>
+          <div className="fo-filters ish-filters" role="group" aria-label="Filter by category">
+            {chips.map((c) => (
+              <button key={c.slug} type="button" className="fo-chip" aria-pressed={active === c.slug} onClick={() => choose(c.slug)}>
+                {c.label}
               </button>
-            );
-          })}
-        </Reveal>
+            ))}
+          </div>
 
-        {/* masonry grid */}
-        <div className="masonry">
-          {filtered.map((p, i) => (
-            <Reveal
-              key={`${p.img}-${i}`}
-              as="button"
-              delay={Math.min(i, 6) * 60}
-              className="masonry-item"
-              aria-label={`View ${p.cat} photograph`}
-              onClick={() => setLightbox(i)}
-            >
-              <img src={p.img} loading="lazy" alt={`${p.cat} photography by iShot Concept`} />
-              <span className="plus" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-              </span>
-              <span className="overlay">
-                <span className="cap">{p.cat}</span>
-              </span>
-            </Reveal>
-          ))}
+          {visible.length ? (
+            <Gallery key={active} items={visible} className="ish-masonry--page" />
+          ) : (
+            <div className="ish-empty">
+              <p className="body-lg">No work in this category yet.</p>
+              <button type="button" className="fo-btn fo-btn--text" onClick={() => choose("all")}>
+                See all work
+              </button>
+            </div>
+          )}
+
+          <div className="ish-count">
+            <p className="small fo-muted" aria-live="polite">
+              Showing {pad2(visible.length)} / {pad2(filtered.length)}
+            </p>
+            {shown < filtered.length && (
+              <button type="button" className="fo-btn fo-btn--secondary" onClick={() => setShown((n) => n + PAGE_SIZE)}>
+                Load more
+              </button>
+            )}
+          </div>
         </div>
       </section>
 
-      {lightbox != null && (
-        <Lightbox
-          item={filtered[lightbox]}
-          index={lightbox}
-          total={filtered.length}
-          onClose={() => setLightbox(null)}
-          onNext={next}
-          onPrev={prev}
-        />
-      )}
-    </div>
+      <CtaBand title="Picture yourself here" text="Every portfolio frame started with a booking." />
+    </>
   );
 }

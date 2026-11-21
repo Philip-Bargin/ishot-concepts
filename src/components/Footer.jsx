@@ -1,132 +1,91 @@
-import { useNavigate } from "react-router-dom";
-import { navItems, contact } from "../data.js";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { contact } from "../data.js";
+import { applyTheme } from "../lib/theme.js";
 import Logo from "./Logo.jsx";
+import SocialLinks from "./SocialLinks.jsx";
+import { Spectrum } from "./ui.jsx";
+
+function ThemeToggle() {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || "light");
+  const toggle = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    applyTheme(next);
+    setTheme(next);
+  };
+  return (
+    <button type="button" className="ish-linkbtn" aria-pressed={theme === "dark"} onClick={toggle}>
+      Night mode
+    </button>
+  );
+}
+
+// Short, balanced columns (3 links each). Everything dropped from here is still one tap away:
+// Home via the logo; Creative direction and Journal in the menu sheet (every page);
+// individual services on the Services page; Instagram in the social icons above.
+const studioLinks = [
+  { to: "/about", label: "About" },
+  { to: "/services", label: "Services" },
+  { to: "/portfolio", label: "Portfolio" },
+];
+const bookingLinks = [
+  { to: "/book", label: "Book a session" },
+  { to: "/account", label: "My bookings" },
+  { to: "/contact", label: "Contact" },
+];
 
 export default function Footer() {
-  const navigate = useNavigate();
-
   return (
-    <footer style={{ background: "#0b1836", borderTop: "1px solid #223B78" }}>
-      {/* editorial closing line — set apart with a soft-blue tint + accent rule */}
-      {/* <div className="container" style={{ paddingTop: "clamp(48px,7vw,80px)", textAlign: "center" }}>
-        <span
-          aria-hidden="true"
-          style={{
-            display: "block",
-            width: 54,
-            height: 3,
-            margin: "0 auto 26px",
-            borderRadius: 3,
-            background: "linear-gradient(90deg, var(--teal-light), var(--orange))",
-          }}
-        />
-        <p
-          className="display serif-italic"
-          style={{
-            fontSize: "clamp(24px,3.4vw,40px)",
-            color: "#8FB4E8",
-            margin: "0 auto",
-            maxWidth: 760,
-            lineHeight: 1.2,
-          }}
-        >
-          Your moments deserve to be{" "}
-          <em style={{ color: "#F26A22", fontStyle: "italic" }}>remembered, felt, and celebrated.</em>
-        </p>
-      </div> */}
-
-      <div
-        className="container"
-        style={{
-          paddingTop: "clamp(40px,5vw,56px)",
-          paddingBottom: "clamp(40px,6vw,64px)",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
-          gap: 40,
-        }}
-      >
-        <div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 13 }}>
-            <Logo />
+    <footer className="fo-footer">
+      {/* Outer rows stay full width (gutters, legal band); inner content uses the page container. */}
+      <div className="fo-footer__grid ish-footer__outer">
+        <div className="fo-container ish-footer__grid">
+          <div className="fo-footer__col ish-footer__brand">
+            <Link to="/" className="fo-logo">
+              <Logo />
+            </Link>
+            <Spectrum />
+            <p className="small">A creative photography brand turning moments into timeless visual stories.</p>
+            <div className="ish-social">
+              <SocialLinks />
+            </div>
           </div>
-          <p
-            style={{
-              font: "400 15px/1.7 Montserrat, sans-serif",
-              color: "var(--on-dark-2)",
-              maxWidth: 380,
-              margin: "0 0 16px",
-            }}
-          >
-            A creative photography brand turning moments into timeless visual experiences.
-          </p>
-          <p
-            style={{
-              font: "600 11px/1.6 Montserrat, sans-serif",
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-              color: "#8FA0C4",
-              margin: 0,
-            }}
-          >
-            Photography · Creative Direction · Visual Storytelling
-          </p>
-        </div>
 
-        <div>
-          <h4 className="field-label" style={{ color: "#fff", marginBottom: 18 }}>
-            Explore
-          </h4>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start" }}>
-            {navItems.map((item) => (
-              <button key={item.to} className="footer-link" onClick={() => navigate(item.to)}>
+          <nav className="fo-footer__col" aria-labelledby="footer-studio">
+            <p id="footer-studio" className="fo-eyebrow">
+              Studio
+            </p>
+            {studioLinks.map((item) => (
+              <Link key={item.to} to={item.to}>
                 {item.label}
-              </button>
+              </Link>
             ))}
-          </div>
-        </div>
+          </nav>
 
-        <div>
-          <h4 className="field-label" style={{ color: "#fff", marginBottom: 18 }}>
-            Contact
-          </h4>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-              font: "400 14px Montserrat, sans-serif",
-              color: "var(--on-dark-2)",
-            }}
-          >
-            <span>{contact.location}</span>
-            <a href={`tel:${contact.phone}`} className="footer-link" style={{ color: "var(--on-dark-2)" }}>
-              {contact.phone}
-            </a>
-            <a href={`mailto:${contact.email}`} className="footer-link" style={{ color: "var(--on-dark-2)" }}>
-              {contact.email}
-            </a>
-            <span style={{ color: "var(--teal-light)" }}>{contact.instagram}</span>
-            <span style={{ color: "var(--teal-light)" }}>{contact.website}</span>
+          <nav className="fo-footer__col" aria-labelledby="footer-book">
+            <p id="footer-book" className="fo-eyebrow">
+              Book
+            </p>
+            {bookingLinks.map((item) => (
+              <Link key={item.to} to={item.to}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="fo-footer__col">
+            <p className="fo-eyebrow">Visit</p>
+            <span className="small">{contact.location}</span>
+            <a href={`tel:${contact.phone}`}>{contact.phone}</a>
+            <a href={`mailto:${contact.email}`}>{contact.email}</a>
           </div>
         </div>
       </div>
 
-      <div style={{ borderTop: "1px solid #223B78" }}>
-        <div
-          className="container"
-          style={{
-            paddingTop: 22,
-            paddingBottom: 22,
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 12,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <span style={{ font: "400 13px Montserrat, sans-serif", color: "#8FA0C4" }}>
-            © 2026 iShot Concept. All rights reserved.
-          </span>
+      <div className="fo-footer__legal ish-footer__outer">
+        <div className="fo-container ish-footer__legal">
+          <span>© {new Date().getFullYear()} iShot Concept · Photography, creative direction, visual storytelling</span>
+          <ThemeToggle />
         </div>
       </div>
     </footer>

@@ -1,85 +1,89 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { srcFor, srcSetFor } from "../assets.js";
+import { categoryLabel, pad2 } from "../data.js";
+import { useFocusTrap } from "../lib/hooks.js";
+import Icon from "./Icon.jsx";
 
-export default function Lightbox({ item, index, total, onClose, onPrev, onNext }) {
-  // Lock body scroll for the lifetime of the lightbox only.
-  // Kept in its own mount-once effect (empty deps) so the captured
-  // original overflow is the page's true value and is restored exactly
-  // once on unmount — the keyboard effect below re-runs when the nav
-  // callbacks change, which must NOT re-capture/restore the overflow
-  // (that could leave the page permanently unscrollable).
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, []);
+const SWIPE_MIN = 50;
 
-  // Keyboard navigation: Esc closes, arrows cycle.
+/**
+ * Design-system Lightbox: counter + close bar, prev/next stage, caption.
+ * Keyboard: ←/→ navigate, Esc closes; focus is trapped and returns to the opening tile.
+ * Touch: horizontal swipe. Neighbouring images are preloaded. Navigation wraps.
+ */
+export default function Lightbox({ items, index, onIndex, onClose }) {
+  const ref = useRef(null);
+  const swipeStart = useRef(null);
+  useFocusTrap(ref, onClose);
+
+  const total = items.length;
+  const item = items[index];
+  const label = categoryLabel(item.cat);
+  const go = useCallback((step) => onIndex((index + step + total) % total), [index, total, onIndex]);
+
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "ArrowRight") onNext();
-      if (e.key === "ArrowLeft") onPrev();
+      if (e.key === "ArrowRight") go(1);
+      if (e.key === "ArrowLeft") go(-1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, onPrev, onNext]);
+  }, [go]);
 
-  if (!item) return null;
-
-  const counter = typeof index === "number" && total ? `${index + 1} / ${total}` : "";
+  useEffect(() => {
+    if (total < 2) return;
+    for (const p of [items[(index + 1) % total], items[(index - 1 + total) % total]]) {
+      const img = new Image();
+      img.sizes = "100vw";
+      img.srcset = srcSetFor(p);
+    }
+  }, [index, items, total]);
 
   return (
     <div
-      onClick={onClose}
+      ref={ref}
+      className="fo-lightbox"
       role="dialog"
       aria-modal="true"
-      aria-label={`${item.cat} photograph${counter ? `, ${counter}` : ""}`}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 80,
-        background: "rgba(11,24,54,.94)",
-        backdropFilter: "blur(6px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "clamp(16px,4vw,48px)",
-        animation: "ish-fade .2s ease",
-      }}
+      aria-label={`${label} photograph, ${index + 1} of ${total}`}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ position: "relative", maxWidth: 1000, width: "100%", animation: "ish-lb .3s ease" }}
-      >
-        <img
-          src={item.img}
-          alt={`${item.cat} photography by iShot Concept`}
-          style={{
-            width: "100%",
-            maxHeight: "82vh",
-            objectFit: "contain",
-            borderRadius: 8,
-            boxShadow: "0 20px 50px rgba(0,0,0,.5)",
-          }}
-        />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16 }}>
-          <button className="lb-btn" onClick={onPrev} aria-label="Previous photograph">
-            ‹
-          </button>
-          <span style={{ font: "600 13px Montserrat, sans-serif", letterSpacing: "0.04em", color: "var(--on-dark-2)" }}>
-            {item.cat}
-            {counter && <span style={{ color: "var(--on-dark-3)" }}> · {counter}</span>}
-          </span>
-          <button className="lb-btn" onClick={onNext} aria-label="Next photograph">
-            ›
-          </button>
-        </div>
+      <div className="fo-lightbox__bar">
+        <span>
+          {pad2(index + 1)} / {pad2(total)} · {label}
+        </span>
+        <button type="button" className="fo-icon-btn" onClick={onClose} aria-label="Close" data-autofocus="">
+          <Icon as={X} />
+        </button>
       </div>
-      <button className="lb-btn" onClick={onClose} aria-label="Close" style={{ position: "fixed", top: 22, right: 26 }}>
-        ✕
-      </button>
+
+      <div
+        className="fo-lightbox__stage"
+        onPointerDown={(e) => {
+          swipeStart.current = e.clientX;
+        }}
+        onPointerUp={(e) => {
+          if (swipeStart.current == null) return;
+          const dx = e.clientX - swipeStart.current;
+          swipeStart.current = null;
+          if (Math.abs(dx) >= SWIPE_MIN) go(dx < 0 ? 1 : -1);
+        }}
+      >
+        <button type="button" className="fo-icon-btn" onClick={() => go(-1)} aria-label="Previous photograph" disabled={total < 2}>
+          <Icon as={ChevronLeft} />
+        </button>
+        <figure className="ish-lb__figure">
+          <img key={item.file} className="ish-lb__img" src={srcFor(item, 1600)} srcSet={srcSetFor(item)} sizes="100vw" alt={item.alt} draggable="false" />
+        </figure>
+        <button type="button" className="fo-icon-btn" onClick={() => go(1)} aria-label="Next photograph" disabled={total < 2}>
+          <Icon as={ChevronRight} />
+        </button>
+      </div>
+
+      <p className="ish-lb__caption small" aria-hidden="true">
+        {item.alt}
+      </p>
     </div>
   );
 }

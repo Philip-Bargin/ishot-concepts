@@ -1,13 +1,24 @@
-node_modules
-dist
-dist-ssr
+node_modules/
+dist/
+dist-ssr/
 *.local
 .env
 .env.*
 !.env.example
 .DS_Store
-.vite
+.vite/
 .gstack/
 
 # local editor/agent settings
 .claude/settings.local.json
+iShot_Concept_DESIGN (1).md
+
+# generated from design-system/ by scripts/sync-design-system.mjs
+src/styles/ds/
+
+# wp-env / plugin dependencies
+wordpress/wp-content/plugins/ishot-booking/vendor/
+.phpunit.result.cache
+
+# QA tools (tools/qa) — vendor lives in a Docker volume locally, installed fresh in CI
+tools/qa/vendor/

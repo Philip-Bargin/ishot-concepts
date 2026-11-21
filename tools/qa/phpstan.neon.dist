@@ -1,0 +1,22 @@
+includes:
+	- phpstan-baseline.neon
+
+# PHPStan for the iShot plugin and theme. Level 6, as set in the project's quality requirements
+# (plan §6). WordPress core and WP-CLI are known through stubs (szepeviktor/phpstan-wordpress,
+# php-stubs/wp-cli-stubs); Action Scheduler through the plugin's own Composer vendor directory,
+# so run `composer install` in the plugin first.
+parameters:
+	level: 6
+	phpVersion: 80200
+	paths:
+		- ../../wordpress/wp-content/plugins/ishot-booking/ishot-booking.php
+		- ../../wordpress/wp-content/plugins/ishot-booking/src
+		- ../../wordpress/wp-content/themes/ishot-concept/functions.php
+	scanFiles:
+		- vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
+		- ../../wordpress/wp-content/plugins/ishot-booking/vendor/woocommerce/action-scheduler/functions.php
+	scanDirectories:
+		- ../../wordpress/wp-content/plugins/ishot-booking/vendor/woocommerce/action-scheduler/classes
+	bootstrapFiles:
+		- phpstan-bootstrap.php
+	treatPhpDocTypesAsCertain: false
