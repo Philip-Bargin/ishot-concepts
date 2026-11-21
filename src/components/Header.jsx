@@ -17,28 +17,31 @@ export default function Header() {
   return (
     <>
       <header className="fo-header">
-        <Link to="/" className="fo-logo">
-          <Logo />
-        </Link>
-        <nav className="fo-header__social" aria-label="Social">
-          <SocialLinks />
-        </nav>
-        <div className="fo-header__actions">
-          <Link to="/account" className="fo-navlink ish-signin">
-            My bookings
+        {/* Full-width bar; content constrained to the same container as the page (fo-container). */}
+        <div className="fo-container ish-header__inner">
+          <Link to="/" className="fo-logo">
+            <Logo />
           </Link>
-          <Link to="/book" className="fo-btn fo-btn--primary fo-btn--sm">
-            Book now
-          </Link>
-          <button
-            type="button"
-            className="fo-menu-toggle"
-            aria-expanded={open}
-            aria-controls="site-menu"
-            onClick={() => setOpen(true)}
-          >
-            Menu <Icon as={Menu} size={20} />
-          </button>
+          <nav className="fo-header__social" aria-label="Social">
+            <SocialLinks />
+          </nav>
+          <div className="fo-header__actions">
+            <Link to="/account" className="fo-navlink ish-signin">
+              My bookings
+            </Link>
+            <Link to="/book" className="fo-btn fo-btn--primary fo-btn--sm">
+              Book now
+            </Link>
+            <button
+              type="button"
+              className="fo-menu-toggle"
+              aria-expanded={open}
+              aria-controls="site-menu"
+              onClick={() => setOpen(true)}
+            >
+              Menu <Icon as={Menu} size={20} />
+            </button>
+          </div>
         </div>
       </header>
       {open && <MenuSheet onClose={() => setOpen(false)} />}

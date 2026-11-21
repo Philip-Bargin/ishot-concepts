@@ -26,15 +26,17 @@ export default function Creative() {
           />
         </div>
         <div className="fo-hero__body">
-          <p className="fo-eyebrow">Creative direction</p>
-          <h1 className="ish-display-xl">Ideas, directed into images</h1>
-          <div className="fo-hero__row">
-            <p className="small ish-hero__tagline">
-              From mood and styling to set and story, we direct the whole creative so every frame is intentional.
-            </p>
-            <Link to="/book?service=s4" className="fo-btn fo-btn--primary">
-              Start a concept
-            </Link>
+          <div className="fo-container ish-hero__inner">
+            <p className="fo-eyebrow">Creative direction</p>
+            <h1 className="ish-display-xl">Ideas, directed into images</h1>
+            <div className="fo-hero__row">
+              <p className="small ish-hero__tagline">
+                From mood and styling to set and story, we direct the whole creative so every frame is intentional.
+              </p>
+              <Link to="/book?service=s4" className="fo-btn fo-btn--primary">
+                Start a concept
+              </Link>
+            </div>
           </div>
         </div>
       </section>

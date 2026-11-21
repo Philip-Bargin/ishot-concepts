@@ -37,51 +37,56 @@ const bookingLinks = [
 export default function Footer() {
   return (
     <footer className="fo-footer">
-      <div className="fo-footer__grid ish-footer__grid">
-        <div className="fo-footer__col ish-footer__brand">
-          <Link to="/" className="fo-logo">
-            <Logo />
-          </Link>
-          <Spectrum />
-          <p className="small">A creative photography brand turning moments into timeless visual stories.</p>
-          <div className="ish-social">
-            <SocialLinks />
+      {/* Outer rows stay full width (gutters, legal band); inner content uses the page container. */}
+      <div className="fo-footer__grid ish-footer__outer">
+        <div className="fo-container ish-footer__grid">
+          <div className="fo-footer__col ish-footer__brand">
+            <Link to="/" className="fo-logo">
+              <Logo />
+            </Link>
+            <Spectrum />
+            <p className="small">A creative photography brand turning moments into timeless visual stories.</p>
+            <div className="ish-social">
+              <SocialLinks />
+            </div>
           </div>
-        </div>
 
-        <nav className="fo-footer__col" aria-labelledby="footer-studio">
-          <p id="footer-studio" className="fo-eyebrow">
-            Studio
-          </p>
-          {studioLinks.map((item) => (
-            <Link key={item.to} to={item.to}>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+          <nav className="fo-footer__col" aria-labelledby="footer-studio">
+            <p id="footer-studio" className="fo-eyebrow">
+              Studio
+            </p>
+            {studioLinks.map((item) => (
+              <Link key={item.to} to={item.to}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
-        <nav className="fo-footer__col" aria-labelledby="footer-book">
-          <p id="footer-book" className="fo-eyebrow">
-            Book
-          </p>
-          {bookingLinks.map((item) => (
-            <Link key={item.to} to={item.to}>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+          <nav className="fo-footer__col" aria-labelledby="footer-book">
+            <p id="footer-book" className="fo-eyebrow">
+              Book
+            </p>
+            {bookingLinks.map((item) => (
+              <Link key={item.to} to={item.to}>
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
-        <div className="fo-footer__col">
-          <p className="fo-eyebrow">Visit</p>
-          <span className="small">{contact.location}</span>
-          <a href={`tel:${contact.phone}`}>{contact.phone}</a>
-          <a href={`mailto:${contact.email}`}>{contact.email}</a>
+          <div className="fo-footer__col">
+            <p className="fo-eyebrow">Visit</p>
+            <span className="small">{contact.location}</span>
+            <a href={`tel:${contact.phone}`}>{contact.phone}</a>
+            <a href={`mailto:${contact.email}`}>{contact.email}</a>
+          </div>
         </div>
       </div>
 
-      <div className="fo-footer__legal">
-        <span>© {new Date().getFullYear()} iShot Concept · Photography, creative direction, visual storytelling</span>
-        <ThemeToggle />
+      <div className="fo-footer__legal ish-footer__outer">
+        <div className="fo-container ish-footer__legal">
+          <span>© {new Date().getFullYear()} iShot Concept · Photography, creative direction, visual storytelling</span>
+          <ThemeToggle />
+        </div>
       </div>
     </footer>
   );

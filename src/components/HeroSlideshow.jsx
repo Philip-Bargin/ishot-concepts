@@ -64,30 +64,32 @@ export default function HeroSlideshow({ slides, label = "Featured work", childre
       </div>
 
       <div className="fo-hero__body">
-        {children}
-        {slides.length > 1 && (
-          <div className="ish-hero__controls">
-            <button
-              type="button"
-              className="fo-icon-btn"
-              onClick={() => setPlaying((p) => !p)}
-              aria-label={playing ? "Pause slideshow" : "Play slideshow"}
-            >
-              <Icon as={playing ? Pause : Play} />
-            </button>
-            <div className="fo-dots" role="group" aria-label="Choose a slide">
-              {slides.map((photo, i) => (
-                <button
-                  key={photo.file}
-                  type="button"
-                  aria-label={`Show slide ${i + 1}`}
-                  aria-current={i === index ? "true" : undefined}
-                  onClick={() => setIndex(i)}
-                />
-              ))}
+        <div className="fo-container ish-hero__inner">
+          {children}
+          {slides.length > 1 && (
+            <div className="ish-hero__controls">
+              <button
+                type="button"
+                className="fo-icon-btn"
+                onClick={() => setPlaying((p) => !p)}
+                aria-label={playing ? "Pause slideshow" : "Play slideshow"}
+              >
+                <Icon as={playing ? Pause : Play} />
+              </button>
+              <div className="fo-dots" role="group" aria-label="Choose a slide">
+                {slides.map((photo, i) => (
+                  <button
+                    key={photo.file}
+                    type="button"
+                    aria-label={`Show slide ${i + 1}`}
+                    aria-current={i === index ? "true" : undefined}
+                    onClick={() => setIndex(i)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );
