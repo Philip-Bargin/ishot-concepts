@@ -20,7 +20,8 @@ const GLYPHS = {
   ),
 };
 
-function Glyph({ id }) {
+/** Brand line icon (instagram | facebook | whatsapp); decorative, the control carries the label. */
+export function BrandIcon({ id }) {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" focusable="false">
       {GLYPHS[id]}
@@ -35,11 +36,11 @@ export default function SocialLinks() {
       {socials.map((s) =>
         s.url ? (
           <a key={s.id} className="fo-icon-btn" href={s.url} target="_blank" rel="noopener noreferrer" aria-label={`${s.label} (opens in a new tab)`}>
-            <Glyph id={s.id} />
+            <BrandIcon id={s.id} />
           </a>
         ) : (
           <span key={s.id} className="fo-icon-btn ish-social--pending" role="img" aria-label={`${s.label}: link not added yet`} title={`${s.label}: link not added yet`}>
-            <Glyph id={s.id} />
+            <BrandIcon id={s.id} />
           </span>
         ),
       )}

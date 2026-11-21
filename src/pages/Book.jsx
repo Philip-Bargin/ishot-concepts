@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { CalendarPlus, CircleAlert, CircleCheck, Info, MessageCircle } from "lucide-react";
+import { CalendarPlus, CircleAlert, CircleCheck, Info } from "lucide-react";
 import { contact, pad2 } from "../data.js";
 import { MAX, validate } from "../lib/validation.js";
 import { usePageTitle } from "../lib/hooks.js";
 import Icon from "../components/Icon.jsx";
+import { BrandIcon } from "../components/SocialLinks.jsx";
 import { ErrorSummary, Field } from "../components/ui.jsx";
 import SlotPicker from "../components/SlotPicker.jsx";
 import {
@@ -168,7 +169,7 @@ export default function Book() {
               <Icon as={CalendarPlus} /> Add to calendar
             </button>
             <a className="fo-btn fo-btn--outline" href={whatsapp} target="_blank" rel="noopener noreferrer">
-              <Icon as={MessageCircle} /> Message on WhatsApp
+              <BrandIcon id="whatsapp" /> Message on WhatsApp
             </a>
           </div>
           <Link to="/" className="fo-btn fo-btn--text">

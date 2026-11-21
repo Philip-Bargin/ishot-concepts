@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Link2, Mail, MessageCircle } from "lucide-react";
+import { Link2, Mail } from "lucide-react";
 import { posts } from "../prototype/sampleContent.js";
 import { usePageTitle } from "../lib/hooks.js";
 import Icon from "../components/Icon.jsx";
+import { BrandIcon } from "../components/SocialLinks.jsx";
 import { BlogCard, CtaBand, PageTitle, Photo, PrototypeNotice, formatPostDate } from "../components/ui.jsx";
 
 function Body({ blocks }) {
@@ -38,7 +39,7 @@ function Share({ title }) {
       <p className="fo-eyebrow">Share</p>
       <div className="ish-social">
         <a className="fo-icon-btn" href={`https://wa.me/?text=${encodeURIComponent(`${title} ${url}`)}`} target="_blank" rel="noopener noreferrer" aria-label="Share on WhatsApp (opens in a new tab)">
-          <Icon as={MessageCircle} />
+          <BrandIcon id="whatsapp" />
         </a>
         <a className="fo-icon-btn" href={`mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`} aria-label="Share by email">
           <Icon as={Mail} />
