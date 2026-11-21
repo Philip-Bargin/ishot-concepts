@@ -1,7 +1,7 @@
 // Controlled rendering (plan §5.1). One capture = one page state at one width and theme.
 //   captureState(page, { url, width, theme, landmarks?, masks? }) -> { png, geometry, styles }
 import { probeLandmarks } from './geometry.mjs';
-import { landmarksFor } from './landmarks.mjs';
+import { findMissingRequired, landmarksFor } from './landmarks.mjs';
 import { FIXED_TIME, MASKS } from './masks.mjs';
 
 export const THEME_KEY = 'ishot-theme'; // src/lib/theme.js
@@ -95,9 +95,12 @@ export async function captureState(page, { url, width, theme, landmarks = 'commo
   if (slides.slice(1).some(Boolean)) throw new Error(`More than one active slide at ${url}`);
 
   await settle(page, viewport.height);
-  const { geometry, styles } = await probeLandmarks(page, landmarksFor(landmarks));
+  const specs = landmarksFor(landmarks);
+  const { geometry, styles, counts } = await probeLandmarks(page, specs);
+  const absent = findMissingRequired(specs, counts);
+  if (absent.length) throw new Error(`Required landmarks not found at ${url} (${width}px, ${theme}): ${absent.join(', ')}`);
   await page.addStyleTag({ content: maskCss(masks) });
   await page.mouse.move(0, 0);
   const png = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' });
-  return { png, geometry, styles };
+  return { png, geometry, styles, counts };
 }

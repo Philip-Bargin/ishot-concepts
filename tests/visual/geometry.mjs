@@ -1,7 +1,10 @@
 // In-page probes: getBoundingClientRect (page coordinates) and computed-style reads for each landmark.
 import { STYLE_PROPS } from './landmarks.mjs';
 
-/** Returns { geometry: Landmark[], styles: StyleProbe[] } read in the browser. */
+/**
+ * Returns { geometry: Landmark[], styles: StyleProbe[], counts: { [spec name]: rendered match count } }.
+ * counts includes specs that matched nothing (0), so an absent landmark is never silently dropped.
+ */
 export async function probeLandmarks(page, landmarks) {
   return page.evaluate(
     ({ specs, props }) => {
@@ -18,15 +21,18 @@ export async function probeLandmarks(page, landmarks) {
       };
       const geometry = [];
       const styles = [];
+      const counts = {};
       for (const spec of specs) {
         const found = [...document.querySelectorAll(spec.selector)];
         const els = spec.all ? found : found.slice(0, 1);
         let i = 0;
+        counts[spec.name] = 0;
         for (const el of els) {
           const rect = el.getBoundingClientRect();
           if (rect.width === 0 && rect.height === 0) continue; // not rendered (e.g. a closed menu)
           const name = spec.all ? `${spec.name}[${i}]` : spec.name;
           i += 1;
+          counts[spec.name] = i;
           const entry = {
             name,
             x: r2(rect.left + window.scrollX),
@@ -40,7 +46,7 @@ export async function probeLandmarks(page, landmarks) {
           styles.push({ name, styles: Object.fromEntries(props.map((p) => [p, read(cs, p)])) });
         }
       }
-      return { geometry, styles };
+      return { geometry, styles, counts };
     },
     { specs: landmarks, props: STYLE_PROPS }
   );

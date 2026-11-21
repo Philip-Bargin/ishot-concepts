@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect } from '@playwright/test';
 import { captureState, contextOptions, THEMES, VIEWPORTS } from './capture.mjs';
-import { compareStates } from './compare.mjs';
+import { compareStates, evaluateGate, referenceFingerprint } from './compare.mjs';
 import { assertPrototypeIntegrity } from './integrity.mjs';
 import { ROUTES } from './routes.mjs';
 
@@ -18,6 +18,20 @@ const BASE = process.env.VISUAL_BASE_URL || `http://localhost:${process.env.VISU
 const readJson = (file) => (fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null);
 const refGeometry = readJson(path.join(REF_DIR, 'geometry.json'));
 const refStyles = readJson(path.join(REF_DIR, 'styles.json'));
+// Reference PNGs live in the gitignored output folder. They are only trusted when the fingerprint stored with
+// them equals the fingerprint of the committed JSON; otherwise the region check is reported as not run.
+function regionAvailability() {
+  const fpFile = path.join(OUT, 'reference', 'fingerprint.json');
+  if (!refGeometry || !fs.existsSync(fpFile)) return { ok: false, note: 'reference PNGs missing: run npm run visual:reference to enable region diffs' };
+  const stored = JSON.parse(fs.readFileSync(fpFile, 'utf8')).sha256;
+  const current = referenceFingerprint(path.join(REF_DIR, 'geometry.json'), path.join(REF_DIR, 'styles.json'));
+  return stored === current
+    ? { ok: true }
+    : { ok: false, note: 'reference PNGs are stale (fingerprint differs from the committed reference JSON): run npm run visual:reference' };
+}
+const regions = MODE === 'check' ? regionAvailability() : { ok: false };
+if (MODE === 'check' && !regions.ok) console.warn(`WARNING: region comparison will not run. ${regions.note}`);
+
 const keyOf = (name, width, theme) => `${name}@${width}@${theme}`;
 
 test.beforeAll(() => {
@@ -53,24 +67,33 @@ for (const route of ROUTES) {
           fs.writeFileSync(path.join(OUT, 'reference', `${key}.png`), shot.png);
           fs.writeFileSync(
             path.join(OUT, 'partials', `${key}.json`),
-            JSON.stringify({ key, meta: browserMeta(browser, testInfo), geometry: shot.geometry, styles: shot.styles })
+            JSON.stringify({ key, meta: browserMeta(browser, testInfo), geometry: shot.geometry, counts: shot.counts, styles: shot.styles })
           );
           return;
         }
 
         expect(refGeometry?.states[key], `no committed reference for ${key}; run npm run visual:reference`).toBeTruthy();
         const refPngFile = path.join(OUT, 'reference', `${key}.png`);
+        const havePng = regions.ok && fs.existsSync(refPngFile);
         const ref = {
-          png: fs.existsSync(refPngFile) ? fs.readFileSync(refPngFile) : null,
-          geometry: refGeometry.states[key],
+          png: havePng ? fs.readFileSync(refPngFile) : null,
+          regionNote: regions.ok ? `reference PNG missing for ${key}` : regions.note,
+          geometry: refGeometry.states[key].landmarks,
+          counts: refGeometry.states[key].counts,
           styles: refStyles.states[key],
         };
         const result = compareStates(ref, shot);
+        const gate = evaluateGate(result, { gate: route.gate !== false });
         fs.mkdirSync(path.join(OUT, 'current'), { recursive: true });
         fs.writeFileSync(path.join(OUT, 'current', `${key}.png`), shot.png);
-        fs.writeFileSync(path.join(OUT, 'current', `${key}.result.json`), JSON.stringify({ key, ...result }));
-        expect(result.geometryFailures, 'geometry').toEqual([]);
-        expect(result.styleFailures, 'styles').toEqual([]);
+        fs.writeFileSync(path.join(OUT, 'current', `${key}.result.json`), JSON.stringify({ key, gate: route.gate !== false, ...result }));
+        if (result.regionStatus !== 'compared') testInfo.annotations.push({ type: 'warning', description: `region comparison not run: ${result.regionNote}` });
+        if (gate.reviewOnly) testInfo.annotations.push({ type: 'review-only', description: 'gate: false, needs the owner manual review' });
+        if (!gate.pass) {
+          expect(result.geometryFailures, 'geometry').toEqual([]);
+          expect(result.styleFailures, 'styles').toEqual([]);
+        }
+        // prototype against itself: any flagged region is a nondeterminism bug
         expect(result.regionDiffs.filter((r) => r.flagged), 'regions over 1 %').toEqual([]);
       });
     }

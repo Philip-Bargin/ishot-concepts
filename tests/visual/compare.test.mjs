@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PNG } from 'pngjs';
-import { compareStates } from './compare.mjs';
+import { compareStates, evaluateGate } from './compare.mjs';
 
 const lm = (over = {}) => ({ name: 'card[0]', x: 20, y: 100, width: 100, height: 60, ...over });
 const st = (over = {}) => ({
@@ -60,7 +60,9 @@ test('text blocks allow 4 px in height, other boxes only 2 px', () => {
 test('a landmark missing from the actual page is a geometry failure', () => {
   const r = compareStates(state(), state({ geometry: [] }));
   assert.equal(r.geometryFailures.length, 1);
-  assert.equal(r.geometryFailures[0].field, 'missing');
+  assert.equal(r.geometryFailures[0].field, 'count');
+  assert.equal(r.geometryFailures[0].expected, 1);
+  assert.equal(r.geometryFailures[0].actual, 0);
 });
 
 test('a changed colour is a style failure', () => {
@@ -100,4 +102,59 @@ test('a region outside the page image on both sides is skipped, not flagged', ()
   const geometry = [lm({ x: 150, y: 10, width: 50, height: 50 })];
   const r = compareStates(state({ png, geometry }), state({ png, geometry }));
   assert.deepEqual(r.regionDiffs, []);
+});
+
+const cards = (n) => Array.from({ length: n }, (_, i) => lm({ name: `card[${i}]`, y: 100 + i * 80 }));
+const cardStyles = (n, color = 'rgb(1, 1, 1)') => Array.from({ length: n }, (_, i) => st({ name: `card[${i}]`, styles: { color } }));
+
+test('an extra landmark that exists only in the actual page is reported', () => {
+  const r = compareStates(
+    { png: null, geometry: cards(3), styles: cardStyles(3), counts: { card: 3 } },
+    { png: null, geometry: cards(4), styles: cardStyles(4), counts: { card: 4 } }
+  );
+  assert.equal(r.geometryFailures.length, 1);
+  assert.deepEqual([r.geometryFailures[0].name, r.geometryFailures[0].field, r.geometryFailures[0].expected, r.geometryFailures[0].actual], ['card', 'count', 3, 4]);
+});
+
+test('a missing middle item is one count failure, with no index-shifted cascade', () => {
+  const actual = cards(4).filter((_, i) => i !== 1).map((l, i) => ({ ...l, name: `card[${i}]` })); // 3 left, shifted up
+  const r = compareStates(
+    { png: null, geometry: cards(4), styles: cardStyles(4), counts: { card: 4 } },
+    { png: null, geometry: actual, styles: cardStyles(3, 'rgb(9, 9, 9)'), counts: { card: 3 } }
+  );
+  assert.equal(r.geometryFailures.length, 1);
+  assert.equal(r.geometryFailures[0].field, 'count');
+  assert.deepEqual(r.styleFailures, []); // styles are not compared past a count mismatch either
+});
+
+test('a spec that matched nothing on both sides is recorded as 0 and is not a failure', () => {
+  const r = compareStates(
+    { png: null, geometry: [], styles: [], counts: { form: 0 } },
+    { png: null, geometry: [], styles: [], counts: { form: 0 } }
+  );
+  assert.deepEqual(r.geometryFailures, []);
+  const appeared = compareStates(
+    { png: null, geometry: [], styles: [], counts: { form: 0 } },
+    { png: null, geometry: [lm({ name: 'form' })], styles: [st({ name: 'form' })], counts: { form: 1 } }
+  );
+  assert.equal(appeared.geometryFailures.length, 1);
+  assert.equal(appeared.geometryFailures[0].field, 'count');
+});
+
+test('region status says not-run when a PNG is missing, with a note', () => {
+  const none = compareStates(state(), state());
+  assert.equal(none.regionStatus, 'not-run');
+  assert.ok(none.regionNote);
+  const stale = compareStates({ ...state(), regionNote: 'reference PNGs are stale' }, state());
+  assert.equal(stale.regionStatus, 'not-run');
+  assert.match(stale.regionNote, /stale/);
+  const png = makePng(50, 50, () => [1, 2, 3]);
+  assert.equal(compareStates(state({ png }), state({ png })).regionStatus, 'compared');
+});
+
+test('gate: false makes geometry and style failures review-only', () => {
+  const failing = { geometryFailures: [{ name: 'x' }], styleFailures: [{ name: 'y' }], regionDiffs: [] };
+  assert.deepEqual(evaluateGate(failing), { pass: false, reviewOnly: false, failures: { geometry: 1, style: 1 } });
+  assert.deepEqual(evaluateGate(failing, { gate: false }), { pass: true, reviewOnly: true, failures: { geometry: 1, style: 1 } });
+  assert.equal(evaluateGate({ geometryFailures: [], styleFailures: [], regionDiffs: [] }).pass, true);
 });
