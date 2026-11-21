@@ -213,6 +213,46 @@ h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd { margin: 0; }
 /* ---------- Footer ---------- */
 .fo-footer__col .small { color: var(--ink); }
 .fo-footer__legal .ish-linkbtn { color: var(--on-band); }
+/* No giant wordmark (owner, 2026-11-21): brand column + three equal 3-row columns.
+   Mobile: brand, then Studio | Book side by side, then Visit. Tablet: brand row above three columns. */
+.fo-footer .ish-footer__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--grid-gap); row-gap: var(--space-6); }
+.ish-footer__brand, .ish-footer__grid > :last-child { grid-column: 1 / -1; }
+.ish-footer__brand .small { max-width: 34ch; }
+.fo-footer__col a { overflow-wrap: anywhere; }
+@media (min-width: 768px) {
+  .fo-footer .ish-footer__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ish-footer__grid > :last-child { grid-column: auto; }
+}
+@media (min-width: 1024px) {
+  .fo-footer .ish-footer__grid { grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)); }
+  .ish-footer__brand { grid-column: auto; }
+}
+
+/* Social platform whose link hasn't been supplied: visibly inactive, not focusable, no hover fill. */
+.fo-icon-btn.ish-social--pending, .fo-icon-btn.ish-social--pending:hover { opacity: var(--opacity-disabled); border-style: dashed; background: transparent; color: inherit; cursor: not-allowed; }
+
+/* ---------- Testimonials ---------- */
+/* Design-system Testimonial: band, heading row, 3 Quote cards; a swipe row (scroll-snap) on mobile. */
+.ish-quotes { display: grid; grid-auto-flow: column; grid-auto-columns: 85%; gap: var(--grid-gap); overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; scrollbar-width: none; margin-top: var(--space-6); }
+.ish-quotes::-webkit-scrollbar { display: none; }
+.ish-quotes > * { scroll-snap-align: start; }
+.ish-quotes .fo-quote { margin: 0; align-content: start; }
+.ish-quotes .fo-quote blockquote { font-style: normal; }
+.ish-quote__meta { display: grid; gap: var(--space-0-5); }
+.ish-quote__meta small { font: 400 12px/16px var(--font-text); letter-spacing: 0; text-transform: none; color: var(--ink-muted); }
+.ish-placeholder { color: var(--ink-muted); }
+@media (min-width: 768px) {
+  .ish-quotes { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  .ish-quotes__nav { display: none; }
+}
+.fo-band .ish-notice { margin-top: var(--space-4); color: var(--ink); }
+
+/* ---------- Founder ---------- */
+/* Portrait 4:5 left, text right (1 : 1.2, per the design-system Profile card). */
+@media (min-width: 768px) { .ish-split.ish-founder { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); } }
+.ish-founder .fo-img { max-width: 480px; }
+.ish-founder .fo-btn--text { justify-self: start; }
+.ish-founder .body-lg { max-width: var(--container-text); }
 
 /* ---------- Service detail blocks ---------- */
 .ish-detail { padding-block: var(--space-8); border-top: var(--border-hairline) solid var(--line); }

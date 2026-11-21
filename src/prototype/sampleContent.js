@@ -130,3 +130,27 @@ export const sampleBookings = [
 ];
 
 export const CANCEL_CUTOFF_HOURS = 72; // placeholder until the owner sets the policy
+
+// ------------------------------------------------------------
+// Testimonials and founder: PLACEHOLDERS ONLY. No client quotes,
+// names, ratings or founder details have been supplied yet
+// (docs/content-inventory.md §E–F). Nothing here may be presented
+// as a genuine testimonial. In WordPress the section is fed only by
+// published ishot_testimonial entries, which require recorded client
+// consent, and is hidden until at least 3 exist.
+// ------------------------------------------------------------
+export const testimonialPlaceholders = [1, 2, 3].map((n) => ({
+  id: `placeholder-${n}`,
+  placeholder: true,
+  quote: "A client's own words about their session appear here, 15 to 40 words, once they agree to publication.",
+  name: "Client name",
+  session: "Session type",
+}));
+
+export const founderPlaceholder = {
+  placeholder: true,
+  name: "Founder's name",
+  title: "Founder & CEO",
+  bio: "A short biography goes here, 60 to 100 words in the founder's own voice: how iShot Concept started, the work they love, and what clients can expect when they step in front of the camera.",
+  photo: null,
+};

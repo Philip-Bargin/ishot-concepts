@@ -7,6 +7,9 @@ import HeroSlideshow from "../components/HeroSlideshow.jsx";
 import Gallery from "../components/Gallery.jsx";
 import Reveal from "../components/Reveal.jsx";
 import Icon from "../components/Icon.jsx";
+import Testimonials from "../components/Testimonials.jsx";
+import Founder from "../components/Founder.jsx";
+import { founderPlaceholder, testimonialPlaceholders } from "../prototype/sampleContent.js";
 import { CategoryCard, CtaBand, FeatureList, Marquee, Photo, SectionHeading, ServiceTiles, Stats } from "../components/ui.jsx";
 
 const slides = [photos.phoneBirthday, photos.gownStair, photos.graduate, photos.denimSmile];
@@ -145,6 +148,10 @@ export default function Home() {
           <Photo photo={photos.redFurSofa} ratio="portrait" alt="" />
         </div>
       </section>
+
+      {/* Testimonials (band) sits between two paper sections so no two band grounds touch. */}
+      <Testimonials items={testimonialPlaceholders} />
+      <Founder person={founderPlaceholder} />
 
       <CtaBand />
       <Marquee words={categories.map((c) => c.label)} />

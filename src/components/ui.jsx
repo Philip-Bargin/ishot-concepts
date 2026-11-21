@@ -270,12 +270,12 @@ export function ErrorSummary({ errors, labels, innerRef, prefix = "f" }) {
 }
 
 /** Visible label for prototype-only data (sample posts, projects, bookings). */
-export function PrototypeNotice({ children }) {
+export function PrototypeNotice({ children, label = "Sample content.", className = "" }) {
   return (
-    <div className="fo-alert ish-alert--info ish-measure">
+    <div className={`fo-alert ish-alert--info ish-measure${className ? ` ${className}` : ""}`}>
       <Icon as={Info} />
       <p>
-        <strong>Sample content.</strong> {children}
+        <strong>{label}</strong> {children}
       </p>
     </div>
   );

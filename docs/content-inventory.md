@@ -41,15 +41,19 @@ The design system's 4 "service tiles" show your top 4 services on the Home page.
 
 ## E. Brand assets and copy
 - ☐ **Vector logo** (SVG, AI or PDF). Only PNGs are available now.
-- ☐ Founder name, short bio (60–100 words) and portrait photo
+- ☐ Founder/CEO name, job title, short bio (60–100 words) and portrait photo. The Home page shows a labelled placeholder until these are supplied.
 - ☐ Studio story for the About page (150–300 words)
 - ☐ Stats you can back up (e.g. years in business, sessions shot). The design system forbids unsourced numbers.
 - ☐ 4 "Why us" points (title + one sentence each)
 - ☐ 4–8 FAQs with answers
-- ☐ Social links: Instagram ☐ Facebook ☐ TikTok ☐ WhatsApp number ☐
+- ☐ Social links. The site shows **only Instagram, Facebook and WhatsApp** (owner decision 2026-11-21):
+  - Instagram: `@ishotconcept` (from the brand brief). ☐ Confirm.
+  - Facebook: ☐ **page URL needed.** Until it's supplied, the icon shows as inactive ("link not added yet").
+  - WhatsApp: ☐ **confirm that 0881405259 (+231) is the studio's WhatsApp number.** The link currently uses it.
 - ☐ Studio address and/or "on-location only"
 
 ## F. Testimonials (section is hidden unless there are at least 3)
+The prototype's Home page shows three clearly labelled placeholder cards with no names or ratings. WordPress publishes only consented `ishot_testimonial` entries.
 | Client first name / initials | Session type | Quote (15–40 words, their own words) | Consent to publish? | Rating |
 |---|---|---|---|---|
 | ☐ | ☐ | ☐ | ☐ | ☐ |

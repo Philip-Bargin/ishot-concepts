@@ -19,9 +19,18 @@ export const contact = {
   email: "ishotconcept01@gmail.com",
   instagram: "@ishotconcept",
   instagramUrl: "https://www.instagram.com/ishotconcept/",
+  // Built from the studio phone above (+231). Owner to confirm this number is on WhatsApp.
   whatsappUrl: "https://wa.me/231881405259",
   website: "www.ishotconcept.com",
 };
+
+// The only social platforms the site shows, in this order (owner decision 2026-11-21).
+// `url: null` = not supplied yet: the icon renders inactive and says so. Never guess a URL.
+export const socials = [
+  { id: "instagram", label: "Instagram", url: contact.instagramUrl },
+  { id: "facebook", label: "Facebook", url: null },
+  { id: "whatsapp", label: "WhatsApp", url: contact.whatsappUrl },
+];
 
 // Categories cycle the logo's aperture colours in order (see index.css [data-cat]).
 export const categories = [
