@@ -22,3 +22,6 @@ wordpress/wp-content/plugins/ishot-booking/vendor/
 
 # QA tools (tools/qa) — vendor lives in a Docker volume locally, installed fresh in CI
 tools/qa/vendor/
+
+# visual comparison harness output (screenshots, reports)
+tests/visual/.output/

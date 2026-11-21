@@ -1,0 +1,47 @@
+// In-page probes: getBoundingClientRect (page coordinates) and computed-style reads for each landmark.
+import { STYLE_PROPS } from './landmarks.mjs';
+
+/** Returns { geometry: Landmark[], styles: StyleProbe[] } read in the browser. */
+export async function probeLandmarks(page, landmarks) {
+  return page.evaluate(
+    ({ specs, props }) => {
+      const r2 = (n) => Math.round(n * 100) / 100;
+      const sides = ['top', 'right', 'bottom', 'left'];
+      const read = (cs, prop) => {
+        if (prop === 'border') {
+          return sides
+            .map((s) => `${cs.getPropertyValue(`border-${s}-width`)} ${cs.getPropertyValue(`border-${s}-style`)} ${cs.getPropertyValue(`border-${s}-color`)}`)
+            .join(' | ');
+        }
+        if (prop === 'padding') return sides.map((s) => cs.getPropertyValue(`padding-${s}`)).join(' ');
+        return cs.getPropertyValue(prop);
+      };
+      const geometry = [];
+      const styles = [];
+      for (const spec of specs) {
+        const found = [...document.querySelectorAll(spec.selector)];
+        const els = spec.all ? found : found.slice(0, 1);
+        let i = 0;
+        for (const el of els) {
+          const rect = el.getBoundingClientRect();
+          if (rect.width === 0 && rect.height === 0) continue; // not rendered (e.g. a closed menu)
+          const name = spec.all ? `${spec.name}[${i}]` : spec.name;
+          i += 1;
+          const entry = {
+            name,
+            x: r2(rect.left + window.scrollX),
+            y: r2(rect.top + window.scrollY),
+            width: r2(rect.width),
+            height: r2(rect.height),
+          };
+          if (spec.text) entry.text = true;
+          geometry.push(entry);
+          const cs = getComputedStyle(el);
+          styles.push({ name, styles: Object.fromEntries(props.map((p) => [p, read(cs, p)])) });
+        }
+      }
+      return { geometry, styles };
+    },
+    { specs: landmarks, props: STYLE_PROPS }
+  );
+}

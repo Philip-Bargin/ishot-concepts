@@ -22,7 +22,9 @@
     "test:php:unit": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-booking vendor/bin/phpunit --testsuite unit",
     "seed:export": "node scripts/export-wp-seed.mjs",
     "wp:import": "npm run seed:export && wp-env run cli wp ishot import-prototype --seed=wp-content/ishot-seed/prototype-content.json --images=wp-content/ishot-prototype-images",
-    "qa": "node scripts/qa.mjs"
+    "qa": "node scripts/qa.mjs",
+    "visual:reference": "node scripts/visual-reference.mjs",
+    "test:visual": "node scripts/visual-reference.mjs --check"
   },
   "dependencies": {
     "@fontsource/oswald": "^5.1.1",
@@ -33,9 +35,13 @@
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.65.1",
     "@vitejs/plugin-react": "^4.3.1",
     "@wordpress/env": "^10.14.0",
     "axe-core": "^4.10.2",
+    "pixelmatch": "8.0.0",
+    "pngjs": "7.0.0",
     "sharp": "^0.33.5",
     "vite": "^5.4.8"
   }
