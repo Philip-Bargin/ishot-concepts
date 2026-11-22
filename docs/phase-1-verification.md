@@ -68,4 +68,6 @@ Related accepted change: header, hero and footer content aligned to the page con
 | Founder/CEO: portrait | High-resolution photo, 4:5 crop possible | Home: Founder section (4:5 placeholder frame) | ☐ Not supplied |
 | Testimonials | At least 3: client name or initials, session type, quote (15–40 words in their own words), **recorded consent**, optional rating | Home: Testimonials section (3 placeholder cards, no ratings) | ☐ Not supplied |
 
+**Where the contact items are entered in WordPress:** Booking → Settings → Studio details (phone, WhatsApp number, Instagram address, Facebook address, public email, studio address). Values filled in for local comparison show "Not confirmed by the studio yet" until the owner changes them or ticks "This is correct". The WhatsApp number stays "not confirmed" and Facebook stays "not supplied" until the owner supplies them there.
+
 The full content inventory, covering services, prices, hours, policies, photography and hosting, is in `docs/content-inventory.md`.

@@ -257,6 +257,11 @@
 	font-weight: 600;
 }
 
+.ishot-field-warning {
+	margin: var(--space-0-5) 0 0;
+	font-weight: 600;
+}
+
 /* Dashboard widget. */
 .ishot-stats {
 	display: grid;

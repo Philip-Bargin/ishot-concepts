@@ -2,12 +2,14 @@
 namespace IShot\Booking\Admin;
 
 use IShot\Booking\Settings;
+use IShot\Booking\Studio;
 
 /** Opening hours and booking-policy screens. Validation lives in SettingsForm. */
 final class SettingsScreen {
 
 	public const POST_HOURS  = 'ishot_save_hours';
 	public const POST_POLICY = 'ishot_save_policy';
+	public const POST_STUDIO = 'ishot_save_studio';
 
 	private static function errorsKey(): string {
 		return 'ishot_settings_errors_' . get_current_user_id();
@@ -130,7 +132,68 @@ final class SettingsScreen {
 		);
 		echo '</tbody></table>';
 		submit_button( __( 'Save settings', 'ishot-booking' ) );
-		echo '</form></div>';
+		echo '</form>';
+		self::studioForm( $errors, $settings );
+		echo '</div>';
+	}
+
+	/**
+	 * A second form on the same screen so booking policy and public contact details save (and fail) independently.
+	 *
+	 * @param array<string, string> $errors
+	 * @param array<string, mixed>  $settings
+	 */
+	private static function studioForm( array $errors, array $settings ): void {
+		$fields = array(
+			'studio_phone'         => array( __( 'Phone', 'ishot-booking' ), 'tel', __( 'Shown to visitors. Start with + and the country code to make it a tap-to-call link.', 'ishot-booking' ) ),
+			'studio_whatsapp'      => array( __( 'WhatsApp number', 'ishot-booking' ), 'tel', __( 'Include the country code, for example +231 …. Empty hides the WhatsApp link.', 'ishot-booking' ) ),
+			'studio_instagram_url' => array( __( 'Instagram address', 'ishot-booking' ), 'url', __( 'The full https:// address of the Instagram page. Empty shows an inactive icon.', 'ishot-booking' ) ),
+			'studio_facebook_url'  => array( __( 'Facebook address', 'ishot-booking' ), 'url', __( 'The full https:// address of the Facebook page. Empty shows an inactive icon.', 'ishot-booking' ) ),
+			'studio_public_email'  => array( __( 'Public email', 'ishot-booking' ), 'email', __( 'The address shown to visitors. Separate from the notification address on the Emails screen.', 'ishot-booking' ) ),
+		);
+		$names  = array_flip( Studio::FIELDS );
+		$flag   = Studio::unconfirmed();
+		$notice = static function ( string $key ) use ( $names, $flag ): void {
+			if ( in_array( $names[ $key ], $flag, true ) ) {
+				printf(
+					'<p class="ishot-field-warning"><strong>%1$s</strong> <label><input type="checkbox" name="confirm_%2$s" value="1"> %3$s</label></p>',
+					esc_html__( 'Not confirmed by the studio yet', 'ishot-booking' ),
+					esc_attr( $key ),
+					esc_html__( 'This is correct', 'ishot-booking' )
+				);
+			}
+		};
+
+		echo '<h2>' . esc_html__( 'Studio details', 'ishot-booking' ) . '</h2><p class="ishot-muted">'
+			. esc_html__( 'Shown in the site header, footer, Contact page and booking confirmation. Only enter details the studio has confirmed.', 'ishot-booking' ) . '</p>';
+		echo View::formOpen( self::POST_STUDIO, self::POST_STUDIO ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- formOpen() escapes.
+		echo '<table class="form-table" role="presentation"><tbody>';
+		foreach ( $fields as $field => [ $label, $type, $help ] ) {
+			printf(
+				'<tr><th scope="row"><label for="ishot-%1$s">%2$s</label></th><td><input id="ishot-%1$s" name="%1$s" type="%3$s" value="%4$s" class="regular-text"%5$s><p class="description" id="desc-%1$s">%6$s</p>',
+				esc_attr( $field ),
+				esc_html( $label ),
+				esc_attr( $type ),
+				esc_attr( (string) $settings[ $field ] ),
+				isset( $errors[ $field ] ) ? ' aria-invalid="true" aria-describedby="err-' . esc_attr( $field ) . ' desc-' . esc_attr( $field ) . '"' : ' aria-describedby="desc-' . esc_attr( $field ) . '"',
+				esc_html( $help )
+			);
+			self::fieldError( $errors, $field );
+			$notice( $field );
+			echo '</td></tr>';
+		}
+		printf(
+			'<tr><th scope="row"><label for="ishot-studio_address">%1$s</label></th><td><textarea id="ishot-studio_address" name="studio_address" rows="3" class="large-text"%2$s>%3$s</textarea><p class="description" id="desc-studio_address">%4$s</p>',
+			esc_html__( 'Address', 'ishot-booking' ),
+			isset( $errors['studio_address'] ) ? ' aria-invalid="true" aria-describedby="err-studio_address desc-studio_address"' : ' aria-describedby="desc-studio_address"',
+			esc_textarea( (string) $settings['studio_address'] ),
+			esc_html__( 'Plain text; line breaks are kept.', 'ishot-booking' )
+		);
+		self::fieldError( $errors, 'studio_address' );
+		$notice( 'studio_address' );
+		echo '</td></tr></tbody></table>';
+		submit_button( __( 'Save studio details', 'ishot-booking' ) );
+		echo '</form>';
 	}
 
 	/** @param array<string, string> $errors */
@@ -165,5 +228,13 @@ final class SettingsScreen {
 		}
 		check_admin_referer( self::POST_POLICY );
 		self::finish( SettingsForm::savePolicy( wp_unslash( $_POST ) ), Menu::SET_SLUG );
+	}
+
+	public static function handleStudio(): void {
+		if ( ! current_user_can( 'manage_ishot_settings' ) ) {
+			wp_die( esc_html__( 'Your role does not allow that action.', 'ishot-booking' ), 403 );
+		}
+		check_admin_referer( self::POST_STUDIO );
+		self::finish( StudioForm::save( wp_unslash( $_POST ) ), Menu::SET_SLUG );
 	}
 }

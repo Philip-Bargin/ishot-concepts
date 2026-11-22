@@ -41,6 +41,15 @@ final class Settings {
 		'manage_url'           => '',
 		// Per-template overrides: template => {enabled?: bool, subject?: string, intro?: string}.
 		'templates'            => array(),
+		// Studio details (public contact). Empty until the owner enters them; see Studio.
+		'studio_phone'         => '',
+		'studio_whatsapp'      => '',
+		'studio_instagram_url' => '',
+		'studio_facebook_url'  => '',
+		'studio_address'       => '',
+		'studio_public_email'  => '',
+		// Short names (see Studio::FIELDS) of values not yet confirmed by the studio.
+		'studio_unconfirmed'   => array(),
 	);
 
 	/** Where emails come from and go to, with the fallbacks applied. */

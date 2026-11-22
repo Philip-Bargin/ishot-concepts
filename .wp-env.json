@@ -17,6 +17,9 @@
   "env": {
     "development": {
       "port": 8888,
+      "config": {
+        "ISHOT_DEV_FIXTURES": true
+      },
       "mappings": {
         "wp-content/mu-plugins/ishot-mailpit.php": "./wordpress/dev/mu-plugins/ishot-mailpit.php",
         "wp-content/ishot-dev": "./wordpress/dev",

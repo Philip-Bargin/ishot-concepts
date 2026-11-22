@@ -50,7 +50,9 @@ The design system's 4 "service tiles" show your top 4 services on the Home page.
   - Instagram: `@ishotconcept` (from the brand brief). ☐ Confirm.
   - Facebook: ☐ **page URL needed.** Until it's supplied, the icon shows as inactive ("link not added yet").
   - WhatsApp: ☐ **confirm that 0881405259 (+231) is the studio's WhatsApp number.** The link currently uses it.
+  - Where to enter these in WordPress: **Booking → Settings → Studio details** (Instagram address, Facebook address, WhatsApp number, phone, public email).
 - ☐ Studio address and/or "on-location only"
+  - Enter it in WordPress at **Booking → Settings → Studio details → Address**.
 
 ## F. Testimonials (section is hidden unless there are at least 3)
 The prototype's Home page shows three clearly labelled placeholder cards with no names or ratings. WordPress publishes only consented `ishot_testimonial` entries.

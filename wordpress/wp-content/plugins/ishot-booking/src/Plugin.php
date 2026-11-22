@@ -91,6 +91,7 @@ final class Plugin {
 			add_action( 'admin_post_' . ActionHandler::POST_UNBLOCK, array( ActionHandler::class, 'handleUnblock' ) );
 			add_action( 'admin_post_' . SettingsScreen::POST_HOURS, array( SettingsScreen::class, 'handleHours' ) );
 			add_action( 'admin_post_' . SettingsScreen::POST_POLICY, array( SettingsScreen::class, 'handlePolicy' ) );
+			add_action( 'admin_post_' . SettingsScreen::POST_STUDIO, array( SettingsScreen::class, 'handleStudio' ) );
 			add_action( 'admin_post_' . EmailSettingsScreen::POST_SAVE, array( EmailSettingsScreen::class, 'handleSave' ) );
 			add_action( 'admin_post_' . EmailSettingsScreen::POST_FEED, array( EmailSettingsScreen::class, 'handleFeedKey' ) );
 		}
