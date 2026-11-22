@@ -96,7 +96,6 @@ final class Plugin {
 		);
 	}
 
-	/** `admin_notices` callback. */
 	/** Forgets the skipped-block list (used by tests). */
 	public static function forgetSkipped(): void {
 		self::$skipped = array();
@@ -115,6 +114,7 @@ final class Plugin {
 		echo '<div class="notice notice-error"><p>' . esc_html__( 'iShot Blocks: some blocks could not be registered, so pages using them show "unsupported block". Rebuild the plugin (npm run build:blocks) and redeploy build/.', 'ishot-blocks' ) . '</p><ul>' . $items . '</ul></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $items is built from esc_html() output only.
 	}
 
+	/** `admin_notices` callback: shows the booking-plugin notice when ishot-booking is not loaded. */
 	public static function maybeShowBookingNotice(): void {
 		self::renderBookingNotice( class_exists( 'IShot\Booking\Plugin' ) );
 	}

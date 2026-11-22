@@ -6,6 +6,8 @@
 	<file>../../wordpress/wp-content/plugins/ishot-booking/src</file>
 	<file>../../wordpress/wp-content/plugins/ishot-blocks/ishot-blocks.php</file>
 	<file>../../wordpress/wp-content/plugins/ishot-blocks/src</file>
+	<!-- Block sources: render.php files (where output escaping happens) must be linted. build/ stays excluded below. -->
+	<file>../../wordpress/wp-content/plugins/ishot-blocks/blocks</file>
 	<file>../../wordpress/wp-content/themes/ishot-concept</file>
 
 	<exclude-pattern>*/vendor/*</exclude-pattern>

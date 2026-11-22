@@ -13,6 +13,7 @@ parameters:
 		- ../../wordpress/wp-content/plugins/ishot-booking/src
 		- ../../wordpress/wp-content/plugins/ishot-blocks/ishot-blocks.php
 		- ../../wordpress/wp-content/plugins/ishot-blocks/src
+		- ../../wordpress/wp-content/plugins/ishot-blocks/blocks
 		- ../../wordpress/wp-content/themes/ishot-concept
 	excludePaths:
 		analyseAndScan:

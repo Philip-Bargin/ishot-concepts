@@ -28,7 +28,7 @@ The theme is presentation only and needs two companion plugins from this reposit
 - **`ishot-booking`**: bookings, services, content types and client data.
 - **`ishot-blocks`**: the reusable content blocks (hero, founder, services and so on). They live in the plugin, not the theme, so page content keeps rendering after a theme change. `ishot-blocks` itself requires `ishot-booking` (`Requires Plugins` header, WordPress 6.5+).
 
-Without them the theme shows only its frame (header, menu sheet, footer) and an admin notice. The theme's frame blocks call `IShot\Blocks\...` helpers behind a `class_exists` guard.
+Planned for Stage 1 (not built yet): without the companion plugins the theme will show only its frame (header, menu sheet, footer) and an admin notice, and its frame blocks will call `IShot\Blocks\...` helpers behind a `class_exists` guard. Today the theme has no templates beyond a placeholder, so none of this behaviour exists yet.
 
 Theme tests (`tests/`) run from the `ishot-blocks` PHPUnit config, which loads both plugins and activates this theme: `npm run test:theme`.
 

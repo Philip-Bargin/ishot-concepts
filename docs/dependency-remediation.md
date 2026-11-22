@@ -80,6 +80,13 @@ The lockfile changed only:
 
 **Steps:** recommended only if the prototype stays in use after launch. Otherwise archive the prototype at launch (as planned) and drop it.
 
+## Update 2026-11-22: `@wordpress/scripts` added (Phase 3b/3c, Stage 0)
+
+`@wordpress/scripts` **35.0.0** was added as a **dev-only** dependency (exact-pinned) to build the `ishot-blocks` block bundles.
+- **Exposure:** build tooling only. The build output is committed to the repository and nothing from this package ships to production.
+- **Why 35.0.0:** 36.x and 37.x declare an optional peer `vite ^7 || ^8`, which makes `npm ci` fail (ERESOLVE) against the prototype's vite 5. Revisit when vite is upgraded.
+- **Audit after the addition** (`npm audit`, run 2026-11-22, no fixes applied): **42** advisories (2 low, 27 moderate, 11 high, 2 critical), against the 20 recorded as the 2026-11-20 baseline. `npm audit --omit=optional` reports the same set. The increase comes from the `@wordpress/scripts` dev toolchain (for example `webpack-dev-server`, which is not used: only `wp-scripts build` runs). `npm audit fix` was not run. Re-measure after each remediation stage.
+
 ## Compatibility requirements (verified with `npm view`, 2026-11-20)
 
 | Upgrade | Version | Needs | This machine | CI (`node-version: 24`) |
