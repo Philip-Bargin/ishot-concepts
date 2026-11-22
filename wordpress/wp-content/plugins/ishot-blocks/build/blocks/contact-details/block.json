@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "ishot/contact-details",
+  "title": "Contact details",
+  "category": "widgets",
+  "description": "The studio address, phone and email from the studio details. An empty field is left out.",
+  "attributes": {
+    "variant": {
+      "type": "string",
+      "enum": [
+        "footer"
+      ],
+      "default": "footer"
+    }
+  },
+  "supports": {
+    "html": false,
+    "inserter": true
+  },
+  "textdomain": "ishot-blocks",
+  "editorScript": "file:./index.js",
+  "render": "file:./render.php"
+}
