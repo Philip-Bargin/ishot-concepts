@@ -18,6 +18,7 @@ src/styles/ds/
 
 # wp-env / plugin dependencies
 wordpress/wp-content/plugins/ishot-booking/vendor/
+wordpress/wp-content/plugins/ishot-blocks/vendor/
 .phpunit.result.cache
 
 # QA tools (tools/qa) — vendor lives in a Docker volume locally, installed fresh in CI

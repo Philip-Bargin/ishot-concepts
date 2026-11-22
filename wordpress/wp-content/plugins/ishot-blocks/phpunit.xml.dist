@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<phpunit
+    bootstrap="tests/bootstrap.php"
+    colors="true"
+    beStrictAboutOutputDuringTests="true"
+    failOnRisky="true"
+    failOnWarning="true"
+    convertDeprecationsToExceptions="true"
+>
+    <testsuites>
+        <!-- Pure logic: no WordPress, no database. -->
+        <testsuite name="unit">
+            <directory suffix="Test.php">tests/Unit</directory>
+        </testsuite>
+        <!-- Runs inside the WordPress test environment (wp-env tests-cli). -->
+        <testsuite name="integration">
+            <directory suffix="Test.php">tests/Integration</directory>
+        </testsuite>
+        <!-- The theme's own tests, run with ishot-booking and ishot-blocks loaded and the theme active.
+             Works inside wp-env, where plugins and themes are mapped side by side under wp-content. -->
+        <testsuite name="theme">
+            <directory suffix="Test.php">../../themes/ishot-concept/tests</directory>
+        </testsuite>
+    </testsuites>
+    <coverage>
+        <include>
+            <directory suffix=".php">src</directory>
+        </include>
+    </coverage>
+</phpunit>

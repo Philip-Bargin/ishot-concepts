@@ -21,6 +21,17 @@ Generated presets:
 
 The owner cannot pick custom colours, sizes, gradients, duotones or radii. Every editor choice is a design-system token.
 
+## Requires plugins
+
+The theme is presentation only and needs two companion plugins from this repository:
+
+- **`ishot-booking`**: bookings, services, content types and client data.
+- **`ishot-blocks`**: the reusable content blocks (hero, founder, services and so on). They live in the plugin, not the theme, so page content keeps rendering after a theme change. `ishot-blocks` itself requires `ishot-booking` (`Requires Plugins` header, WordPress 6.5+).
+
+Without them the theme shows only its frame (header, menu sheet, footer) and an admin notice. The theme's frame blocks call `IShot\Blocks\...` helpers behind a `class_exists` guard.
+
+Theme tests (`tests/`) run from the `ishot-blocks` PHPUnit config, which loads both plugins and activates this theme: `npm run test:theme`.
+
 ## Status
 
 - **3a done:** scaffold, generated `theme.json`, self-hosted and preloaded fonts, core overrides, editor styles. `templates/index.html` is a placeholder.
