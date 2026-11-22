@@ -234,7 +234,7 @@ The goal is a result that is repeatable on any machine and in CI, and that separ
   - `Studio::socials(): list<array{id: 'instagram'|'facebook'|'whatsapp', label: string, url: ?string}>` (always all three, in that order; `url` null = inactive).
 - Validation and permissions:
   - saving requires `manage_ishot_settings` and a valid nonce;
-  - phone and WhatsApp accept digits, spaces, `+`, `-` and parentheses (max 30) and are normalised to E.164 digits for links (`https://wa.me/<digits>`, `tel:+<digits>`);
+  - phone and WhatsApp accept digits, spaces, `+`, `-` and parentheses (max 30) and are normalised to E.164 digits for links when written internationally (`https://wa.me/<digits>`, `tel:+<digits>`); a local phone number links as typed, digits only (`tel:0881405259`, owner decision 2026-11-22); WhatsApp stays international-only;
   - the Instagram and Facebook URLs must be `https` and on `instagram.com` / `facebook.com` (including `www.` and `m.`);
   - the email must pass `is_email`;
   - the address is plain text, max 300 characters, newlines kept;

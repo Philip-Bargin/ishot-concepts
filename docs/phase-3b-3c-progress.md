@@ -86,7 +86,7 @@ Verdict: **With fixes.** Important items and their handling:
 | FI1 | `ishot-blocks/blocks/` was linted by neither PHPCS nor PHPStan, so future `render.php` files (where escaping happens) would be unchecked | **Fixed in the final fix wave.** `blocks/` added to `tools/qa/phpcs.xml.dist` and `tools/qa/phpstan.neon.dist`; `build/` stays excluded. `npm run qa` is clean with the empty folder, and a temporary bad `render.php` was flagged by both tools (then removed). Also fixed the orphaned docblock in `Plugin.php` (`maybeShowBookingNotice` has its own docblock again). |
 | FI2 | This evidence log was missing; the `@wordpress/scripts` audit note (ledger M9) was missing | **Fixed in the final fix wave.** This file created; dated 2026-11-22 section added to `docs/dependency-remediation.md` with the audit totals; theme README "Requires plugins" reworded as planned for Stage 1. |
 | FI3 | CI green on the branch is unverified | **OUTSTANDING.** The branch is not pushed. Pushing needs owner authorisation. The Vercel project was disconnected from Git on 2026-11-20, so a push should not create a deployment; confirm this before pushing. |
-| FI4 | Phone link conflict: the prototype prints `<a href="tel:0881405259">` (`Footer.jsx:79`, `MenuSheet.jsx:43`, `Contact.jsx:207`), while `Studio::details()` returns `phone_href` null for local numbers without a country code (plan rule: `tel:+E164`). `BookingScreen.php:206` already builds `tel:` from local numbers. | **OWNER DECISION needed before Stage 1.2.** Options: (a) emit `tel:<digits>` for local numbers, (b) accept plain text as a recorded exception. |
+| FI4 | Phone link conflict: the prototype prints `<a href="tel:0881405259">` (`Footer.jsx:79`, `MenuSheet.jsx:43`, `Contact.jsx:207`), while `Studio::details()` returns `phone_href` null for local numbers without a country code (plan rule: `tel:+E164`). `BookingScreen.php:206` already builds `tel:` from local numbers. | **RESOLVED 2026-11-22 (owner): option (a).** `Studio::details()` now emits `tel:<digits as typed>` for local numbers (no country code added, no leading 0 stripped, stored value never rewritten); international input still gives `tel:+<E.164>`; only owner-confirmed numbers appear publicly. WhatsApp stays international-only. |
 | FI5 | `build-blocks` lacks `--experimental-modules`, needed for `viewScriptModule` | **First step of Stage 1.1**, together with proving that a real block's Windows build equals the CI rebuild. |
 
 ## Deferred-minor schedule (final reviewer's triage)
@@ -136,6 +136,6 @@ Verdict: **With fixes.** Important items and their handling:
 | Content checklist statuses unchanged | Verified | Task 0.3 docs only say where to enter values |
 | Booking backend unchanged except additive Studio files | Verified | Task 0.3 file list; original 319 tests still pass |
 | CI green on the branch | **Outstanding** | Branch not pushed; needs owner authorisation (FI3) |
-| Phone link (`tel:` for local numbers) | **Owner decision** | FI4, needed before Stage 1.2 |
+| Phone link (`tel:` for local numbers) | **Decided 2026-11-22: local numbers link as typed** | FI4, needed before Stage 1.2 |
 | B1 to B3 real-device, screen-reader, reduced-motion checks | Not applicable yet | No WordPress pages exist; mandatory before production |
 | A1, A2 | Not implemented | Out of Stage 0 scope |

@@ -77,9 +77,46 @@ final class StudioDetailsTest extends TestCase {
 		$this->assertSame( '+231 (88) 140-5259', $d['phone'] );
 	}
 
-	public function test_a_local_number_displays_but_has_no_guessed_tel_link(): void {
+	public function test_a_local_number_links_as_typed_without_a_country_code(): void {
 		$this->assertSame( array(), StudioForm::save( self::input( array( 'studio_phone' => '0881405259' ) ) ) );
 		$this->assertSame( '0881405259', Studio::details()['phone'] );
+		$this->assertSame( 'tel:0881405259', Studio::details()['phone_href'] );
+		$this->assertSame( '0881405259', Settings::all()['studio_phone'] );
+		$this->assertSame( '0881405259', get_option( Settings::OPTION )['studio_phone'] );
+	}
+
+	/** @return array<string, array{string}> */
+	public static function spacedLocalNumbers(): array {
+		return array(
+			'spaced'    => array( '088 140 5259' ),
+			'bracketed' => array( '(088) 140-5259' ),
+		);
+	}
+
+	/** @dataProvider spacedLocalNumbers */
+	public function test_a_spaced_or_bracketed_local_number_links_as_digits_only( string $typed ): void {
+		$this->assertSame( array(), StudioForm::save( self::input( array( 'studio_phone' => $typed ) ) ) );
+		$this->assertSame( $typed, Studio::details()['phone'] );
+		$this->assertSame( 'tel:0881405259', Studio::details()['phone_href'] );
+	}
+
+	public function test_a_legacy_invalid_stored_phone_has_no_link_but_still_displays(): void {
+		foreach ( array( 'call me', '12', '088 140 5259 ext 2' ) as $legacy ) {
+			Settings::update( array( 'studio_phone' => $legacy ) );
+			$this->assertSame( $legacy, Studio::details()['phone'], $legacy );
+			$this->assertNull( Studio::details()['phone_href'], $legacy );
+		}
+	}
+
+	public function test_an_unconfirmed_local_number_has_no_link_on_production(): void {
+		Settings::update(
+			array(
+				'studio_phone'       => '0881405259',
+				'studio_unconfirmed' => array( 'phone' ),
+			)
+		);
+		add_filter( Studio::ENVIRONMENT_FILTER, static fn() => 'production' );
+		$this->assertSame( '', Studio::details()['phone'] );
 		$this->assertNull( Studio::details()['phone_href'] );
 	}
 

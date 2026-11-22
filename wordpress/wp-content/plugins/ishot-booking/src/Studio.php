@@ -33,6 +33,11 @@ final class Studio {
 	 * not local or development, every field listed by unconfirmed() comes back as '' or null
 	 * (so an unconfirmed social becomes an inactive icon), whatever is stored.
 	 *
+	 * phone_href: an international number (+ or 00) becomes tel:+<E.164 digits>; any other valid
+	 * number (a local Liberian number such as 0881405259) becomes tel:<digits as typed>, with no
+	 * country code added and no leading 0 removed. The stored value is never rewritten. WhatsApp
+	 * stays international-only because wa.me needs a country code.
+	 *
 	 * @return array{phone: string, phone_href: ?string, whatsapp_url: ?string, instagram_url: ?string, facebook_url: ?string, email: string, address: string}
 	 */
 	public static function details(): array {
@@ -43,9 +48,10 @@ final class Studio {
 		$phone = $get( 'phone' );
 		$wa    = self::e164Digits( $get( 'whatsapp' ) );
 		$phd   = self::e164Digits( $phone );
+		$href  = null !== $phd ? 'tel:+' . $phd : self::localTelHref( $phone );
 		return array(
 			'phone'         => $phone,
-			'phone_href'    => null === $phd ? null : 'tel:+' . $phd,
+			'phone_href'    => $href,
 			'whatsapp_url'  => null === $wa ? null : 'https://wa.me/' . $wa,
 			'instagram_url' => self::socialUrl( $get( 'instagram' ), 'instagram.com' ),
 			'facebook_url'  => self::socialUrl( $get( 'facebook' ), 'facebook.com' ),
@@ -117,6 +123,21 @@ final class Studio {
 			return null;
 		}
 		return strlen( $digits ) >= 7 && strlen( $digits ) <= 15 && '0' !== $digits[0] ? $digits : null;
+	}
+
+	/**
+	 * tel: href for a number as typed, digits only and in the order typed, or null when the value is
+	 * empty, uses characters outside digits, spaces, + - ( ), or has fewer than 7 digits. Nothing is
+	 * guessed or converted. A value written in international form (+ or 00) is never handled here:
+	 * if e164Digits() rejected it, it gets no link rather than a misleading local one.
+	 */
+	private static function localTelHref( string $number ): ?string {
+		$number = trim( $number );
+		if ( '' === $number || ! preg_match( '/^[0-9 +()\-]+$/', $number ) || str_starts_with( $number, '+' ) || str_starts_with( $number, '00' ) ) {
+			return null;
+		}
+		$digits = (string) preg_replace( '/\D/', '', $number );
+		return strlen( $digits ) >= 7 ? 'tel:' . $digits : null;
 	}
 
 	/** The URL when it is https on exactly $domain (optionally www. or m.), with no userinfo or port; otherwise null. */
