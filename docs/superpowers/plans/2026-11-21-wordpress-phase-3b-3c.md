@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status (revision 2, 2026-11-21):** The owner approved the strategy and decisions D1–D7 with refinements (recorded in §3). **Only Stage 0 is authorised.** Stop after Stage 0 and ask for approval before Stage 1. Phase 3e, A1/A2, merging PR #1 and deleting either Vercel deployment all need separate explicit authorisation.
+**Status (revision 3, 2026-11-22):** The owner approved the strategy and decisions D1–D7 with refinements (recorded in §3), accepted Stage 0 and approved the Phase 1 prototype visuals. **Stage 1 is authorised** (header, footer, base templates). Stop at the Stage 1 checkpoint and ask for approval before Stage 2. Phase 3e, A1/A2, merging PR #1 and deleting either Vercel deployment all need separate explicit authorisation.
 
 **Goal:** Turn the `ishot-concept` block theme into a faithful WordPress version of the approved React prototype (commit `50e60f4`, preview `lbmvj4229`). Every page is built from templates, template parts, patterns, core blocks and a small, justified set of custom blocks. The owner manages all of the content from the dashboard, and the site is ready for the Phase 3e booking blocks.
 
@@ -21,7 +21,7 @@
 - **Design source of truth:** `design-system/` (version `1795143900-037f`), synced by `npm run sync:ds`. Generated files are never edited by hand. Hand-written CSS uses tokens only (`npm run lint:tokens`).
 - **Visual reference:** the prototype source at `50e60f4`. The files under `src/`, `public/`, `index.html`, `vite.config.js` and `design-system/` must stay byte-identical to that commit. The reference harness checks this (Task 0.1).
 - **No design changes.** A significant layout or component deviation is a defect whatever its numerical score (§5).
-- **Preserve completed work:** the booking backend, REST API, content model, wp-admin screens and their 319 tests are reused and not rebuilt. Plugin changes are additive (Task 0.3 only, in Stage 0).
+- **Preserve completed work:** the booking backend, REST API, content model, wp-admin screens and their 319 tests are reused and not rebuilt. Plugin changes are additive (Task 0.3 in Stage 0; in Stage 1, the `Importer` navigation seed in Task 1.2).
 - **No front-end jQuery** and no page builders. Front-end JavaScript is limited to Interactivity API modules.
 - **Content honesty:** no invented business content. Placeholders keep visible notices. Testimonials appear only when there are 3 or more consented, approved entries. Empty Facebook = inactive icon. The WhatsApp number stays "to be confirmed" in the checklist. The outstanding content checklist (`docs/phase-1-verification.md`, `docs/content-inventory.md`) is kept and updated, never dropped.
 - **Social links:** exactly Instagram, Facebook and WhatsApp, with the prototype's `BrandIcon` glyphs.
@@ -273,13 +273,75 @@ The goal is a result that is repeatable on any machine and in CI, and that separ
 
 **Stage 0 gate:** summary, files, test results, review findings, remaining risks, and confirmation that the prototype, booking backend and design are unaffected. **Stop for owner approval.**
 
-### Stage 1: Global frame (3b template parts). Not yet authorised.
+### Stage 1: Global frame (3b template parts). AUTHORISED 2026-11-22.
 
-- **1.1 Night bootstrap + `ishot/theme-toggle`:** inline head script with no flash; the same storage key as `src/lib/theme.js`; works under the manage-page CSP.
-- **1.2 Header part + `ishot/logo` + `ishot/site-header`:** Primary Navigation entity seeded from `navItems`; menu-sheet dialog parity; header identical for guests and logged-in users (cache-safe); A1 **not** applied.
-- **1.3 Footer part + `ishot/social-links`:** 3 × 3 columns, legal band, Night toggle, inner-container rule from `0eff339`; 24/24 alignment checks.
-- **1.4 Base templates:** `index`, `page`, `404`, `search`; `page-title` pattern; `ishot/notice`.
-- **Gate:** header, footer, 404 and a generic page pass §5 in all 6 combinations → owner checkpoint.
+Revision 3 (2026-11-22) expands the four Stage 1 bullets of revision 2 into tasks, adding two items the owner required (`--experimental-modules` and the duplicate block-registration test fix), and two gaps found while preparing the stage: the prototype's app stylesheet is not yet in the theme, and the visual harness can't yet capture WordPress. Header, footer and base templates only. No page content (Stage 2/3), no 3e, A1/A2 not applied.
+
+**Rules for every Stage 1 task**
+- Markup is the prototype's markup: the same elements, `fo-`/`ish-` classes, ARIA and text as `Header.jsx`, `MenuSheet.jsx`, `Footer.jsx`, `Logo.jsx`, `SocialLinks.jsx` and `App.jsx` at `50e60f4`. No new component CSS. Where WordPress wrappers change the layout, `theme.css` neutralises the wrapper using tokens only.
+- Dynamic values come from existing sources only: `IShot\Booking\Studio::details()` / `socials()` for contact and social data, a core `wp_navigation` entity for the menu, and the shared helpers `IShot\Blocks\Icons` / `Media` / `Notice`. The theme calls plugin classes behind `class_exists`. Without the plugins it prints the frame without those parts, and never a fatal error.
+- Server-rendered markup is identical for guests and logged-in users (page-cache safe). The only per-viewer state is the Night choice, applied client-side.
+- Interactive behaviour uses Interactivity API script modules (`viewScriptModule`) only, with no jQuery.
+- Evidence (commands, counts, screenshots) goes in `docs/phase-3b-3c-progress.md`.
+
+#### Task 1.0a: Block build modules, theme block registration, app stylesheet, duplicate-registration test fix *(S)*
+
+- `scripts/build-blocks.mjs`: pass `--experimental-modules` to every `wp-scripts build` call (so `viewScriptModule` entries are built as ES modules with a `.asset.php`), and add a `--watch` mode that runs `wp-scripts start --experimental-modules` for each package (development). `package.json`: new script `start:blocks` = `node scripts/build-blocks.mjs --watch`. `--check` keeps working and uses the same flag.
+- `tests/blocks/*.test.mjs`: the spawned `wp-scripts` arguments include `--experimental-modules` in build, check and watch modes. A fixture block with a `viewScriptModule` builds a `view.js` module and a `view.asset.php`.
+- **Duplicate block-registration test fix:** `ishot-blocks/tests/Integration/PluginTest.php::test_blocks_register_without_the_theme_being_consulted()` calls `Plugin::registerBuiltBlocks()` and then `Plugin::registerBlocks($build)` again. Once real blocks exist in `build/blocks`, the second call registers the same names twice, WordPress rejects them, `$skipped` fills and the test fails. Fix: unregister what the first call registered (or assert on the first call's result only) and clear the skipped list in `set_up`/`tear_down`, so every test starts with a clean registry. Add a regression test proving that two calls in one request, with a real block in the build folder, report `missing === []` the second time and leave no admin notice. Do not change `Plugin`'s production behaviour, unless the regression test shows that a second registration in one request reports a false problem (then registration must skip names already registered by this plugin).
+- Theme block registration: `functions.php` registers each `themes/ishot-concept/build/blocks/*/block.json` on `init` (theme frame blocks only: `ishot/logo`, `ishot/site-header`, `ishot/theme-toggle`). A folder without `block.json` is skipped silently on the front end. `ThemeSetupTest` covers this with a fixture.
+- **Prototype app stylesheet:** the prototype's app layer `src/index.css` (the `ish-` classes for header, menu, footer, skip link, title blocks…) is part of the approved design but is not in the theme. `npm run sync:ds` additionally copies it, byte-for-byte after a generated-file header comment, to `themes/ishot-concept/assets/css/app.css`, and copies `public/brand/*.png` to `themes/ishot-concept/assets/brand/`. Enqueue order becomes tokens → bundle → app → theme, on the front end and in the editor (`add_editor_style`). `lint:tokens` scans it. A CI check (the existing generated-files check, or `sync:ds --check` if none exists) fails when `app.css` is stale. `ThemeSetupTest::test_design_system_styles_enqueued_in_order()` is updated to the four handles.
+- Accept: node tests pass; `npm run build:blocks:check` passes; `test:blocks` and `test:theme` pass; `npm run qa` is clean; the prototype is byte-identical to `50e60f4`.
+
+#### Task 1.0b: WordPress capture target for the visual and accessibility harness *(M)*
+
+- `tests/visual`: `VISUAL_TARGET=wp` captures `wpPath` on `VISUAL_BASE_URL` (default `http://localhost:8888`) with the same controlled rendering (§5.1) and compares it with the committed prototype reference. Playwright starts no Vite server in this mode. The prototype integrity check still runs.
+- `VISUAL_SCOPE=frame` limits landmarks to the frame (`header`, `header-container`, `logo`, `header-nav`, `header-actions`, `footer`, `footer-column`, `footer-legal`, plus a new `skip-link`). The default scope `full` keeps every landmark. `VISUAL_STATES=404,about` limits the states. Review-only states (`gate: false`) are exempt from the region assertion (deferred minor from Task 0.1).
+- Alignment check: in every captured state, the left and right content edges of `header-container`, the footer grid container and the legal band equal those of `main .fo-container` (±1 px). This is reported as `alignment` failures (24/24 = 4 states × 3 widths × 2 themes in the Stage 1 gate).
+- `tests/visual/a11y.spec.mjs`: axe (WCAG 2.1 A/AA + best practice, `@axe-core/playwright`) on the given states at 3 widths × 2 themes, with the menu closed and open. 0 violations is the gate.
+- npm scripts: `test:visual:wp` (`node scripts/visual-reference.mjs --check --target wp`, passing scope and states through) and `test:a11y:wp`. The HTML side-by-side report also gets an overlay (50 % blend) column (§5.3).
+- Tests: node unit tests for scope filtering, state filtering, the alignment computation and the gate:false region exemption.
+- Accept: node tests pass. `test:visual:wp` runs end to end against the dev site (failures are expected until Tasks 1.1–1.4 land) and writes the report. The prototype reference mode is unchanged (`npm run test:visual` still passes).
+
+#### Task 1.1: Night bootstrap + `ishot/theme-toggle` *(S)*
+
+- Theme `wp_head` (priority 0): a tiny inline script that reads `localStorage['ishot-theme']` (`light`|`dark`, guarded with try/catch, default `light`) and sets `document.documentElement.dataset.theme` before any stylesheet is applied. `<html>` gets `data-theme="light"` server-side through `language_attributes`. The same key and values as `src/lib/theme.js`. The manage page's CSP already allows inline scripts (`script-src 'self' 'unsafe-inline'`): assert that, don't change the CSP.
+- `ishot/theme-toggle` (theme block, `viewScriptModule`, Interactivity API): renders `<button type="button" class="ish-linkbtn" aria-pressed="false|true">Night mode</button>` exactly as `Footer.jsx`'s `ThemeToggle`. Clicking flips the theme, persists it (guarded), and updates `aria-pressed`. The initial `aria-pressed` is synced from the document on hydration.
+- Tests: PHPUnit (the head script is printed before the theme's stylesheets; `data-theme="light"` on `<html>`; the block's markup). Playwright on wp-env: a stored `dark` preference has `data-theme="dark"` at `DOMContentLoaded` (no flash); clicking toggles and persists across reload; `aria-pressed` is correct; works with storage blocked.
+
+#### Task 1.2: Header part, `ishot/logo`, `ishot/social-links`, `ishot/site-header`, skip link *(L)*
+
+- `ishot/logo` (theme): prints the official files from `assets/brand/` exactly as `Logo.jsx` (`auto` = full-colour + reversed images with `ish-logo__full`/`ish-logo__rev`; `reversed` = the white file only). The alt is the site name (`iShot Concept`). It's wrapped in `<a class="fo-logo" href="/">` by the parent block or part.
+- `ishot/social-links` (ishot-blocks, the first real block in that plugin): Instagram, Facebook and WhatsApp from `Studio::socials()`, always in that order, with the `BrandIcon` glyphs from `Icons`. A URL gives `<a class="fo-icon-btn" … target="_blank" rel="noopener noreferrer" aria-label="{Label} (opens in a new tab)">`. A null URL gives the prototype's inactive element and label ("link not added yet"), not focusable. Output matches `SocialLinks.jsx`. Without `ishot-booking`, the block prints nothing.
+- `ishot/site-header` (theme, `viewScriptModule`, Interactivity API): `Header.jsx` + `MenuSheet.jsx` markup. Logo; `nav.fo-header__social[aria-label=Social]` with the social links; actions ("My bookings" → `/account/`, "Book now" → `/book/`, `button.fo-menu-toggle` with the Lucide `menu` icon at size 20, `aria-expanded`, `aria-controls="site-menu"`). The menu sheet is `div#site-menu.fo-menu.fo-band[role=dialog][aria-modal=true][aria-label="Site menu"]` with the reversed logo, the close button (`aria-label="Close menu"`, Lucide `x`), `nav[aria-label=Main] > ol.fo-menu__list` (each `li` with `style="--i:N"`, link `<span>NN</span>Label`, `aria-current="page"` on the current URL; A1 NOT applied), and the foot ("Book a session" button; `address · <a href=phone_href>phone</a>` from Studio details, each part omitted when empty; social links). The sheet is server-rendered `hidden` and shown by the module. Behaviour matches `useFocusTrap`: focus goes to the first menu link on open; Tab and Shift+Tab wrap; Escape and the close button close it; focus returns to the toggle; `body` scroll is locked while open; menu links close it. Reduced motion follows the design-system CSS (no JS animation).
+- Menu items: from a core `wp_navigation` entity (block attribute `ref`; without one, the first published `wp_navigation`). When none exists, the block falls back to the eight prototype `navItems` (site structure, not business content). The `wp ishot import-prototype` command (ishot-booking `Importer`, additive) creates a "Primary" `wp_navigation` with those eight links when none exists, and never overwrites one.
+- Header template part `parts/header.html`, area `header`. The `.fo-header` must stay `position: sticky` relative to the page, as in the prototype: the template-part wrapper must not become the sticky containing block (test: after scrolling 1500 px, the header's top is 0).
+- Skip link: the prototype's `<a href="#main" class="ish-skip">Skip to content</a>` (text exactly as `App.jsx`) is printed first in `<body>`. Core's block-theme skip link is removed so there is only one. `main` has `id="main"` and `tabindex="-1"` (Task 1.4 templates).
+- Tests: PHPUnit for each block's markup (snapshot-normalised against the prototype, as in Task 0.4), empty Studio details, a missing navigation entity, identical header HTML for a guest and a logged-in user, and a single skip link. Playwright keyboard spec (B4 subset): skip link, menu focus trap, Escape, focus return, scroll lock, `aria-expanded`, `aria-current`.
+
+#### Task 1.3: Footer part and `ishot/contact-details` (footer variant) *(M)*
+
+- `parts/footer.html`, area `footer`: `Footer.jsx` structure. Brand column (`ishot/logo` in `.fo-logo`, `.fo-spectrum` group, the tagline paragraph `small`, `.ish-social` with `ishot/social-links`); `nav.fo-footer__col[aria-labelledby=footer-studio]` "Studio" (About, Services, Portfolio); `nav…[aria-labelledby=footer-book]` "Book" (Book a session, My bookings, Contact); "Visit" column; legal band. These are the same three 3-link columns as the corrected prototype (`379d4e7`), and nothing else.
+- Link columns: core blocks in the template part (editable by administrators in the Site Editor). Paragraph and link wrappers are neutralised in `theme.css` (tokens only) so that geometry equals the prototype.
+- `ishot/contact-details` (ishot-blocks, from the §4.2 inventory), attribute `variant` (`footer` in this task; the Contact-page variant comes in Stage 2): `<span class="small">{address}</span>`, `<a href="{phone_href}">{phone}</a>` and `<a href="mailto:{email}">{email}</a>` from `Studio::details()`. Each line is omitted when its value is empty. A phone without a `phone_href` prints as text, with no link.
+- Year: a theme block-bindings source (`ishot-concept/site`, key `year`) supplies the current year to the legal paragraph, so no custom block is needed. The visual harness mask for the year stays.
+- Legal band: `© {year} iShot Concept · Photography, creative direction, visual storytelling` + `ishot/theme-toggle`, in `.fo-footer__legal.ish-footer__outer > .fo-container.ish-footer__legal`. Full-width backgrounds, inner content in `.fo-container` (the `0eff339` rule).
+- Tests: PHPUnit (contact-details variants and empty fields; the bindings source; footer part parses with no invalid blocks). Frame geometry for every state passes at 3 widths × 2 themes. Alignment passes.
+
+#### Task 1.4: Base templates, `page-title` pattern and `ishot/notice` *(M)*
+
+- Templates: `index`, `page`, `single`, `404` and `search`. Each is `header part` + `<main id="main" tabindex="-1">` + `footer part`, inside one wrapper group with the prototype's `fo-root ish-app` classes, so that `.ish-app > main` applies. `page` uses the `page-title` pattern bound to the post title, then the post content. `404` reproduces the prototype's `NotFound` exactly: `PageTitle` eyebrow "404", "Page not found", the lead text, and the "Go home" and "View gallery" buttons. `search` uses the title block plus a result list (review-only state).
+- Pattern `patterns/page-title.php`: group `ish-title` with an eyebrow paragraph, H1 and lead paragraph, the same markup as the prototype's `PageTitle` (`ui.jsx`).
+- `ishot/notice` (ishot-blocks): prints `Notice::forPost()` for the current post (nothing unless `content_status` is placeholder). Used in the `page` and `single` templates.
+- Editor: the templates and parts open in the Site Editor with no invalid-block warnings, and the editor canvas shows the design-system styles (verified with a logged-in Playwright check that also saves screenshots).
+- Tests: PHPUnit (each template parses; 404 status and markup; the notice shows and hides by `content_status`). The visual harness: `404` passes in **full** scope; `about`, `home` and `journal-article` pass in **frame** scope; `search` is review-only.
+
+#### Task 1.5: Stage 1 gate, verification and review pack *(S)*
+
+- Run: frame scope on all 16 states and full scope on `404`, at 3 widths × 2 themes (geometry A and styles C as gates, regions B reviewed); alignment 24/24; axe 0 violations on `home`, `about` and `404` with the menu closed and open; the keyboard spec; the editor check; all PHPUnit suites (booking, blocks, theme); `npm run build`, `lint:tokens`, `build:blocks:check`, `qa`; the prototype integrity check.
+- Write `docs/phase-3b-3c-stage-1-review.md`: the side-by-side, overlay and diff images for header, menu sheet and footer at the 6 combinations (images in `docs/phase-3b-3c-evidence/stage-1/`), the results, every accepted exception with its reason, and what's left for Stages 2–3. Update `docs/phase-3b-3c-progress.md`.
+- Preview: the local wp-env site (`http://localhost:8888`) with the prototype content imported, plus the review pack. Nothing is deployed to Vercel or anywhere else.
+- **Stop for the owner checkpoint.** Stage 2 needs the owner's approval.
 
 ### Stage 2: Content blocks, styles and patterns (3c). Not yet authorised.
 
@@ -403,11 +465,13 @@ If approved, each change would be applied to the prototype and the WordPress ver
 ## 12. Sequencing
 
 ```
-Stage 0 (authorised): 0.1 harness ─┐
+Stage 0 (done):       0.1 harness ─┐
                       0.2 scaffold + build + suites ─ 0.4 helpers
                       0.3 Studio details (independent)
    └─ STOP: owner approval
-Stage 1 → owner checkpoint → Stage 2 → Stage 3 → Stage 4 → owner sign-off
+Stage 1 (authorised): 1.0a build + app CSS → 1.0b WP harness → 1.1 Night → 1.2 header → 1.3 footer → 1.4 templates → 1.5 gate
+   └─ STOP: owner checkpoint
+Stage 2 → Stage 3 → Stage 4 → owner sign-off
    └─ (separately authorised) 3e → 3f → 3g → Phase 4 (B1–B3 mandatory before production)
 ```
 
