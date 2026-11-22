@@ -212,4 +212,112 @@ final class ImporterTest extends WP_UnitTestCase {
 		$this->assertSame( 1, $report['errors'] );
 		$this->assertNull( self::byKey( ServiceCatalog::POST_TYPE, 'service:s2' ) );
 	}
+
+	// ----- navigation (Stage 1.2: the header menu) ------------------------------------------------
+
+	/** The prototype's navItems as `npm run seed:export` writes them. */
+	private static function navigationSeed(): array {
+		return array(
+			'navigation' => array(
+				array( 'label' => 'Home', 'path' => '/' ),
+				array( 'label' => 'About', 'path' => '/about/' ),
+				array( 'label' => 'Services', 'path' => '/services/' ),
+				array( 'label' => 'Portfolio', 'path' => '/portfolio/' ),
+				array( 'label' => 'Creative direction', 'path' => '/creative-direction/' ),
+				array( 'label' => 'Journal', 'path' => '/journal/' ),
+				array( 'label' => 'Contact', 'path' => '/contact/' ),
+				array( 'label' => 'Book a session', 'path' => '/book/' ),
+			),
+		);
+	}
+
+	/** @return list<\WP_Post> */
+	private static function navigations( string $status = 'any' ): array {
+		return get_posts(
+			array(
+				'post_type'   => 'wp_navigation',
+				'post_status' => $status,
+				'numberposts' => -1,
+			)
+		);
+	}
+
+	public function test_seed_creates_a_published_primary_navigation_with_the_eight_links(): void {
+		$report = $this->import( self::navigationSeed() );
+
+		$this->assertSame( 0, $report['errors'] );
+		$this->assertSame( 1, $report['created'] );
+		$navs = self::navigations();
+		$this->assertCount( 1, $navs );
+		$this->assertSame( 'Primary', $navs[0]->post_title );
+		$this->assertSame( 'publish', $navs[0]->post_status, 'site structure, not placeholder content: the header reads only published menus' );
+
+		$links = array_values( array_filter( parse_blocks( $navs[0]->post_content ), static fn( $b ) => 'core/navigation-link' === $b['blockName'] ) );
+		$this->assertSame( array( 'Home', 'About', 'Services', 'Portfolio', 'Creative direction', 'Journal', 'Contact', 'Book a session' ), array_column( array_column( $links, 'attrs' ), 'label' ) );
+		$this->assertSame( home_url( '/' ), $links[0]['attrs']['url'] );
+		$this->assertSame( home_url( '/creative-direction/' ), $links[4]['attrs']['url'] );
+		$this->assertSame( 8, count( $links ) );
+	}
+
+	public function test_an_existing_primary_navigation_is_never_overwritten_even_with_force(): void {
+		$id      = self::factory()->post->create(
+			array(
+				'post_type'    => 'wp_navigation',
+				'post_status'  => 'publish',
+				'post_title'   => 'Primary',
+				'post_content' => '<!-- wp:navigation-link {"label":"Owner","url":"/owner/"} /-->',
+			)
+		);
+		$before = get_post( $id )->post_content;
+
+		$report = $this->import( self::navigationSeed(), array( 'force' => true ) );
+
+		$this->assertSame( 0, $report['created'] );
+		$this->assertSame( 0, $report['updated'] );
+		$this->assertSame( 1, $report['unchanged'] );
+		$this->assertCount( 1, self::navigations() );
+		$this->assertSame( $before, get_post( $id )->post_content );
+	}
+
+	public function test_running_the_navigation_seed_twice_creates_one_menu(): void {
+		$this->import( self::navigationSeed() );
+		$report = $this->import( self::navigationSeed() );
+
+		$this->assertSame( 0, $report['created'] );
+		$this->assertCount( 1, self::navigations() );
+	}
+
+	public function test_a_draft_primary_does_not_count_and_other_menus_are_untouched(): void {
+		$draft = self::factory()->post->create( array( 'post_type' => 'wp_navigation', 'post_status' => 'draft', 'post_title' => 'Primary' ) );
+		$other = self::factory()->post->create( array( 'post_type' => 'wp_navigation', 'post_status' => 'publish', 'post_title' => 'Footer' ) );
+
+		$this->assertSame( 1, $this->import( self::navigationSeed() )['created'] );
+		$this->assertCount( 2, self::navigations( 'publish' ) );
+		$this->assertSame( 'draft', get_post_status( $draft ) );
+		$this->assertSame( 'Footer', get_the_title( $other ) );
+	}
+
+	public function test_navigation_dry_run_writes_nothing(): void {
+		$report = $this->import( self::navigationSeed(), array( 'dry_run' => true ) );
+
+		$this->assertSame( 1, $report['created'] );
+		$this->assertCount( 0, self::navigations() );
+	}
+
+	public function test_navigation_labels_and_paths_are_sanitised(): void {
+		$seed = array(
+			'navigation' => array(
+				array( 'label' => '<b>About</b>', 'path' => '/about/' ),
+				array( 'label' => 'Bad', 'path' => 'javascript:alert(1)' ),
+				array( 'label' => '', 'path' => '/empty/' ),
+			),
+		);
+		$report = $this->import( $seed );
+
+		$this->assertSame( 2, $report['warnings'], 'the unsafe path and the empty label' );
+		$content = self::navigations()[0]->post_content;
+		$this->assertStringNotContainsString( 'javascript', $content );
+		$this->assertStringNotContainsString( '<b>', $content );
+		$this->assertStringContainsString( '"label":"About"', $content );
+	}
 }

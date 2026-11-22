@@ -13,6 +13,8 @@ final class ImportCommand {
 	 *
 	 * Items edited in WordPress since they were imported are kept unless --force is given.
 	 * New posts are drafts marked "Placeholder"; prices, deposits and testimonials are never imported.
+	 * Creates the published "Primary" navigation (the header menu) from the prototype's menu when there
+	 * is none; an existing one is never changed, even with --force.
 	 *
 	 * ## OPTIONS
 	 *

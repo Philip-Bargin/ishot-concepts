@@ -163,6 +163,40 @@
       "long": "Studio precision or outdoor atmosphere: we shape the environment around your vision for a look that feels entirely yours."
     }
   ],
+  "navigation": [
+    {
+      "label": "Home",
+      "path": "/"
+    },
+    {
+      "label": "About",
+      "path": "/about/"
+    },
+    {
+      "label": "Services",
+      "path": "/services/"
+    },
+    {
+      "label": "Portfolio",
+      "path": "/portfolio/"
+    },
+    {
+      "label": "Creative direction",
+      "path": "/creative-direction/"
+    },
+    {
+      "label": "Journal",
+      "path": "/journal/"
+    },
+    {
+      "label": "Contact",
+      "path": "/contact/"
+    },
+    {
+      "label": "Book a session",
+      "path": "/book/"
+    }
+  ],
   "projects": [
     {
       "slug": "birthday-call-concept",

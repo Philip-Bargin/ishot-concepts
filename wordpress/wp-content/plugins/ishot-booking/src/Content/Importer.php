@@ -65,10 +65,92 @@ final class Importer {
 		foreach ( (array) ( $seed['projects'] ?? array() ) as $i => $project ) {
 			$this->project( (array) $project, (int) $i );
 		}
+		if ( isset( $seed['navigation'] ) ) {
+			$this->navigation( (array) $seed['navigation'] );
+		}
 		if ( ! empty( $seed['testimonials'] ) ) {
 			$this->warn( 'The seed contains testimonials; they are never imported. Add real ones, with consent, in wp-admin.' );
 		}
 		return $this->report;
+	}
+
+	// ----- navigation ----------------------------------------------------------------------------
+
+	/** Title of the menu the theme's header reads (preferred over any other published wp_navigation). */
+	public const NAVIGATION_TITLE = 'Primary';
+
+	/**
+	 * Creates the published "Primary" wp_navigation from the prototype's navItems when there is no
+	 * published menu with that title. An existing one is never updated or replaced: once created, the
+	 * menu belongs to the owner (Site Editor). Unlike imported content it is published straight away,
+	 * since it is site structure and the header only reads published menus.
+	 *
+	 * @param array<int, mixed> $items Each {label, path}; path is a site path such as /about/.
+	 */
+	private function navigation( array $items ): void {
+		if ( self::publishedNavigationExists( self::NAVIGATION_TITLE ) ) {
+			++$this->report['unchanged'];
+			$this->report['messages'][] = 'Navigation "' . self::NAVIGATION_TITLE . '" already exists; left unchanged.';
+			return;
+		}
+
+		$content = '';
+		foreach ( $items as $item ) {
+			$item  = (array) $item;
+			$label = trim( wp_strip_all_tags( (string) ( $item['label'] ?? '' ) ) );
+			$path  = (string) ( $item['path'] ?? '' );
+			if ( '' === $label || ! str_starts_with( $path, '/' ) || str_starts_with( $path, '//' ) ) {
+				$this->warn( 'Navigation item skipped (it needs a label and a site path starting with /): ' . wp_json_encode( $item ) );
+				continue;
+			}
+			$content .= serialize_block(
+				array(
+					'blockName'    => 'core/navigation-link',
+					'attrs'        => array(
+						'label' => $label,
+						'url'   => home_url( $path ),
+						'kind'  => 'custom',
+					),
+					'innerBlocks'  => array(),
+					'innerHTML'    => '',
+					'innerContent' => array(),
+				)
+			);
+		}
+
+		++$this->report['created'];
+		if ( $this->options['dry_run'] ) {
+			return;
+		}
+		$id = wp_insert_post(
+			wp_slash(
+				array(
+					'post_type'    => 'wp_navigation',
+					'post_status'  => 'publish',
+					'post_title'   => self::NAVIGATION_TITLE,
+					'post_content' => $content,
+				)
+			),
+			true
+		);
+		if ( $id instanceof WP_Error ) {
+			--$this->report['created'];
+			$this->error( 'Navigation "' . self::NAVIGATION_TITLE . '" could not be created: ' . $id->get_error_message() );
+		}
+	}
+
+	private static function publishedNavigationExists( string $title ): bool {
+		$ids = get_posts(
+			array(
+				'post_type'      => 'wp_navigation',
+				'post_status'    => 'publish',
+				'title'          => $title,
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
+			)
+		);
+		return array() !== $ids;
 	}
 
 	// ----- items -------------------------------------------------------------------------------

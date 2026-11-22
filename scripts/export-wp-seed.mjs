@@ -1,8 +1,9 @@
 // Writes wordpress/seed/prototype-content.json from the React prototype's content, for
 // `wp ishot import-prototype` (see wordpress/wp-content/plugins/ishot-booking/src/Content/Importer.php).
 //
-// Exported: categories, photos (with their alt text, focus point and portfolio order), services and
-// the two sample projects. NOT exported, on purpose: journal posts (sample copy), sample bookings,
+// Exported: categories, photos (with their alt text, focus point and portfolio order), services,
+// the two sample projects and the menu (navItems, site structure: the importer creates the "Primary"
+// navigation from it when there is none). NOT exported, on purpose: journal posts (sample copy), sample bookings,
 // contact details and stats (owner-confirmed in docs/content-inventory.md), and testimonials
 // (the prototype has none; real ones need the client's consent).
 // Everything the importer creates from this file is marked "placeholder" until the owner approves it.
@@ -11,7 +12,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { categories, services } from "../src/data.js";
+import { categories, navItems, services } from "../src/data.js";
 import { photos, portfolio } from "../src/assets.js";
 import { projects } from "../src/prototype/sampleContent.js";
 
@@ -52,6 +53,8 @@ const seed = {
     blurb: s.blurb,
     long: s.long,
   })),
+  // Site paths with WordPress's trailing slash; the importer prefixes home_url().
+  navigation: navItems.map(({ to, label }) => ({ label, path: to === "/" ? "/" : `${to}/` })),
   projects: projects.map((p) => ({
     slug: p.slug,
     title: p.title,
@@ -68,4 +71,4 @@ const seed = {
 const out = resolve(root, "wordpress/seed/prototype-content.json");
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, JSON.stringify(seed, null, 2) + "\n");
-console.log(`export-wp-seed: wrote ${seed.categories.length} categories, ${seed.photos.length} photos, ${seed.services.length} services, ${seed.projects.length} projects to wordpress/seed/prototype-content.json`);
+console.log(`export-wp-seed: wrote ${seed.categories.length} categories, ${seed.photos.length} photos, ${seed.services.length} services, ${seed.projects.length} projects, ${seed.navigation.length} menu links to wordpress/seed/prototype-content.json`);
