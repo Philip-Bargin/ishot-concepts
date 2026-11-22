@@ -26,3 +26,4 @@ tools/qa/vendor/
 
 # visual comparison harness output (screenshots, reports)
 tests/visual/.output/
+tests/e2e/.output/

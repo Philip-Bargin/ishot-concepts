@@ -1,0 +1,1 @@
+import{getContext as t,store as e}from"@wordpress/interactivity";const a=document.documentElement;e("ishot/theme",{actions:{toggle(){const e=t(),s="dark"===a.dataset.theme?"light":"dark";a.dataset.theme=s;try{window.localStorage.setItem(e.storageKey,s)}catch(t){}e.pressed="dark"===s}},callbacks:{sync(){t().pressed="dark"===a.dataset.theme}}});

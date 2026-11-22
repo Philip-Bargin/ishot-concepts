@@ -93,3 +93,31 @@ add_action( 'init', 'ishot_theme_register_built_blocks' );
 
 // Core's remote pattern directory would offer the owner off-brand layouts.
 add_filter( 'should_load_remote_block_patterns', '__return_false' );
+
+/** The localStorage key holding the Night choice (`light` or `dark`); the same as `src/lib/theme.js`. */
+function ishot_theme_storage_key(): string {
+	return 'ishot-theme';
+}
+
+/**
+ * Starts every page in light and lets the head script switch to the stored choice. The only
+ * per-viewer state is applied client-side, so cached pages are identical for everyone.
+ *
+ * @param string $output Existing language attributes.
+ * @return string
+ */
+function ishot_theme_html_theme_attribute( string $output ): string {
+	if ( is_admin() || str_contains( $output, 'data-theme=' ) ) {
+		return $output;
+	}
+	return trim( $output . ' data-theme="light"' );
+}
+add_filter( 'language_attributes', 'ishot_theme_html_theme_attribute' );
+
+/** Prints the tiny inline script that applies the stored Night choice before any stylesheet. */
+function ishot_theme_print_night_bootstrap(): void {
+	$key    = esc_js( ishot_theme_storage_key() );
+	$script = "try{document.documentElement.dataset.theme=localStorage.getItem('{$key}')==='dark'?'dark':'light'}catch(e){}";
+	wp_print_inline_script_tag( $script, array( 'id' => 'ishot-night-bootstrap' ) );
+}
+add_action( 'wp_head', 'ishot_theme_print_night_bootstrap', 0 );

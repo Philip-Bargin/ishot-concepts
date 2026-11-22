@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "ishot/theme-toggle",
+  "title": "Night mode toggle",
+  "category": "theme",
+  "description": "The footer button that switches between the light and Night themes.",
+  "supports": {
+    "html": false,
+    "inserter": true,
+    "interactivity": true
+  },
+  "textdomain": "ishot-concept",
+  "render": "file:./render.php",
+  "viewScriptModule": "file:./view.js"
+}
