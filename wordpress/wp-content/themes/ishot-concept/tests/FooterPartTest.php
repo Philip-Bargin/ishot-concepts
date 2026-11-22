@@ -9,10 +9,12 @@
 
 use IShot\Blocks\SocialLinks;
 use IShot\Blocks\Tests\Support\MarkupNormaliser;
+use IShot\Blocks\Tests\Support\ValidBlockMarkup;
 use IShot\Booking\Settings;
 
 /** Markup parity with Footer.jsx, valid blocks, the year bindings source and the empty-wrapper rules. */
 final class FooterPartTest extends WP_UnitTestCase {
+	use ValidBlockMarkup;
 
 	private const PART = '<!-- wp:template-part {"slug":"footer","theme":"ishot-concept","tagName":"div"} /-->';
 
@@ -194,55 +196,7 @@ final class FooterPartTest extends WP_UnitTestCase {
 	}
 
 	public function test_part_holds_only_valid_registered_blocks_that_round_trip(): void {
-		$file   = self::partFile();
-		$blocks = parse_blocks( $file );
-
-		$this->assertSame( trim( $file ), trim( serialize_blocks( $blocks ) ), 'serialize_blocks( parse_blocks() ) gives the file back' );
-
-		$walk = function ( array $list ) use ( &$walk ): void {
-			foreach ( $list as $block ) {
-				if ( null === $block['blockName'] ) {
-					$this->assertSame( '', trim( $block['innerHTML'] ), 'no stray HTML between blocks' );
-					continue;
-				}
-				$this->assertTrue( WP_Block_Type_Registry::get_instance()->is_registered( $block['blockName'] ), $block['blockName'] );
-				$this->assertSame( self::expectedSave( $block ), self::savedWrapper( $block ), $block['blockName'] . ' saved markup equals its save() output' );
-				$walk( $block['innerBlocks'] );
-			}
-		};
-		$walk( $blocks );
-	}
-
-	/** The opening tag of the block's saved markup, reduced to tag, sorted classes and id. */
-	private static function savedWrapper( array $block ): string {
-		$p = new WP_HTML_Tag_Processor( $block['innerHTML'] );
-		if ( ! $p->next_tag() ) {
-			return '';
-		}
-		$classes = iterator_to_array( $p->class_list() );
-		sort( $classes );
-		return strtolower( $p->get_tag() ) . '|' . implode( ' ', $classes ) . '|' . (string) $p->get_attribute( 'id' );
-	}
-
-	/**
-	 * What core's save() prints as the block's opening tag for its attributes (6.7): Group is
-	 * `<{tagName} class="wp-block-group {className}">`, Paragraph is `<p class="{className}" id="{anchor}">`.
-	 * Dynamic and HTML blocks save no wrapper of their own.
-	 */
-	private static function expectedSave( array $block ): string {
-		$attrs = $block['attrs'];
-		$class = isset( $attrs['className'] ) ? preg_split( '/\s+/', $attrs['className'], -1, PREG_SPLIT_NO_EMPTY ) : array();
-		switch ( $block['blockName'] ) {
-			case 'core/group':
-				$class[] = 'wp-block-group';
-				sort( $class );
-				return ( $attrs['tagName'] ?? 'div' ) . '|' . implode( ' ', $class ) . '|' . ( $attrs['anchor'] ?? '' );
-			case 'core/paragraph':
-				sort( $class );
-				return 'p|' . implode( ' ', $class ) . '|' . ( $attrs['anchor'] ?? '' );
-			default:
-				return self::savedWrapper( $block );
-		}
+		$this->assertValidBlockMarkup( self::partFile(), 'parts/footer.html' );
 	}
 
 	public function test_part_uses_core_blocks_for_the_editable_link_columns(): void {
@@ -257,27 +211,27 @@ final class FooterPartTest extends WP_UnitTestCase {
 		$html = '<nav class="wp-block-group fo-footer__col"><p id="footer-x" class="fo-eyebrow">X</p><p><a href="/a/">A</a></p></nav>';
 		$this->assertSame(
 			'<nav aria-labelledby="footer-x" class="wp-block-group fo-footer__col"><p id="footer-x" class="fo-eyebrow">X</p><p><a href="/a/">A</a></p></nav>',
-			ishot_theme_footer_group( $html )
+			ishot_theme_render_group( $html )
 		);
 		// Not a footer column, or no eyebrow id: untouched.
 		$other = '<nav class="wp-block-group"><p id="y" class="fo-eyebrow">Y</p><p><a href="/a/">A</a></p></nav>';
-		$this->assertSame( $other, ishot_theme_footer_group( $other ) );
+		$this->assertSame( $other, ishot_theme_render_group( $other ) );
 		$plain = '<nav class="wp-block-group fo-footer__col"><p class="fo-eyebrow">Y</p><p><a href="/a/">A</a></p></nav>';
-		$this->assertSame( $plain, ishot_theme_footer_group( $plain ) );
+		$this->assertSame( $plain, ishot_theme_render_group( $plain ) );
 		// An aria-labelledby set by the owner is kept.
 		$own = '<nav aria-labelledby="mine" class="wp-block-group fo-footer__col"><p id="footer-x" class="fo-eyebrow">X</p><p><a href="/a/">A</a></p></nav>';
-		$this->assertSame( $own, ishot_theme_footer_group( $own ) );
+		$this->assertSame( $own, ishot_theme_render_group( $own ) );
 	}
 
 	public function test_empty_social_wrapper_and_eyebrow_only_columns_are_not_printed(): void {
-		$this->assertSame( '', ishot_theme_footer_group( "<div class=\"wp-block-group ish-social\">\n\n</div>" ) );
-		$this->assertSame( '', ishot_theme_footer_group( "<div class=\"wp-block-group fo-footer__col\">\n<p class=\"fo-eyebrow\">Visit <em>us</em></p>\n\n</div>" ) );
-		$this->assertSame( '', ishot_theme_footer_group( '<nav class="wp-block-group fo-footer__col"><p id="f" class="fo-eyebrow">Studio</p></nav>' ) );
+		$this->assertSame( '', ishot_theme_render_group( "<div class=\"wp-block-group ish-social\">\n\n</div>" ) );
+		$this->assertSame( '', ishot_theme_render_group( "<div class=\"wp-block-group fo-footer__col\">\n<p class=\"fo-eyebrow\">Visit <em>us</em></p>\n\n</div>" ) );
+		$this->assertSame( '', ishot_theme_render_group( '<nav class="wp-block-group fo-footer__col"><p id="f" class="fo-eyebrow">Studio</p></nav>' ) );
 
 		$social = '<div class="wp-block-group ish-social"><span class="fo-icon-btn"><svg viewBox="0 0 24 24"><path d="M0 0"/></svg></span></div>';
-		$this->assertSame( $social, ishot_theme_footer_group( $social ) );
+		$this->assertSame( $social, ishot_theme_render_group( $social ) );
 		$visit = '<div class="wp-block-group fo-footer__col"><p class="fo-eyebrow">Visit</p><a href="mailto:a@b.co">a@b.co</a></div>';
-		$this->assertSame( $visit, ishot_theme_footer_group( $visit ) );
+		$this->assertSame( $visit, ishot_theme_render_group( $visit ) );
 	}
 
 	public function test_without_the_plugin_blocks_the_footer_prints_no_empty_wrappers(): void {

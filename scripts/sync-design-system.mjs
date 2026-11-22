@@ -62,6 +62,32 @@ const theme = resolve(root, "wordpress/wp-content/themes/ishot-concept");
 mkdirSync(resolve(theme, "assets/css"), { recursive: true });
 writeFileSync(resolve(theme, "assets/css/tokens.css"), banner + tokens);
 writeFileSync(resolve(theme, "assets/css/bundle.css"), banner + bundle);
+// Editor only: the bundle's `.fo-root` rules (border-box sizing, reduced motion) with `.fo-root` read as the
+// editor canvas root `.editor-styles-wrapper`, which core's editor-style transform leaves unprefixed. The
+// Site Editor shows template parts without the templates' .fo-root wrapper (ruling R-1.4-4).
+function foRootRules(css) {
+  const out = [];
+  let media = null;
+  let inMedia = [];
+  for (const line of css.split("\n")) {
+    if (/^@media[^{]*\{\s*$/.test(line)) {
+      media = line;
+      inMedia = [];
+    } else if (media && /^\}\s*$/.test(line)) {
+      if (inMedia.length) out.push(media, ...inMedia, "}");
+      media = null;
+    } else if (line.includes(".fo-root")) {
+      if (!/^\s*[^{}]+\{[^{}]*\}\s*$/.test(line)) throw new Error(`sync-design-system: a .fo-root rule in bundle.css is not a one-line rule: ${line.trim()}`);
+      (media ? inMedia : out).push(line);
+    }
+  }
+  if (!out.length) throw new Error("sync-design-system: no .fo-root rules found in bundle.css");
+  return out.join("\n").replace(/\.fo-root\b/g, ".editor-styles-wrapper") + "\n";
+}
+writeFileSync(
+  resolve(theme, "assets/css/editor-root.css"),
+  banner + "/* The design system's .fo-root rules for the editor canvas root (see functions.php ISHOT_THEME_EDITOR_ROOT_STYLE). */\n" + foRootRules(bundle)
+);
 // The prototype's app layer (header, menu, footer, skip link, title blocks...): src/index.css, identical after the banner (line endings normalised to LF, as git stores it, so Windows and CI agree).
 writeFileSync(resolve(theme, "assets/css/app.css"), banner + readFileSync(resolve(root, "src/index.css"), "utf8").replace(/\r\n/g, "\n"));
 // Brand artwork the app layer and the Logo markup refer to (binary copies).

@@ -2,9 +2,13 @@
 // Each block has an editorScript (ServerSideRender), so the editors show the server markup instead of
 // "Your site doesn't include support for ..." or an invalid-block warning. A throwaway page holding the
 // blocks not yet placed in a template part is created with wp-cli in beforeAll and deleted in afterAll.
-// Screenshots are attached to the test output (tests/e2e/.output, gitignored).
+// Screenshots are attached to the test output (tests/e2e/.output, gitignored); the template and part checks
+// also save theirs to the task workspace (.superpowers/sdd/..., gitignored) as review evidence.
 import { execSync } from 'node:child_process';
+import path from 'node:path';
 import { test, expect } from '@playwright/test';
+
+const EVIDENCE = path.resolve(import.meta.dirname, '../../.superpowers/sdd/2026-11-21-wordpress-phase-3b-3c');
 
 const wp = (args) =>
   execSync(`npx wp-env run cli wp ${args}`, {
@@ -53,6 +57,15 @@ async function expectSupported(page, canvas) {
   await expect(page.getByText(UNSUPPORTED)).toHaveCount(0);
 }
 
+/** Names of blocks in the open editor that failed block validation (the "attempt recovery" state). */
+const invalidBlocks = (page) =>
+  page.evaluate(() => {
+    const be = window.wp.data.select('core/block-editor');
+    return be.getClientIdsWithDescendants().map((id) => be.getBlock(id)).filter((b) => b && !b.isValid).map((b) => b.name);
+  });
+
+const siteEditor = (type, slug) => `/wp-admin/site-editor.php?postType=${type}&postId=ishot-concept%2F%2F${slug}&canvas=edit`;
+
 test('the Header template part shows the site header in the Site Editor', async ({ page }, testInfo) => {
   await logIn(page);
   await page.goto('/wp-admin/site-editor.php?postType=wp_template_part&postId=ishot-concept%2F%2Fheader&canvas=edit');
@@ -68,9 +81,17 @@ test('the Header template part shows the site header in the Site Editor', async 
   // The closed sheet is in the markup but not shown.
   await expect(canvas.locator('#site-menu')).toBeHidden();
   await expectSupported(page, canvas);
+  expect(await invalidBlocks(page)).toEqual([]);
 
+  // The canvas has the design system's .fo-root base (editor-root.css, ruling R-1.4-4): the header
+  // button has the front end's border-box height, not a taller content-box one.
+  const editorBox = await header.getByText('Book now').boundingBox();
+  await page.screenshot({ path: path.join(EVIDENCE, 'task-1.4-site-editor-part-header.png') });
   await testInfo.attach('site-editor-header', { body: await page.screenshot(), contentType: 'image/png' });
   await page.goto('/about/');
+  const frontBox = await page.locator('header.fo-header').getByText('Book now').boundingBox();
+  expect(Math.round(editorBox.height)).toBe(Math.round(frontBox.height));
+  expect(Math.round(editorBox.width)).toBe(Math.round(frontBox.width));
   await testInfo.attach('frontend-header', { body: await page.locator('header.fo-header').screenshot(), contentType: 'image/png' });
 });
 
@@ -112,11 +133,50 @@ test('the Footer template part opens in the Site Editor with valid, editable cor
   await expectSupported(page, canvas);
 
   // Every block of the part passed block validation (no "attempt recovery").
-  const invalid = await page.evaluate(() => {
-    const be = window.wp.data.select('core/block-editor');
-    return be.getClientIdsWithDescendants().map((id) => be.getBlock(id)).filter((b) => b && !b.isValid).map((b) => b.name);
-  });
-  expect(invalid).toEqual([]);
+  expect(await invalidBlocks(page)).toEqual([]);
 
+  await page.screenshot({ path: path.join(EVIDENCE, 'task-1.4-site-editor-part-footer.png') });
   await testInfo.attach('site-editor-footer', { body: await page.screenshot(), contentType: 'image/png' });
 });
+
+// The five base templates (Task 1.4): each opens with the header, main#main and the footer, every block
+// valid and supported, and the design-system styles applied in the canvas.
+for (const slug of ['index', 'page', 'single', '404', 'search']) {
+  test(`the ${slug} template opens in the Site Editor with valid, supported blocks and the design-system styles`, async ({ page }, testInfo) => {
+    await logIn(page);
+    await page.goto(siteEditor('wp_template', slug));
+    await dismissGuides(page);
+    const canvas = page.frameLocator('iframe[name="editor-canvas"]');
+
+    const root = canvas.locator('.fo-root.ish-app');
+    await expect(root.locator('header.fo-header')).toBeVisible({ timeout: 30000 });
+    await expect(root.locator('main')).toHaveCount(1);
+    // The canvas does not print the anchor as an id; the saved block carries it (front end: main#main).
+    const anchors = await page.evaluate(() => {
+      const be = window.wp.data.select('core/block-editor');
+      return be.getClientIdsWithDescendants().map((id) => be.getBlock(id)).filter((b) => b?.attributes?.tagName === 'main').map((b) => b.attributes.anchor);
+    });
+    expect(anchors).toEqual(['main']);
+    await expect(root.locator('footer.fo-footer')).toBeVisible();
+    await expectSupported(page, canvas);
+    expect(await invalidBlocks(page)).toEqual([]);
+
+    // Design-system styles in the canvas: tokens, bundle and app layer.
+    const styles = await root.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const btn = el.querySelector('.fo-header .fo-btn');
+      return { display: cs.display, font: cs.fontFamily, sizing: getComputedStyle(btn).boxSizing, btnHeight: btn.getBoundingClientRect().height };
+    });
+    expect(styles.display).toBe('flex'); // .ish-app (app.css)
+    expect(styles.font).toMatch(/Space Grotesk/); // .fo-root (bundle.css, tokens.css)
+    expect(styles.sizing).toBe('border-box');
+    expect(styles.btnHeight).toBe(36);
+    if (slug === '404') {
+      await expect(root.locator('main h1.fo-h1')).toHaveText('Page not found');
+      await expect(root.locator('main .ish-actions a.fo-btn')).toHaveCount(2);
+    }
+
+    await page.screenshot({ path: path.join(EVIDENCE, `task-1.4-site-editor-template-${slug}.png`) });
+    await testInfo.attach(`site-editor-template-${slug}`, { body: await page.screenshot(), contentType: 'image/png' });
+  });
+}

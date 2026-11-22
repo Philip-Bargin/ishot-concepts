@@ -19,6 +19,14 @@ const ISHOT_THEME_STYLES = array(
 	'ishot-theme'  => 'assets/css/theme.css',
 );
 
+/**
+ * Editor only, after the four above: the design system's `.fo-root` base rules (border-box sizing,
+ * reduced motion) applied to the editor canvas root, `.editor-styles-wrapper`. The templates wrap
+ * everything in `.fo-root`, but the Site Editor shows a template part (and the post editor a post)
+ * without that wrapper. Generated from bundle.css by `npm run sync:ds` (ruling R-1.4-4).
+ */
+const ISHOT_THEME_EDITOR_ROOT_STYLE = 'assets/css/editor-root.css';
+
 /** Fonts used above the fold on every page; preloaded so headings don't swap late. */
 const ISHOT_THEME_PRELOAD_FONTS = array(
 	'assets/fonts/oswald-latin-700-normal.woff2',
@@ -30,7 +38,7 @@ add_action(
 	static function (): void {
 		load_theme_textdomain( 'ishot-concept', get_template_directory() . '/languages' );
 		add_theme_support( 'editor-styles' );
-		add_editor_style( array_values( ISHOT_THEME_STYLES ) );
+		add_editor_style( array_merge( array_values( ISHOT_THEME_STYLES ), array( ISHOT_THEME_EDITOR_ROOT_STYLE ) ) );
 		// Core's generic patterns don't follow the design system; the theme ships its own (Phase 3f).
 		remove_theme_support( 'core-block-patterns' );
 	}
@@ -58,9 +66,11 @@ add_action(
 );
 
 require_once __DIR__ . '/inc/footer.php';
+require_once __DIR__ . '/inc/groups.php';
 require_once __DIR__ . '/inc/logo.php';
 require_once __DIR__ . '/inc/navigation.php';
 require_once __DIR__ . '/inc/skip-link.php';
+require_once __DIR__ . '/inc/templates.php';
 
 /** Absolute path of the theme's compiled frame blocks (built by `npm run build:blocks`). */
 function ishot_theme_blocks_directory(): string {

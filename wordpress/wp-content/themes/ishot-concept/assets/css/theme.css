@@ -99,3 +99,14 @@ body { margin: 0; }
 /* Without studio details the server leaves the Visit column out; the prototype's last-child rule
    (full-width row below 768 px) would then stretch the Book column, so the link columns stay paired. */
 .ish-footer__grid > nav.fo-footer__col:last-child { grid-column: auto; }
+
+/* Templates (App.jsx's main). Core's flow layout puts a block gap above every child after the first
+   (its rule outranks app.css's element reset); the prototype's sections, title stacks and actions
+   are spaced by their own classes only. */
+.ish-app > main > *,
+.ish-app > main > .wp-block-post-content > *,
+.ish-app > main .wp-block-group.is-layout-flow > * { margin-block: 0; }
+
+/* Action rows (404): each button is an editable paragraph holding one link; the paragraph generates
+   no box, so the links are the .ish-actions flex items, as in the prototype. */
+.ish-actions > p:not([class]) { display: contents; }

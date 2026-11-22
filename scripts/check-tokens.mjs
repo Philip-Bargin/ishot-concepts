@@ -1,6 +1,6 @@
 // Design-system quality gate: no raw colours or durations outside the design tokens.
 // Scans src/ (except the generated src/styles/ds/), the booking plugin's admin CSS and the theme's CSS
-// (except their generated tokens.css / bundle.css) for:
+// (except their generated tokens.css / bundle.css, and the theme's editor-root.css, a verbatim excerpt of bundle.css) for:
 //   - hex colours (#abc, #aabbcc, #aabbccdd) in .css/.js/.jsx
 //   - millisecond durations (e.g. 300ms) in .css
 // Custom-property definitions (lines starting with `--name:`) are allowed: that is where app tokens live.
@@ -13,7 +13,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const srcDir = resolve(root, "src");
 const pluginCss = resolve(root, "wordpress/wp-content/plugins/ishot-booking/assets/css");
 const themeCss = resolve(root, "wordpress/wp-content/themes/ishot-concept/assets/css");
-const skips = [resolve(srcDir, "styles/ds"), resolve(pluginCss, "tokens.css"), resolve(themeCss, "tokens.css"), resolve(themeCss, "bundle.css")];
+const skips = [resolve(srcDir, "styles/ds"), resolve(pluginCss, "tokens.css"), resolve(themeCss, "tokens.css"), resolve(themeCss, "bundle.css"), resolve(themeCss, "editor-root.css")];
 
 const HEX = /(?<![\w&/-])#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{1}|[0-9a-fA-F]{3}|[0-9a-fA-F]{5})?\b/g;
 const MS = /\b\d+(?:\.\d+)?ms\b/g;
