@@ -89,3 +89,31 @@ test('logo, social links and the Night toggle render in the block editor', async
 
   await testInfo.attach('block-editor-blocks', { body: await page.screenshot(), contentType: 'image/png' });
 });
+
+test('the Footer template part opens in the Site Editor with valid, editable core link columns', async ({ page }, testInfo) => {
+  await logIn(page);
+  await page.goto('/wp-admin/site-editor.php?postType=wp_template_part&postId=ishot-concept%2F%2Ffooter&canvas=edit');
+  await dismissGuides(page);
+  const canvas = page.frameLocator('iframe[name="editor-canvas"]');
+
+  const footer = canvas.locator('footer.fo-footer');
+  await expect(footer).toBeVisible({ timeout: 30000 });
+  await expect(footer.locator('[data-type="ishot/logo"] img.ish-logo__full')).toHaveAttribute('alt', 'iShot Concept');
+  await expect(footer.locator('[data-type="ishot/social-links"] .fo-icon-btn')).toHaveCount(3);
+  await expect(footer.locator('[data-type="ishot/contact-details"] a[href^="mailto:"]')).toHaveCount(1);
+  await expect(footer.locator('[data-type="ishot/theme-toggle"] button.ish-linkbtn')).toHaveText('Night mode');
+
+  // The six link columns' items are core paragraphs the owner can edit in place.
+  const links = footer.locator('nav.fo-footer__col [data-type="core/paragraph"][contenteditable="true"] a');
+  await expect(links).toHaveText(['About', 'Services', 'Portfolio', 'Book a session', 'My bookings', 'Contact']);
+  await expectSupported(page, canvas);
+
+  // Every block of the part passed block validation (no "attempt recovery").
+  const invalid = await page.evaluate(() => {
+    const be = window.wp.data.select('core/block-editor');
+    return be.getClientIdsWithDescendants().map((id) => be.getBlock(id)).filter((b) => b && !b.isValid).map((b) => b.name);
+  });
+  expect(invalid).toEqual([]);
+
+  await testInfo.attach('site-editor-footer', { body: await page.screenshot(), contentType: 'image/png' });
+});

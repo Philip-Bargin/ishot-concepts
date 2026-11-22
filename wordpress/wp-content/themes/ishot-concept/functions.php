@@ -57,6 +57,7 @@ add_action(
 	1
 );
 
+require_once __DIR__ . '/inc/footer.php';
 require_once __DIR__ . '/inc/logo.php';
 require_once __DIR__ . '/inc/navigation.php';
 require_once __DIR__ . '/inc/skip-link.php';

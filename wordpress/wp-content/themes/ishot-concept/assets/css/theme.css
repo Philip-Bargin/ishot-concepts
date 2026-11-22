@@ -87,3 +87,11 @@ body { margin: 0; }
 	.wp-element-button,
 	.wp-block-button__link { transition: none; }
 }
+
+/* Footer part (Footer.jsx from core blocks). Core's flow layout puts a block gap above every
+   group child; the prototype's columns space their items with grid gap only. */
+.fo-footer.is-layout-flow > *,
+.fo-footer .is-layout-flow > * { margin-block: 0; }
+
+/* The link paragraphs generate no box, so their anchors are the column's grid items, as in the prototype. */
+.fo-footer__col > p:not([class]) { display: contents; }

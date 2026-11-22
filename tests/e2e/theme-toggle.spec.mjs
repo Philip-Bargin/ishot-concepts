@@ -1,28 +1,11 @@
-// Night bootstrap and the ishot/theme-toggle block, on the wp-env dev site.
-// A throwaway page holding only the block is created with wp-cli in beforeAll and deleted in afterAll,
-// so the dev site's content is left unchanged.
-import { execSync } from 'node:child_process';
+// Night bootstrap and the ishot/theme-toggle block, on the wp-env dev site. Since Task 1.3 the block is
+// in the footer part's legal band on every page, so the tests use the footer's button on /about/.
 import { test, expect } from '@playwright/test';
 
 const KEY = 'ishot-theme';
-const wp = (args) =>
-  execSync(`npx wp-env run cli wp ${args}`, {
-    encoding: 'utf8',
-    env: { ...process.env, MSYS_NO_PATHCONV: '1' },
-  }).trim();
 
-let pageId;
-test.beforeAll(() => {
-  pageId = wp(`post create --post_type=page --post_status=publish --post_title="e2e theme toggle" --post_content="<!-- wp:ishot/theme-toggle /-->" --porcelain`)
-    .split('\n')
-    .pop();
-});
-test.afterAll(() => {
-  if (pageId) wp(`post delete ${pageId} --force`);
-});
-
-const url = () => `/?page_id=${pageId}`;
-const toggle = (page) => page.getByRole('button', { name: 'Night mode' });
+const url = () => '/about/';
+const toggle = (page) => page.getByRole('contentinfo').getByRole('button', { name: 'Night mode' });
 const theme = (page) => page.evaluate(() => document.documentElement.dataset.theme);
 
 test('a page starts in light with the button unpressed', async ({ page }) => {

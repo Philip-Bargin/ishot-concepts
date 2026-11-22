@@ -4,7 +4,7 @@
   "name": "ishot/logo",
   "title": "iShot logo",
   "category": "theme",
-  "description": "The official iShot Concept logo files. Auto swaps to the reversed file in Night; reversed is for navy bands.",
+  "description": "The official iShot Concept logo files. Auto swaps to the reversed file in Night; reversed is for navy bands. Link wraps it in the home link.",
   "attributes": {
     "variant": {
       "type": "string",
@@ -13,6 +13,10 @@
         "reversed"
       ],
       "default": "auto"
+    },
+    "isLink": {
+      "type": "boolean",
+      "default": false
     }
   },
   "supports": {

@@ -34,6 +34,13 @@ final class LogoBlockTest extends WP_UnitTestCase {
 		$this->assertSame( '<img src="' . esc_url( get_theme_file_uri( self::REVERSED ) ) . '" alt="iShot Concept">', $html );
 	}
 
+	public function test_is_link_wraps_the_images_in_the_fo_logo_home_link(): void {
+		$html = trim( do_blocks( '<!-- wp:ishot/logo {"isLink":true} /-->' ) );
+
+		$this->assertSame( '<a class="fo-logo" href="' . esc_url( home_url( '/' ) ) . '">' . ishot_theme_logo_html() . '</a>', $html );
+		$this->assertStringNotContainsString( '<a', trim( do_blocks( '<!-- wp:ishot/logo /-->' ) ), 'no link by default' );
+	}
+
 	public function test_an_unknown_variant_falls_back_to_auto(): void {
 		$this->assertSame( ishot_theme_logo_html( 'auto' ), ishot_theme_logo_html( 'neon' ) );
 	}
