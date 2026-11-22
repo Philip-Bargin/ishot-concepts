@@ -15,15 +15,29 @@ final class Plugin {
 
 	private static string $plugin_file = '';
 
+	/**
+	 * Block folders that could not be registered in this request: folder => reason. Registration
+	 * runs on `init`, before `admin_notices`, so the notice can read this list.
+	 *
+	 * @var array<string, string>
+	 */
+	private static array $skipped = array();
+
 	public static function boot( string $plugin_file ): void {
 		self::$plugin_file = $plugin_file;
 		add_action( 'init', array( self::class, 'registerBuiltBlocks' ) );
 		add_action( 'admin_notices', array( self::class, 'maybeShowBookingNotice' ) );
+		add_action( 'admin_notices', array( self::class, 'renderSkippedNotice' ) );
+	}
+
+	/** Absolute path of the compiled blocks folder, always inside this plugin (never a theme). */
+	public static function buildDirectory(): string {
+		return dirname( self::$plugin_file ) . self::BUILD_BLOCKS;
 	}
 
 	/** `init` callback: registers the blocks built into this plugin. */
 	public static function registerBuiltBlocks(): void {
-		self::registerBlocks( dirname( self::$plugin_file ) . self::BUILD_BLOCKS );
+		self::registerBlocks( self::buildDirectory() );
 	}
 
 	/**
@@ -62,17 +76,18 @@ final class Plugin {
 		$registered = array();
 		$missing    = $found['missing'];
 
+		foreach ( $missing as $folder ) {
+			self::reportProblem( $folder, 'it has no block.json (the build is incomplete)' );
+		}
+
 		foreach ( $found['found'] as $folder ) {
 			$type = register_block_type( $folder );
 			if ( $type instanceof \WP_Block_Type ) {
 				$registered[] = $type->name;
 			} else {
 				$missing[] = $folder;
+				self::reportProblem( $folder, 'WordPress rejected its block.json (invalid, or the block name is already registered)' );
 			}
-		}
-
-		foreach ( $missing as $folder ) {
-			self::reportProblem( $folder );
 		}
 
 		return array(
@@ -82,30 +97,51 @@ final class Plugin {
 	}
 
 	/** `admin_notices` callback. */
+	/** Forgets the skipped-block list (used by tests). */
+	public static function forgetSkipped(): void {
+		self::$skipped = array();
+	}
+
+	/** `admin_notices` callback: tells administrators which blocks were not registered. */
+	public static function renderSkippedNotice(): void {
+		if ( array() === self::$skipped || ! current_user_can( 'activate_plugins' ) ) {
+			return;
+		}
+		$items = '';
+		foreach ( self::$skipped as $folder => $reason ) {
+			/* translators: 1: block folder name, 2: reason */
+			$items .= '<li>' . esc_html( sprintf( __( '%1$s: could not be registered because %2$s.', 'ishot-blocks' ), basename( $folder ), $reason ) ) . '</li>';
+		}
+		echo '<div class="notice notice-error"><p>' . esc_html__( 'iShot Blocks: some blocks could not be registered, so pages using them show "unsupported block". Rebuild the plugin (npm run build:blocks) and redeploy build/.', 'ishot-blocks' ) . '</p><ul>' . $items . '</ul></div>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- $items is built from esc_html() output only.
+	}
+
 	public static function maybeShowBookingNotice(): void {
 		self::renderBookingNotice( class_exists( 'IShot\Booking\Plugin' ) );
 	}
 
 	/** Prints a notice when the booking plugin is not active. Prints nothing when it is. */
 	public static function renderBookingNotice( bool $booking_active ): void {
-		if ( $booking_active ) {
+		if ( $booking_active || ! current_user_can( 'activate_plugins' ) ) {
 			return;
 		}
 		echo '<div class="notice notice-warning"><p>' . esc_html__( 'iShot Blocks works with the iShot Booking plugin. Activate iShot Booking to use the booking blocks.', 'ishot-blocks' ) . '</p></div>';
 	}
 
-	/** Logs (WP_DEBUG_LOG) a block folder that could not be registered, and lets others react. */
-	private static function reportProblem( string $folder ): void {
+	/** Remembers (for the admin notice), logs (WP_DEBUG_LOG) and announces a block folder that could not be registered. */
+	private static function reportProblem( string $folder, string $reason ): void {
+		self::$skipped[ $folder ] = $reason;
+
 		/**
-		 * Fires when a folder under build/blocks has no usable block.json.
+		 * Fires when a folder under build/blocks could not be registered.
 		 *
 		 * @param string $folder Absolute path of the folder.
+		 * @param string $reason Why it could not be registered.
 		 */
-		do_action( 'ishot_blocks_block_skipped', $folder );
+		do_action( 'ishot_blocks_block_skipped', $folder, $reason );
 
 		if ( defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- opt-in debug log, no output.
-			error_log( 'iShot Blocks: skipped a block without a usable block.json: ' . $folder );
+			error_log( 'iShot Blocks: the block in ' . $folder . ' could not be registered because ' . $reason . '.' );
 		}
 	}
 }
