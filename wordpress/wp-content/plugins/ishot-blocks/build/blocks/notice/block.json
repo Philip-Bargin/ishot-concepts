@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "ishot/notice",
+  "title": "Sample content notice",
+  "category": "widgets",
+  "description": "The visible \"Sample content.\" notice for the current post or page while its content status is Placeholder. Prints nothing once the content is approved.",
+  "usesContext": [
+    "postId"
+  ],
+  "supports": {
+    "html": false,
+    "inserter": true
+  },
+  "textdomain": "ishot-blocks",
+  "editorScript": "file:./index.js",
+  "render": "file:./render.php"
+}

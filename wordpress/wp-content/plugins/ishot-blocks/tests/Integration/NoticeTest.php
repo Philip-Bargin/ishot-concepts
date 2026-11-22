@@ -28,6 +28,16 @@ final class NoticeTest extends WP_UnitTestCase {
 		$this->assertSame( MarkupNormaliser::normalise( $expected ), MarkupNormaliser::normalise( Notice::render( 'Sample content.', 'Hello', 'ish-notice' ) ) );
 	}
 
+	public function test_default_label_is_translatable(): void {
+		$translate = static fn( $translation, $text, $domain ) => 'ishot-blocks' === $domain && 'Sample content.' === $text ? 'Exemple.' : $translation;
+		add_filter( 'gettext', $translate, 10, 3 );
+		try {
+			$this->assertStringContainsString( '<strong>Exemple.</strong>', Notice::render() );
+		} finally {
+			remove_filter( 'gettext', $translate, 10 );
+		}
+	}
+
 	public function test_message_and_class_are_escaped(): void {
 		$html = Notice::render( 'L', '<b>x</b>', '"><script>' );
 		$this->assertStringNotContainsString( '<b>', $html );
