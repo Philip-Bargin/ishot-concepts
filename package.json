@@ -27,6 +27,7 @@
     "test:visual": "node scripts/visual-reference.mjs --check",
     "test:blocks": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-blocks vendor/bin/phpunit --testsuite unit,integration",
     "test:theme": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-blocks vendor/bin/phpunit --testsuite theme",
+    "build:icons": "node scripts/export-icons.mjs",
     "build:blocks": "node scripts/build-blocks.mjs",
     "build:blocks:check": "node scripts/build-blocks.mjs --check",
     "test:scripts": "node --test tests/blocks/*.test.mjs tests/visual/*.test.mjs"
