@@ -28,7 +28,9 @@ final class Media {
 	 *
 	 * @param int         $attachment_id Attachment (image) ID.
 	 * @param string      $ratio         portrait|landscape|square|tall|wide|strip|video|blog.
-	 * @param string      $sizes         The img sizes attribute.
+	 * @param string      $sizes         The img sizes attribute. WordPress (6.7+) prefixes `auto, ` to it on lazy images, both here
+	 *                                   and again when the page output passes through wp_filter_content_tags(); the browser
+	 *                                   still sizes by the rest of the list, and layout is fixed by the .fo-img ratio frame.
 	 * @param bool        $priority      True for the above-the-fold image: eager, high fetch priority.
 	 * @param string|null $alt           null = the attachment's own alt text; '' = decorative.
 	 */
@@ -54,16 +56,20 @@ final class Media {
 			$attr['style'] = 'object-position:' . $focus;
 		}
 
-		// Match the prototype's img: no core class list, no "auto," prefix on sizes (WP 6.7+).
-		$sizes_attr = $sizes;
-		$drop_class = static function ( array $attributes ) use ( $sizes_attr ): array {
-			unset( $attributes['class'] );
-			$attributes['sizes'] = $sizes_attr;
+		// Core adds a class list (attachment-large size-large wp-image-N) that the prototype's img
+		// does not have. Drop it for this attachment only, and always unhook, even on an exception.
+		$drop_class = static function ( array $attributes, $attachment ) use ( $attachment_id ): array {
+			if ( $attachment instanceof \WP_Post && $attachment->ID === $attachment_id ) {
+				unset( $attributes['class'] );
+			}
 			return $attributes;
 		};
-		add_filter( 'wp_get_attachment_image_attributes', $drop_class );
-		$img = wp_get_attachment_image( $attachment_id, self::SIZE, false, $attr );
-		remove_filter( 'wp_get_attachment_image_attributes', $drop_class );
+		add_filter( 'wp_get_attachment_image_attributes', $drop_class, 10, 2 );
+		try {
+			$img = wp_get_attachment_image( $attachment_id, self::SIZE, false, $attr );
+		} finally {
+			remove_filter( 'wp_get_attachment_image_attributes', $drop_class, 10 );
+		}
 		if ( '' === $img ) {
 			return self::placeholder( $ratio );
 		}

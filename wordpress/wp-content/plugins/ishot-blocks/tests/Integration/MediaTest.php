@@ -24,7 +24,7 @@ final class MediaTest extends WP_UnitTestCase {
 	public function test_photo_prints_srcset_sizes_and_the_ratio_class(): void {
 		$html = Media::photo( $this->attachment, 'landscape', '(min-width: 768px) 50vw, 100vw' );
 		$this->assertStringContainsString( 'srcset="', $html );
-		$this->assertStringContainsString( 'sizes="(min-width: 768px) 50vw, 100vw"', $html );
+		$this->assertMatchesRegularExpression( '/sizes="(auto, )?\(min-width: 768px\) 50vw, 100vw"/', $html );
 		$this->assertStringContainsString( 'class="fo-img ish-r-landscape"', $html );
 	}
 
@@ -78,6 +78,53 @@ final class MediaTest extends WP_UnitTestCase {
 
 		$expected = '<span class="fo-img ish-r-portrait"><img src="x" srcset="x" sizes="x" alt="A bride laughing" loading="eager" fetchpriority="high" decoding="async" style="object-position:30% 20%"></span>';
 		$this->assertSame( $this->norm( $expected ), $this->norm( Media::photo( $this->attachment, 'portrait', '100vw', true ) ) );
+	}
+
+	public function test_page_output_filter_keeps_the_class_list_clean_and_adds_auto_to_sizes(): void {
+		// Block-theme output runs wp_filter_content_tags( $html, 'template' ), which core uses to
+		// prefix "auto, " to the sizes of lazy images. That is accepted; the class list must stay clean.
+		$html = wp_filter_content_tags( Media::photo( $this->attachment, 'landscape', '(min-width: 768px) 50vw, 100vw' ), 'template' );
+		$this->assertStringContainsString( 'sizes="auto, (min-width: 768px) 50vw, 100vw"', $html );
+		$this->assertStringNotContainsString( 'wp-image-', $html );
+		$this->assertStringNotContainsString( 'attachment-large', $html );
+		$this->assertStringContainsString( 'class="fo-img ish-r-landscape"', $html );
+		$this->assertStringContainsString( 'loading="lazy"', $html );
+	}
+
+	public function test_a_throwing_filter_leaves_no_ishot_filter_attached(): void {
+		global $wp_filter;
+		$before  = count( $wp_filter['wp_get_attachment_image_attributes']->callbacks[10] ?? array() );
+		$thrower = static function () {
+			throw new \RuntimeException( 'boom' );
+		};
+		add_filter( 'wp_get_attachment_image_attributes', $thrower, 20 );
+		try {
+			Media::photo( $this->attachment );
+			$this->fail( 'expected the exception to propagate' );
+		} catch ( \RuntimeException $e ) {
+			$this->assertSame( 'boom', $e->getMessage() );
+		}
+		remove_filter( 'wp_get_attachment_image_attributes', $thrower, 20 );
+		$after = count( $wp_filter['wp_get_attachment_image_attributes']->callbacks[10] ?? array() );
+		$this->assertSame( $before, $after );
+		$this->assertStringContainsString( 'attachment-large', wp_get_attachment_image( $this->attachment, 'large' ) );
+	}
+
+	public function test_a_nested_call_for_another_attachment_keeps_core_classes(): void {
+		$other  = self::factory()->attachment->create_upload_object( DIR_TESTDATA . '/images/canola.jpg' );
+		$nested = '';
+		$spy    = null;
+		$spy    = static function ( array $attr, $attachment ) use ( $other, &$nested, &$spy ) {
+			if ( $attachment instanceof \WP_Post && $attachment->ID !== $other ) {
+				remove_filter( 'wp_get_attachment_image_attributes', $spy, 11 );
+				$nested = wp_get_attachment_image( $other, 'large' );
+			}
+			return $attr;
+		};
+		add_filter( 'wp_get_attachment_image_attributes', $spy, 11, 2 );
+		$outer = Media::photo( $this->attachment );
+		$this->assertStringNotContainsString( 'attachment-large', $outer );
+		$this->assertStringContainsString( 'attachment-large', $nested );
 	}
 
 	/** @dataProvider placeholder_labels */

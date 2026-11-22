@@ -30,14 +30,28 @@ final class Icons {
 	 *
 	 * @param string $name  kebab-case Lucide name (arrow-right, circle-alert, ...) or instagram | facebook | whatsapp.
 	 * @param string $label Accessible name. Empty (default) hides the icon from assistive technology.
+	 * @param int    $size  Rendered width and height in px (the prototype's Icon `size`); the viewBox is unchanged.
 	 */
-	public static function svg( string $name, string $label = '' ): string {
+	public static function svg( string $name, string $label = '', int $size = 16 ): string {
 		$svg = self::markup( $name );
-		if ( '' === $svg || '' === $label ) {
-			return $svg;
+		if ( '' === $svg ) {
+			return '';
 		}
-		$named = ' role="img" aria-label="' . htmlspecialchars( $label, ENT_QUOTES, 'UTF-8' ) . '" focusable="false"';
-		return str_replace( self::HIDDEN, $named, $svg );
+		$end = strpos( $svg, '>' );
+		if ( false === $end ) {
+			return '';
+		}
+		$tag  = substr( $svg, 0, $end );
+		$rest = substr( $svg, $end );
+		if ( $size > 0 && 16 !== $size ) {
+			$tag = (string) preg_replace( '/\s(width|height)="\d+"/', ' $1="' . $size . '"', $tag );
+		}
+		if ( '' !== $label ) {
+			// Attribute-order independent: drop the hiding attributes, then add the accessible name.
+			$tag  = (string) preg_replace( '/\s(aria-hidden|focusable|role|aria-label)="[^"]*"/', '', $tag );
+			$tag .= ' role="img" aria-label="' . htmlspecialchars( $label, ENT_QUOTES, 'UTF-8' ) . '" focusable="false"';
+		}
+		return $tag . $rest;
 	}
 
 	private static function markup( string $name ): string {
