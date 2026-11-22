@@ -18,11 +18,7 @@ if ( ! class_exists( StudioDevFixtures::class ) ) {
 	exit( 1 );
 }
 
-$ishot_result = StudioDevFixtures::apply(
-	wp_get_environment_type(),
-	defined( 'ISHOT_DEV_FIXTURES' ) ? ISHOT_DEV_FIXTURES : null,
-	home_url()
-);
+$ishot_result = StudioDevFixtures::run();
 
 if ( ! $ishot_result['ok'] ) {
 	fwrite( STDERR, 'Refused, nothing changed: ' . $ishot_result['reason'] . "\n" );

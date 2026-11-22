@@ -72,12 +72,30 @@ final class StudioForm {
 		$keep    = array();
 		foreach ( $flagged as $name ) {
 			$key = Studio::FIELDS[ $name ] ?? null;
-			if ( null !== $key && (string) $stored[ $key ] === (string) $values[ $key ] && empty( $input[ 'confirm_' . $key ] ) ) {
+			// Compare in normalised form, so a stored value that is merely not in canonical form is "unchanged".
+			if ( null !== $key && self::normalise( $key, (string) $stored[ $key ] ) === $values[ $key ] && empty( $input[ 'confirm_' . $key ] ) ) {
 				$keep[] = $name;
 			}
 		}
 		$values['studio_unconfirmed'] = $keep;
 		Settings::update( $values );
 		return array();
+	}
+
+	/** The canonical form a value is saved in (what a valid submission of it would be stored as). */
+	private static function normalise( string $key, string $raw ): string {
+		$raw = trim( $raw );
+		switch ( $key ) {
+			case 'studio_instagram_url':
+				return Studio::socialUrl( $raw, 'instagram.com' ) ?? $raw;
+			case 'studio_facebook_url':
+				return Studio::socialUrl( $raw, 'facebook.com' ) ?? $raw;
+			case 'studio_public_email':
+				return sanitize_email( $raw );
+			case 'studio_address':
+				return trim( str_replace( "\r\n", "\n", sanitize_textarea_field( $raw ) ) );
+			default:
+				return $raw;
+		}
 	}
 }

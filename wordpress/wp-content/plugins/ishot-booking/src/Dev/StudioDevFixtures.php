@@ -24,12 +24,29 @@ final class StudioDevFixtures {
 	);
 
 	/**
+	 * The only entry point. It reads the guard inputs itself (environment type, the
+	 * ISHOT_DEV_FIXTURES constant, home_url()); callers cannot supply them.
+	 *
+	 * @return array{ok: bool, reason: string, written: list<string>}
+	 */
+	public static function run(): array {
+		return self::execute(
+			wp_get_environment_type(),
+			defined( 'ISHOT_DEV_FIXTURES' ) ? constant( 'ISHOT_DEV_FIXTURES' ) : null,
+			home_url()
+		);
+	}
+
+	/**
+	 * Private on purpose: the guard values must come from run(). Tests reach it by reflection to
+	 * exercise each guard on its own.
+	 *
 	 * @param string $environment_type wp_get_environment_type().
 	 * @param mixed  $opt_in           The value of ISHOT_DEV_FIXTURES, or null when undefined.
 	 * @param string $home_url         home_url().
 	 * @return array{ok: bool, reason: string, written: list<string>}
 	 */
-	public static function apply( string $environment_type, mixed $opt_in, string $home_url ): array {
+	private static function execute( string $environment_type, mixed $opt_in, string $home_url ): array {
 		$reason = self::blocked( $environment_type, $opt_in, $home_url );
 		if ( '' !== $reason ) {
 			return array(

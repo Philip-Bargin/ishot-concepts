@@ -21,21 +21,44 @@ final class Studio {
 		'address'   => 'studio_address',
 	);
 
-	/** @return array{phone: string, phone_href: ?string, whatsapp_url: ?string, instagram_url: ?string, facebook_url: ?string, email: string, address: string} */
+	/**
+	 * Hook for tests only: lets a test pretend the site is NOT local. It can only make the check
+	 * stricter. A filter can never turn a staging or production site into a local one.
+	 */
+	public const ENVIRONMENT_FILTER = 'ishot_booking_studio_environment_type';
+
+	/**
+	 * Theme consumers MUST use details() and socials() and never read the raw settings: these
+	 * methods hold back values the studio has not confirmed. On any site whose environment type is
+	 * not local or development, every field listed by unconfirmed() comes back as '' or null
+	 * (so an unconfirmed social becomes an inactive icon), whatever is stored.
+	 *
+	 * @return array{phone: string, phone_href: ?string, whatsapp_url: ?string, instagram_url: ?string, facebook_url: ?string, email: string, address: string}
+	 */
 	public static function details(): array {
-		$s     = Settings::all();
-		$phone = (string) $s['studio_phone'];
-		$wa    = self::e164Digits( (string) $s['studio_whatsapp'] );
+		$s    = Settings::all();
+		$hold = ! self::showsUnconfirmed() ? self::unconfirmed() : array();
+		$get  = static fn( string $name ): string => in_array( $name, $hold, true ) ? '' : (string) $s[ self::FIELDS[ $name ] ];
+
+		$phone = $get( 'phone' );
+		$wa    = self::e164Digits( $get( 'whatsapp' ) );
 		$phd   = self::e164Digits( $phone );
 		return array(
 			'phone'         => $phone,
 			'phone_href'    => null === $phd ? null : 'tel:+' . $phd,
 			'whatsapp_url'  => null === $wa ? null : 'https://wa.me/' . $wa,
-			'instagram_url' => self::socialUrl( (string) $s['studio_instagram_url'], 'instagram.com' ),
-			'facebook_url'  => self::socialUrl( (string) $s['studio_facebook_url'], 'facebook.com' ),
-			'email'         => is_email( (string) $s['studio_public_email'] ) ? (string) $s['studio_public_email'] : '',
-			'address'       => (string) $s['studio_address'],
+			'instagram_url' => self::socialUrl( $get( 'instagram' ), 'instagram.com' ),
+			'facebook_url'  => self::socialUrl( $get( 'facebook' ), 'facebook.com' ),
+			'email'         => is_email( $get( 'email' ) ) ? $get( 'email' ) : '',
+			'address'       => $get( 'address' ),
 		);
+	}
+
+	/** True when unconfirmed values may be shown: only on a local or development site (the filter can only turn this off). */
+	private static function showsUnconfirmed(): bool {
+		$real     = wp_get_environment_type();
+		$filtered = apply_filters( 'ishot_booking_studio_environment_type', $real );
+		return in_array( $real, array( 'local', 'development' ), true ) && in_array( $filtered, array( 'local', 'development' ), true );
 	}
 
 	/** @return list<array{id: 'instagram'|'facebook'|'whatsapp', label: string, url: ?string}> Always all three, in this order; a null url is an inactive icon. */

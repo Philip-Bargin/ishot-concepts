@@ -19,6 +19,7 @@ final class StudioDetailsTest extends TestCase {
 
 	protected function tearDown(): void {
 		remove_all_filters( 'wp_die_handler' );
+		remove_all_filters( Studio::ENVIRONMENT_FILTER );
 		$_POST = $_REQUEST = array();
 		wp_set_current_user( 0 );
 	}
@@ -296,6 +297,98 @@ final class StudioDetailsTest extends TestCase {
 			$this->assertStringContainsString( '403', $e->getMessage() );
 		}
 		$this->assertSame( '', Studio::details()['address'] );
+	}
+
+	public function test_a_flagged_value_not_in_normalised_form_stays_flagged_on_an_unchanged_resave(): void {
+		$raw = array(
+			'studio_public_email'  => '  Hello@Example.com ',
+			'studio_address'       => "Line one\r\nLine two ",
+			'studio_phone'         => ' 0881405259 ',
+			'studio_instagram_url' => 'https://www.instagram.com/ishotconcept/',
+		);
+		Settings::update( $raw + array( 'studio_unconfirmed' => array( 'email', 'address', 'phone', 'instagram' ) ) );
+		$this->assertSame( array(), StudioForm::save( self::input( $raw ) ) );
+		$this->assertSame( array( 'phone', 'instagram', 'email', 'address' ), Studio::unconfirmed() );
+	}
+
+	private function flaggedStudio(): void {
+		Settings::update(
+			array(
+				'studio_phone'         => '+231 881 405 259',
+				'studio_whatsapp'      => '+231 881 405 259',
+				'studio_instagram_url' => 'https://www.instagram.com/ishotconcept/',
+				'studio_facebook_url'  => 'https://www.facebook.com/ishot',
+				'studio_public_email'  => 'owner@example.com',
+				'studio_address'       => 'Monrovia, Liberia',
+				'studio_unconfirmed'   => array( 'whatsapp', 'instagram', 'address', 'phone' ),
+			)
+		);
+	}
+
+	/** @return array<string, array{string}> */
+	public static function nonLocalEnvironments(): array {
+		return array(
+			'production' => array( 'production' ),
+			'staging'    => array( 'staging' ),
+		);
+	}
+
+	/** @dataProvider nonLocalEnvironments */
+	public function test_unconfirmed_values_are_withheld_outside_local_environments( string $env ): void {
+		$this->flaggedStudio();
+		add_filter( Studio::ENVIRONMENT_FILTER, static fn() => $env );
+		$d      = Studio::details();
+		$social = array_column( Studio::socials(), 'url', 'id' );
+		$this->assertSame( '', $d['phone'] );
+		$this->assertNull( $d['phone_href'] );
+		$this->assertNull( $d['whatsapp_url'] );
+		$this->assertNull( $d['instagram_url'] );
+		$this->assertSame( '', $d['address'] );
+		$this->assertNull( $social['instagram'] );
+		$this->assertNull( $social['whatsapp'] );
+		// Confirmed fields stay.
+		$this->assertSame( 'https://www.facebook.com/ishot', $d['facebook_url'] );
+		$this->assertSame( 'owner@example.com', $d['email'] );
+		$this->assertSame( 'https://www.facebook.com/ishot', $social['facebook'] );
+	}
+
+	/** @return array<string, array{string}> */
+	public static function localEnvironments(): array {
+		return array(
+			'local'       => array( 'local' ),
+			'development' => array( 'development' ),
+		);
+	}
+
+	/** @dataProvider localEnvironments */
+	public function test_unconfirmed_values_show_on_local_and_development_sites( string $env ): void {
+		$this->flaggedStudio();
+		add_filter( Studio::ENVIRONMENT_FILTER, static fn() => $env );
+		$d = Studio::details();
+		$this->assertSame( 'Monrovia, Liberia', $d['address'] );
+		$this->assertSame( 'https://wa.me/231881405259', $d['whatsapp_url'] );
+		$this->assertSame( 'tel:+231881405259', $d['phone_href'] );
+		$this->assertSame( 'https://www.instagram.com/ishotconcept/', $d['instagram_url'] );
+	}
+
+	public function test_the_unconfirmed_note_is_part_of_the_inputs_accessible_description(): void {
+		Roles::install();
+		Settings::update(
+			array(
+				'studio_whatsapp'    => '+231 881 405 259',
+				'studio_address'     => 'Monrovia',
+				'studio_phone'       => '+231 881 405 259',
+				'studio_unconfirmed' => array( 'whatsapp', 'address' ),
+			)
+		);
+		$this->actAs( 'ishot_manager' );
+		ob_start();
+		SettingsScreen::policyPage();
+		$html = (string) ob_get_clean();
+		$this->assertStringContainsString( 'id="warn-studio_whatsapp"', $html );
+		$this->assertStringContainsString( 'name="studio_whatsapp" type="tel" value="+231 881 405 259" class="regular-text" aria-describedby="desc-studio_whatsapp warn-studio_whatsapp"', $html );
+		$this->assertStringContainsString( 'aria-describedby="desc-studio_address warn-studio_address"', $html );
+		$this->assertStringContainsString( 'name="studio_phone" type="tel" value="+231 881 405 259" class="regular-text" aria-describedby="desc-studio_phone"', $html );
 	}
 
 	public function test_the_screen_escapes_what_it_prints_and_flags_unconfirmed_values(): void {

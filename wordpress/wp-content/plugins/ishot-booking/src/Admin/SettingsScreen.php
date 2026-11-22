@@ -156,12 +156,24 @@ final class SettingsScreen {
 		$notice = static function ( string $key ) use ( $names, $flag ): void {
 			if ( in_array( $names[ $key ], $flag, true ) ) {
 				printf(
-					'<p class="ishot-field-warning"><strong>%1$s</strong> <label><input type="checkbox" name="confirm_%2$s" value="1"> %3$s</label></p>',
-					esc_html__( 'Not confirmed by the studio yet', 'ishot-booking' ),
+					'<p class="ishot-field-warning" id="warn-%1$s"><strong>%2$s</strong> <label><input type="checkbox" name="confirm_%1$s" value="1"> %3$s</label></p>',
 					esc_attr( $key ),
+					esc_html__( 'Not confirmed by the studio yet', 'ishot-booking' ),
 					esc_html__( 'This is correct', 'ishot-booking' )
 				);
 			}
+		};
+		// The input's accessible description: its error (if any), its help text and its "not confirmed" note (if any).
+		$attrs = static function ( string $key ) use ( $errors, $names, $flag ): string {
+			$ids = array();
+			if ( isset( $errors[ $key ] ) ) {
+				$ids[] = 'err-' . $key;
+			}
+			$ids[] = 'desc-' . $key;
+			if ( in_array( $names[ $key ], $flag, true ) ) {
+				$ids[] = 'warn-' . $key;
+			}
+			return ( isset( $errors[ $key ] ) ? ' aria-invalid="true"' : '' ) . ' aria-describedby="' . esc_attr( implode( ' ', $ids ) ) . '"';
 		};
 
 		echo '<h2>' . esc_html__( 'Studio details', 'ishot-booking' ) . '</h2><p class="ishot-muted">'
@@ -175,7 +187,7 @@ final class SettingsScreen {
 				esc_html( $label ),
 				esc_attr( $type ),
 				esc_attr( (string) $settings[ $field ] ),
-				isset( $errors[ $field ] ) ? ' aria-invalid="true" aria-describedby="err-' . esc_attr( $field ) . ' desc-' . esc_attr( $field ) . '"' : ' aria-describedby="desc-' . esc_attr( $field ) . '"',
+				$attrs( $field ), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in $attrs.
 				esc_html( $help )
 			);
 			self::fieldError( $errors, $field );
@@ -185,7 +197,7 @@ final class SettingsScreen {
 		printf(
 			'<tr><th scope="row"><label for="ishot-studio_address">%1$s</label></th><td><textarea id="ishot-studio_address" name="studio_address" rows="3" class="large-text"%2$s>%3$s</textarea><p class="description" id="desc-studio_address">%4$s</p>',
 			esc_html__( 'Address', 'ishot-booking' ),
-			isset( $errors['studio_address'] ) ? ' aria-invalid="true" aria-describedby="err-studio_address desc-studio_address"' : ' aria-describedby="desc-studio_address"',
+			$attrs( 'studio_address' ), // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in $attrs.
 			esc_textarea( (string) $settings['studio_address'] ),
 			esc_html__( 'Plain text; line breaks are kept.', 'ishot-booking' )
 		);

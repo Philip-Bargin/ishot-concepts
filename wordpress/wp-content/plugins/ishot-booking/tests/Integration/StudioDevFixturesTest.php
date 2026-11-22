@@ -15,6 +15,16 @@ final class StudioDevFixturesTest extends TestCase {
 		delete_option( Settings::OPTION );
 	}
 
+	/**
+	 * The guard inputs are not a public parameter list: reach the private worker by reflection so each guard can be tested alone.
+	 *
+	 * @return array{ok: bool, reason: string, written: list<string>}
+	 */
+	private static function exec( string $env, mixed $opt_in, string $home ): array {
+		$method = new \ReflectionMethod( StudioDevFixtures::class, 'execute' );
+		return $method->invoke( null, $env, $opt_in, $home );
+	}
+
 	private function snapshot(): string {
 		return serialize( get_option( Settings::OPTION, 'absent' ) );
 	}
@@ -37,7 +47,7 @@ final class StudioDevFixturesTest extends TestCase {
 
 	/** @dataProvider singleFailures */
 	public function test_each_guard_alone_blocks_the_write( string $env, mixed $opt_in, string $home ): void {
-		$result = StudioDevFixtures::apply( $env, $opt_in, $home );
+		$result = self::exec( $env, $opt_in, $home );
 		$this->assertFalse( $result['ok'] );
 		$this->assertNotSame( '', $result['reason'] );
 		$this->assertSame( array(), $result['written'] );
@@ -53,7 +63,7 @@ final class StudioDevFixturesTest extends TestCase {
 		);
 		$before = $this->snapshot();
 		foreach ( self::singleFailures() as [ $env, $opt_in, $home ] ) {
-			$this->assertFalse( StudioDevFixtures::apply( $env, $opt_in, $home )['ok'] );
+			$this->assertFalse( self::exec( $env, $opt_in, $home )['ok'] );
 		}
 		$this->assertSame( $before, $this->snapshot() );
 	}
@@ -71,7 +81,7 @@ final class StudioDevFixturesTest extends TestCase {
 	/** @dataProvider allowedHomes */
 	public function test_all_guards_passing_fills_only_empty_fields_and_marks_them_unconfirmed( string $home ): void {
 		delete_option( Settings::OPTION );
-		$result = StudioDevFixtures::apply( 'development', true, $home );
+		$result = self::exec( 'development', true, $home );
 		$this->assertTrue( $result['ok'] );
 		$d = Studio::details();
 		$this->assertSame( '0881405259', $d['phone'] );
@@ -85,7 +95,7 @@ final class StudioDevFixturesTest extends TestCase {
 	}
 
 	public function test_local_environment_type_is_also_allowed(): void {
-		$this->assertTrue( StudioDevFixtures::apply( 'local', true, 'http://localhost' )['ok'] );
+		$this->assertTrue( self::exec( 'local', true, 'http://localhost' )['ok'] );
 	}
 
 	public function test_it_never_overwrites_a_non_empty_value(): void {
@@ -95,7 +105,7 @@ final class StudioDevFixturesTest extends TestCase {
 				'studio_public_email' => 'owner@example.com',
 			)
 		);
-		$result = StudioDevFixtures::apply( 'development', true, 'http://localhost:8888' );
+		$result = self::exec( 'development', true, 'http://localhost:8888' );
 		$this->assertTrue( $result['ok'] );
 		$d = Studio::details();
 		$this->assertSame( 'Owner street', $d['address'] );
@@ -107,12 +117,41 @@ final class StudioDevFixturesTest extends TestCase {
 	}
 
 	public function test_a_second_run_changes_nothing(): void {
-		StudioDevFixtures::apply( 'development', true, 'http://localhost:8888' );
+		self::exec( 'development', true, 'http://localhost:8888' );
 		$before = $this->snapshot();
-		$result = StudioDevFixtures::apply( 'development', true, 'http://localhost:8888' );
+		$result = self::exec( 'development', true, 'http://localhost:8888' );
 		$this->assertTrue( $result['ok'] );
 		$this->assertSame( array(), $result['written'] );
 		$this->assertSame( $before, $this->snapshot() );
+	}
+
+	public function test_the_only_public_entry_point_takes_no_guard_values(): void {
+		$public = array_map( static fn( $m ) => $m->getName(), ( new \ReflectionClass( StudioDevFixtures::class ) )->getMethods( \ReflectionMethod::IS_PUBLIC ) );
+		$this->assertSame( array( 'run' ), $public );
+		$this->assertSame( 0, ( new \ReflectionMethod( StudioDevFixtures::class, 'run' ) )->getNumberOfParameters() );
+	}
+
+	public function test_run_reads_the_real_guards_and_refuses_without_the_opt_in_constant(): void {
+		$result = StudioDevFixtures::run();
+		$this->assertFalse( $result['ok'] );
+		$this->assertStringContainsString( 'ISHOT_DEV_FIXTURES', $result['reason'] );
+		$this->assertSame( 'absent', get_option( Settings::OPTION, 'absent' ) );
+	}
+
+	public function test_fixture_values_round_trip_through_the_form_without_clearing_flags(): void {
+		self::exec( 'development', true, 'http://localhost:8888' );
+		$errors = \IShot\Booking\Admin\StudioForm::save(
+			array(
+				'studio_phone'         => StudioDevFixtures::VALUES['phone'],
+				'studio_whatsapp'      => StudioDevFixtures::VALUES['whatsapp'],
+				'studio_instagram_url' => StudioDevFixtures::VALUES['instagram'],
+				'studio_facebook_url'  => '',
+				'studio_public_email'  => StudioDevFixtures::VALUES['email'],
+				'studio_address'       => StudioDevFixtures::VALUES['address'],
+			)
+		);
+		$this->assertSame( array(), $errors, 'the fixture values must pass the form validation' );
+		$this->assertSame( self::FILLED, Studio::unconfirmed() );
 	}
 
 	public function test_the_tests_environment_does_not_opt_in(): void {
