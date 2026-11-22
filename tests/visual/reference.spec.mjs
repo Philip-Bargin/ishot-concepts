@@ -8,10 +8,10 @@ import path from 'node:path';
 import { test, expect } from '@playwright/test';
 import { captureState, contextOptions, THEMES, VIEWPORTS } from './capture.mjs';
 import { ALIGNMENT_STATES, checkAlignment } from './alignment.mjs';
-import { compareStates, evaluateGate, flaggedRegions, referenceFingerprint } from './compare.mjs';
+import { compareStates, evaluateGate, flaggedRegions, referenceFingerprint, regionsGate } from './compare.mjs';
 import { assertPrototypeIntegrity } from './integrity.mjs';
 import { filterByScope } from './scope.mjs';
-import { ACTIVE_ROUTES, BASE_URL, IS_WP, SCOPE, pathFor } from './target.mjs';
+import { ACTIVE_ROUTES, BASE_URL, IS_WP, SCOPE, TARGET, pathFor } from './target.mjs';
 
 const OUT = path.resolve('tests/visual/.output');
 const REF_DIR = path.resolve('tests/visual/reference');
@@ -99,8 +99,14 @@ for (const route of ACTIVE_ROUTES) {
           expect(result.styleFailures, 'styles').toEqual([]);
           expect(result.alignmentFailures, 'alignment').toEqual([]);
         }
-        // prototype against itself: any flagged region is a nondeterminism bug. Review-only states are exempt.
-        expect(flaggedRegions(result, { gate: route.gate !== false }), 'regions over 1 %').toEqual([]);
+        // Prototype against itself: any flagged region is a nondeterminism bug, so it fails (gated states only).
+        // WordPress: regions are a review signal, shown as an annotation and in compare-report.html, never a failure.
+        const flagged = flaggedRegions(result, { gate: true });
+        if (regionsGate({ gate: route.gate !== false, target: TARGET })) {
+          expect(flagged, 'regions over 1 %').toEqual([]);
+        } else if (flagged.length) {
+          testInfo.annotations.push({ type: 'regions-over-1%', description: `${flagged.length} region(s) for review: ${flagged.slice(0, 10).map((r) => r.name).join(', ')}` });
+        }
       });
     }
   }

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PNG } from 'pngjs';
-import { compareStates, evaluateGate, flaggedRegions } from './compare.mjs';
+import { compareStates, evaluateGate, flaggedRegions, regionsGate } from './compare.mjs';
 
 const lm = (over = {}) => ({ name: 'card[0]', x: 20, y: 100, width: 100, height: 60, ...over });
 const st = (over = {}) => ({
@@ -180,4 +180,12 @@ test('regions wholly above the page (the off-screen skip link) are not pixel-com
   const skip = lm({ name: 'skip-link', x: 16, y: -80, width: 100, height: 44 });
   const r = compareStates(state({ png, geometry: [skip], styles: [st({ name: 'skip-link' })] }), state({ png, geometry: [{ ...skip, y: -60 }], styles: [st({ name: 'skip-link' })] }));
   assert.deepEqual(r.regionDiffs, []);
+});
+
+test('regionsGate: only gated prototype states fail on flagged regions; the wp target never does', () => {
+  assert.equal(regionsGate(), true);
+  assert.equal(regionsGate({ gate: true, target: 'prototype' }), true);
+  assert.equal(regionsGate({ gate: false, target: 'prototype' }), false);
+  assert.equal(regionsGate({ gate: true, target: 'wp' }), false);
+  assert.equal(regionsGate({ gate: false, target: 'wp' }), false);
 });

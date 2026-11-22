@@ -158,6 +158,13 @@ export function evaluateGate(result, { gate = true } = {}) {
  */
 export const flaggedRegions = (result, { gate = true } = {}) => (gate ? result.regionDiffs.filter((r) => r.flagged) : []);
 
+/**
+ * Whether flagged regions fail the run. Only the prototype checked against itself (a flagged region there is a
+ * nondeterminism bug) and only for gated states. For the WordPress target regions (B) are a review signal:
+ * geometry (A), styles (C) and alignment are the gates.
+ */
+export const regionsGate = ({ gate = true, target = 'prototype' } = {}) => gate && target !== 'wp';
+
 /** Fingerprint of the committed reference JSON; stored beside the reference PNGs to detect stale PNGs. */
 export function referenceFingerprint(geometryFile, stylesFile) {
   const hash = crypto.createHash('sha256');
