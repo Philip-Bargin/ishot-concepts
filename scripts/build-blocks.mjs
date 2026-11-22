@@ -109,21 +109,38 @@ if (watch) {
   // One long-running `wp-scripts start` per package that has blocks. They live and die together:
   // when one exits, the others are stopped and its exit code is returned; SIGINT/SIGTERM/SIGHUP sent
   // to this script are forwarded to every watcher, so none is left running on its own.
+  // wp-scripts runs webpack in a grandchild (`spawn.sync` in @wordpress/scripts/utils/cli.js), so a
+  // watcher is stopped as a whole tree: on POSIX each watcher leads its own process group (detached)
+  // and the group is signalled; on Windows `taskkill /T /F` ends the process and its descendants.
   const watchers = packages.filter((pkg) => {
     const has = findBlocks(pkg).length > 0;
     if (!has) console.log(`build-blocks: ${relative(root, pkg) || pkg}: no blocks found, nothing to watch.`);
     return has;
   });
+  const windows = process.platform === "win32";
   const children = new Set();
   let exitCode = 0;
   let stopping = false;
+  const killTree = (child, signal) => {
+    if (windows) {
+      spawnSync("taskkill", ["/T", "/F", "/PID", String(child.pid)], { stdio: "ignore" });
+      return;
+    }
+    try {
+      process.kill(-child.pid, signal);
+    } catch {
+      // The group is already gone.
+    }
+  };
   const stopAll = (signal = "SIGTERM") => {
     stopping = true;
-    for (const child of children) child.kill(signal);
+    for (const child of children) killTree(child, signal);
   };
-  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+  // Conventional 128 + signal number exit codes.
+  const SIGNAL_EXIT = { SIGHUP: 129, SIGINT: 130, SIGTERM: 143 };
+  for (const signal of Object.keys(SIGNAL_EXIT)) {
     process.on(signal, () => {
-      if (!exitCode) exitCode = 130;
+      if (!exitCode) exitCode = SIGNAL_EXIT[signal];
       stopAll(signal);
     });
   }
@@ -131,10 +148,16 @@ if (watch) {
     watchers.map(
       (pkg) =>
         new Promise((done) => {
-          const child = spawn(process.execPath, wpArgs("start", pkg, join(pkg, "build", "blocks")), { cwd: root, stdio: ["ignore", "inherit", "inherit"] });
+          const child = spawn(process.execPath, wpArgs("start", pkg, join(pkg, "build", "blocks")), {
+            cwd: root,
+            stdio: ["ignore", "inherit", "inherit"],
+            detached: !windows,
+          });
           children.add(child);
           child.on("exit", (code, signal) => {
             children.delete(child);
+            // Its own webpack grandchild may outlive it: end the rest of its group too (POSIX).
+            if (!windows) killTree(child, "SIGTERM");
             if (!stopping) {
               console.error(`build-blocks: the watcher for ${relative(root, pkg) || pkg} stopped (${signal ?? `exit ${code}`}); stopping the others.`);
               exitCode = code || 1;

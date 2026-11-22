@@ -12,7 +12,8 @@ defined( 'ABSPATH' ) || exit;
 function ishot_theme_print_skip_link(): void {
 	echo '<a href="#main" class="ish-skip">' . esc_html__( 'Skip to content', 'ishot-concept' ) . '</a>';
 }
-add_action( 'wp_body_open', 'ishot_theme_print_skip_link', 0 );
+// Priority -1: before core's admin bar (wp_admin_bar_render, priority 0), so it is first for everyone.
+add_action( 'wp_body_open', 'ishot_theme_print_skip_link', -1 );
 
 // Core adds its own skip link to block themes (WP 6.4+); the prototype's replaces it. The deprecated
 // wp_footer printer is normally unhooked by the enqueue function, so it has to go too.

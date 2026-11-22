@@ -25,7 +25,24 @@ final class HeaderPartTest extends WP_UnitTestCase {
 
 		$this->assertStringStartsWith( '<a href="#main" class="ish-skip">Skip to content</a>', ltrim( $body ) );
 		$this->assertSame( 1, substr_count( $body, 'ish-skip' ) );
-		$this->assertSame( 0, has_action( 'wp_body_open', 'ishot_theme_print_skip_link' ) );
+		$this->assertLessThan( has_action( 'wp_body_open', 'wp_admin_bar_render' ), has_action( 'wp_body_open', 'ishot_theme_print_skip_link' ), 'printed before the admin bar (core, priority 0)' );
+	}
+
+	public function test_skip_link_comes_before_the_admin_bar_for_logged_in_users(): void {
+		global $wp_admin_bar;
+		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+		show_admin_bar( true );
+		$saved = $wp_admin_bar;
+		try {
+			_wp_admin_bar_init();
+			$body = self::capture( static fn() => do_action( 'wp_body_open' ) );
+		} finally {
+			$wp_admin_bar = $saved; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- restores the test's global.
+			show_admin_bar( false );
+		}
+
+		$this->assertStringContainsString( 'id="wpadminbar"', $body, 'the admin bar is printed on wp_body_open' );
+		$this->assertStringStartsWith( '<a href="#main" class="ish-skip">Skip to content</a>', ltrim( $body ) );
 	}
 
 	public function test_core_block_template_skip_link_is_removed(): void {

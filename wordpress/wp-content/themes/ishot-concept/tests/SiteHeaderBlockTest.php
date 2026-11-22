@@ -288,13 +288,29 @@ final class SiteHeaderBlockTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '<p class="small">Monrovia · ask us</p>', self::render() );
 	}
 
-	public function test_social_slot_is_empty_when_the_social_links_block_is_not_registered(): void {
+	public function test_no_empty_social_landmark_when_the_social_links_block_is_not_registered(): void {
 		unregister_block_type( 'ishot/social-links' );
 		$html = self::render();
 
-		$this->assertStringContainsString( '<nav class="fo-header__social" aria-label="Social"></nav>', $html );
-		$this->assertStringContainsString( '<div class="ish-social"></div>', $html );
+		$this->assertStringNotContainsString( 'fo-header__social', $html, 'no empty "Social" navigation landmark' );
+		$this->assertStringNotContainsString( 'ish-social', $html, 'no empty wrapper in the menu foot' );
+		$this->assertStringContainsString( '<div class="fo-container ish-header__inner"><a class="fo-logo"', $html );
+		$this->assertStringContainsString( '</a><div class="fo-header__actions">', $html );
 		$this->assertStringContainsString( 'id="site-menu"', $html );
+	}
+
+	public function test_no_empty_social_landmark_when_the_social_links_block_prints_nothing(): void {
+		// As when ishot-blocks is active without ishot-booking: the block is registered but renders ''.
+		$empty = static fn( string $content, array $block ): string => 'ishot/social-links' === $block['blockName'] ? '' : $content;
+		add_filter( 'render_block', $empty, 10, 2 );
+		try {
+			$html = self::render();
+		} finally {
+			remove_filter( 'render_block', $empty, 10 );
+		}
+
+		$this->assertStringNotContainsString( 'fo-header__social', $html );
+		$this->assertStringNotContainsString( 'ish-social', $html );
 	}
 
 	public function test_header_html_is_identical_for_a_guest_and_a_logged_in_administrator(): void {

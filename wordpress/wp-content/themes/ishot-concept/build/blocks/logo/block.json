@@ -20,5 +20,6 @@
     "inserter": true
   },
   "textdomain": "ishot-concept",
+  "editorScript": "file:./index.js",
   "render": "file:./render.php"
 }

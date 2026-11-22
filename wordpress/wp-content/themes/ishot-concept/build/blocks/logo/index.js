@@ -1,0 +1,1 @@
+(()=>{"use strict";const e=window.wp.blocks,i=window.wp.blockEditor,o=window.wp.components,s=window.wp.serverSideRender,t="ishot/logo",w=window.ReactJSXRuntime;(0,e.registerBlockType)(t,{edit:({attributes:e})=>(0,w.jsx)("div",{...(0,i.useBlockProps)(),children:(0,w.jsx)(o.Disabled,{children:(0,w.jsx)(s,{block:t,attributes:e})})}),save:()=>null})})();

@@ -118,6 +118,12 @@ final class Importer {
 			);
 		}
 
+		if ( '' === $content ) {
+			// An empty "Primary" would replace the header's built-in menu with nothing.
+			$this->warn( 'Navigation "' . self::NAVIGATION_TITLE . '" not created: the seed has no usable menu item.' );
+			return;
+		}
+
 		++$this->report['created'];
 		if ( $this->options['dry_run'] ) {
 			return;

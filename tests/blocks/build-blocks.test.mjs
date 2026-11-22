@@ -186,24 +186,48 @@ test("--watch together with --check is an error", () => {
 });
 
 /**
- * A stand-in for `wp-scripts start` that records its pid in <dir>/pids/<n>.pid and then either keeps
- * running (a watcher) or, for the package whose source path contains "fails", exits 3 after a moment.
+ * A stand-in for `wp-scripts start`. Like the real one (`@wordpress/scripts/utils/cli.js` runs
+ * `scripts/start.js` with `spawn.sync`), a watcher blocks on a grandchild that does the watching.
+ * Every process records its pid: <dir>/pids/c-<pid>.pid (watcher) and g-<pid>.pid (grandchild).
+ * The package whose source path contains "fails" has no grandchild and exits 3 after a moment.
  */
 function makeWatcherStub(dir) {
   const pids = join(dir, "pids");
   mkdirSync(pids, { recursive: true });
+  const grandchild = join(dir, "webpack-watch-stub.mjs");
+  writeFileSync(
+    grandchild,
+    [
+      'import { writeFileSync } from "node:fs";',
+      'import { join } from "node:path";',
+      `writeFileSync(join(${JSON.stringify(pids)}, "g-" + process.pid + ".pid"), "");`,
+      "setInterval(() => {}, 1000);",
+    ].join(String.fromCharCode(10)),
+  );
   const stub = join(dir, "wp-scripts-watch-stub.mjs");
   writeFileSync(
     stub,
     [
+      'import { spawnSync } from "node:child_process";',
       'import { writeFileSync } from "node:fs";',
       'import { join } from "node:path";',
-      `writeFileSync(join(${JSON.stringify(pids)}, process.pid + ".pid"), process.argv.slice(2).join(" "));`,
+      `writeFileSync(join(${JSON.stringify(pids)}, "c-" + process.pid + ".pid"), process.argv.slice(2).join(" "));`,
       'const fails = process.argv.some((a) => a.startsWith("--webpack-src-dir=") && a.includes("fails"));',
-      "if (fails) setTimeout(() => process.exit(3), 1500); else setInterval(() => {}, 1000);",
+      "if (fails) setTimeout(() => process.exit(3), 1500);",
+      `else spawnSync(process.execPath, [${JSON.stringify(grandchild)}], { stdio: "inherit" });`,
     ].join(String.fromCharCode(10)),
   );
   return { stub, pids };
+}
+
+const recorded = (pids, prefix) =>
+  readdirSync(pids)
+    .filter((f) => f.startsWith(prefix))
+    .map((f) => Number(f.slice(prefix.length).replace(".pid", "")));
+
+async function waitFor(cond, ms) {
+  const deadline = Date.now() + ms;
+  while (!cond() && Date.now() < deadline) await new Promise((res) => setTimeout(res, 100));
 }
 
 function alive(pid) {
@@ -224,12 +248,24 @@ function makeNamedPackage(name) {
   return { base, pkg };
 }
 
-test("--watch stops the other watchers and fails when one of them exits", { timeout: 60000 }, async () => {
+/** Kills whatever a failed assertion left running, so a red run does not leak processes. */
+function reap(pids) {
+  for (const f of existsSync(pids) ? readdirSync(pids) : []) {
+    const pid = Number(f.replace(/^[cg]-/, "").replace(".pid", ""));
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      // already gone
+    }
+  }
+}
+
+test("--watch stops the other watchers, and their own child processes, when one of them exits", { timeout: 60000 }, async () => {
   const ok = makeNamedPackage("keeps-running");
   const bad = makeNamedPackage("fails");
   const rec = mkdtempSync(join(tmpdir(), "ishot-blocks-recorder-"));
+  const { stub, pids } = makeWatcherStub(rec);
   try {
-    const { stub, pids } = makeWatcherStub(rec);
     const r = spawnSync(process.execPath, [script, "--package", ok.pkg, "--package", bad.pkg, "--watch"], {
       encoding: "utf8",
       env: { ...process.env, ISHOT_WP_SCRIPTS: stub },
@@ -237,40 +273,42 @@ test("--watch stops the other watchers and fails when one of them exits", { time
     });
     assert.equal(r.error, undefined, "the script must not hang waiting for the surviving watcher");
     assert.equal(r.status, 3, r.stdout + r.stderr);
-    const started = readdirSync(pids).map((f) => Number(f.replace(".pid", "")));
-    assert.equal(started.length, 2);
-    // Give the OS a moment to reap the killed sibling.
-    await new Promise((res) => setTimeout(res, 500));
-    for (const pid of started) assert.equal(alive(pid), false, `watcher ${pid} left running`);
+    assert.equal(recorded(pids, "c-").length, 2);
+    assert.equal(recorded(pids, "g-").length, 1, "the surviving watcher had started its grandchild");
+    // Give the OS a moment to reap the killed processes.
+    await new Promise((res) => setTimeout(res, 1000));
+    for (const pid of [...recorded(pids, "c-"), ...recorded(pids, "g-")]) assert.equal(alive(pid), false, `process ${pid} left running`);
   } finally {
+    reap(pids);
     for (const p of [ok.base, bad.base, rec]) rmSync(p, { recursive: true, force: true });
   }
 });
 
 // Windows has no catchable SIGTERM/SIGINT from process.kill (it terminates outright), and a console
 // Ctrl+C already reaches every process on the console; forwarding matters on POSIX (CI, Docker).
-test("--watch forwards SIGINT and SIGTERM to the watchers and leaves none behind", { timeout: 60000, skip: process.platform === "win32" && "POSIX signals only" }, async () => {
-  for (const signal of ["SIGINT", "SIGTERM"]) {
+test("--watch forwards SIGINT, SIGTERM and SIGHUP to the watchers' process groups and leaves none behind", { timeout: 90000, skip: process.platform === "win32" && "POSIX signals only" }, async () => {
+  for (const [signal, code] of [["SIGINT", 130], ["SIGTERM", 143], ["SIGHUP", 129]]) {
     const a = makeNamedPackage("one");
     const b = makeNamedPackage("two");
     const rec = mkdtempSync(join(tmpdir(), "ishot-blocks-recorder-"));
+    const { stub, pids } = makeWatcherStub(rec);
     try {
-      const { stub, pids } = makeWatcherStub(rec);
       const child = spawn(process.execPath, [script, "--package", a.pkg, "--package", b.pkg, "--watch"], {
         env: { ...process.env, ISHOT_WP_SCRIPTS: stub },
         stdio: "ignore",
       });
-      const deadline = Date.now() + 20000;
-      while (readdirSync(pids).length < 2 && Date.now() < deadline) await new Promise((res) => setTimeout(res, 100));
-      const started = readdirSync(pids).map((f) => Number(f.replace(".pid", "")));
-      assert.equal(started.length, 2);
-      const exited = new Promise((res) => child.on("exit", (code, sig) => res({ code, sig })));
+      await waitFor(() => recorded(pids, "g-").length >= 2, 20000);
+      assert.equal(recorded(pids, "c-").length, 2);
+      assert.equal(recorded(pids, "g-").length, 2);
+      const exited = new Promise((res) => child.on("exit", (c, sig) => res({ code: c, sig })));
       child.kill(signal);
       const result = await Promise.race([exited, new Promise((res) => setTimeout(() => res("timeout"), 15000))]);
       assert.notEqual(result, "timeout", `${signal}: the script did not exit`);
-      await new Promise((res) => setTimeout(res, 500));
-      for (const pid of started) assert.equal(alive(pid), false, `${signal}: watcher ${pid} left running`);
+      assert.equal(result.code, code, `${signal}: exit code`);
+      await new Promise((res) => setTimeout(res, 1000));
+      for (const pid of [...recorded(pids, "c-"), ...recorded(pids, "g-")]) assert.equal(alive(pid), false, `${signal}: process ${pid} left running`);
     } finally {
+      reap(pids);
       for (const p of [a.base, b.base, rec]) rmSync(p, { recursive: true, force: true });
     }
   }

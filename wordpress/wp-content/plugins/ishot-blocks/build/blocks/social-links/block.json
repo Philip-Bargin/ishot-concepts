@@ -10,5 +10,6 @@
     "inserter": true
   },
   "textdomain": "ishot-blocks",
+  "editorScript": "file:./index.js",
   "render": "file:./render.php"
 }

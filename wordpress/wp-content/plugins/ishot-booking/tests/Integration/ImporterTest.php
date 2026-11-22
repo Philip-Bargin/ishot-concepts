@@ -320,4 +320,27 @@ final class ImporterTest extends WP_UnitTestCase {
 		$this->assertStringNotContainsString( '<b>', $content );
 		$this->assertStringContainsString( '"label":"About"', $content );
 	}
+
+	public function test_no_navigation_is_created_when_every_seed_item_is_skipped(): void {
+		$seed   = array(
+			'navigation' => array(
+				array( 'label' => 'Bad', 'path' => 'javascript:alert(1)' ),
+				array( 'label' => '', 'path' => '/empty/' ),
+			),
+		);
+		$report = $this->import( $seed );
+
+		$this->assertSame( 0, $report['created'] );
+		$this->assertSame( 0, $report['errors'] );
+		$this->assertSame( 3, $report['warnings'], 'two skipped items and the empty menu' );
+		$this->assertCount( 0, self::navigations(), 'an empty "Primary" would hide the header fallback menu' );
+	}
+
+	public function test_an_empty_navigation_seed_creates_nothing(): void {
+		$report = $this->import( array( 'navigation' => array() ) );
+
+		$this->assertSame( 0, $report['created'] );
+		$this->assertSame( 1, $report['warnings'] );
+		$this->assertCount( 0, self::navigations() );
+	}
 }
