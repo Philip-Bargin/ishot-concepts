@@ -36,7 +36,18 @@ const { state, actions } = store( 'ishot/site-header', {
 					( el ) => el.getClientRects().length > 0
 				);
 
-			( root.querySelector( '[data-autofocus]' ) ?? items()[ 0 ] )?.focus();
+			// When the sheet is opened before its region has hydrated, this callback can run while the
+			// sheet still carries `hidden` (the bind directive updates it a frame later), and focus() on a
+			// hidden element does nothing. Wait for the sheet to render (at most ~30 frames).
+			let frame = 0;
+			const focusIn = ( tries = 30 ) => {
+				if ( root.hidden && tries > 0 ) {
+					frame = root.ownerDocument.defaultView.requestAnimationFrame( () => focusIn( tries - 1 ) );
+					return;
+				}
+				( root.querySelector( '[data-autofocus]' ) ?? items()[ 0 ] )?.focus();
+			};
+			focusIn();
 
 			const onKey = ( e ) => {
 				if ( e.key === 'Escape' ) {
@@ -68,6 +79,7 @@ const { state, actions } = store( 'ishot/site-header', {
 			body.style.overflow = 'hidden';
 			root.ownerDocument.addEventListener( 'keydown', onKey );
 			return () => {
+				root.ownerDocument.defaultView.cancelAnimationFrame( frame );
 				root.ownerDocument.removeEventListener( 'keydown', onKey );
 				body.style.overflow = prevOverflow;
 				if (

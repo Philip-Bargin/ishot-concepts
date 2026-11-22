@@ -1,4 +1,5 @@
 // Keyboard behaviour of the ishot/site-header block and the skip link (B4 subset), on the wp-env dev site.
+// The skip-link target test needs the dev page shells (wordpress/dev/page-shells-dev.php) for /about/ and the journal post.
 // Matches the prototype's Header, MenuSheet and useFocusTrap (src/lib/hooks.js at 50e60f4): focus moves to
 // the first menu link on open, Tab and Shift+Tab wrap, Escape and the close button close the sheet, focus
 // returns to the toggle, body scroll is locked while open, and menu links close it. Read-only: the dev
@@ -44,6 +45,19 @@ test('the skip link is the only one and the first Tab stop, and it shows on focu
   expect(await focused(page)).toMatchObject({ tag: 'A', text: 'Skip to content', cls: 'ish-skip' });
   const box = await page.locator('.ish-skip').boundingBox();
   expect(box.y).toBeGreaterThanOrEqual(0);
+});
+
+test('activating the skip link moves focus to main#main on every base template', async ({ page }) => {
+  // page, single, 404, search and index (the posts home) all print main#main[tabindex=-1] (src/App.jsx).
+  for (const url of ['/about/', '/journal/what-to-wear-for-your-portrait-session/', '/this-page-does-not-exist/', '/?s=portrait', '/']) {
+    await page.goto(url);
+    await expect(page.locator('#main')).toHaveCount(1);
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    expect(await page.evaluate(() => ({ tag: document.activeElement?.tagName, id: document.activeElement?.id })), url).toEqual({ tag: 'MAIN', id: 'main' });
+    // The prototype hides the focus ring on main (app.css .ish-app > main:focus).
+    expect(await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle), url).toBe('none');
+  }
 });
 
 test('the sheet is closed on load: hidden, toggle aria-expanded false and controlling it', async ({ page }) => {
@@ -92,6 +106,22 @@ test('Tab and Shift+Tab wrap inside the sheet', async ({ page }) => {
   for (let i = 0; i < count + 2; i += 1) {
     await page.keyboard.press('Tab');
     expect(await sheet(page).evaluate((root) => root.contains(document.activeElement))).toBe(true);
+  }
+});
+
+// Regression (Task 1.4): opening the sheet before its Interactivity region had hydrated left focus on
+// the toggle about 1 time in 10, because the trap ran while the sheet still had `hidden`. A slowed CPU
+// and an open at DOMContentLoaded make that window wide; every early open must still focus the first link.
+test('an early open, before the sheet has hydrated, still moves focus into the sheet', async ({ page }) => {
+  test.setTimeout(120_000);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+  for (let i = 0; i < 20; i += 1) {
+    await page.goto('/about/', { waitUntil: 'domcontentloaded' });
+    await toggle(page).focus();
+    await page.keyboard.press('Enter');
+    await expect(sheet(page)).toBeVisible();
+    await expect(sheet(page).locator('[data-autofocus]'), `open ${i + 1}`).toBeFocused();
   }
 });
 
