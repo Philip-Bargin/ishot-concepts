@@ -9,11 +9,13 @@ import metadata from './block.json';
 
 registerBlockType( metadata.name, {
 	edit: () => (
-		<span { ...useBlockProps( { className: 'fo-spectrum', 'aria-hidden': 'true' } ) }>
-			<i />
-			<i />
-			<i />
-			<i />
+		<span { ...useBlockProps( { className: 'fo-spectrum' } ) }>
+			<span aria-hidden="true">
+				<i />
+				<i />
+				<i />
+				<i />
+			</span>
 		</span>
 	),
 	save: () => null,

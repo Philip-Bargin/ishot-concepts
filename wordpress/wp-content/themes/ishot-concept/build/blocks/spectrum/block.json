@@ -7,7 +7,9 @@
   "description": "The design system's four brand-colour bars (decorative), as in the prototype's footer.",
   "supports": {
     "html": false,
-    "inserter": false
+    "inserter": false,
+    "className": false,
+    "customClassName": false
   },
   "textdomain": "ishot-concept",
   "editorScript": "file:./index.js",

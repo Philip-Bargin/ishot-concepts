@@ -7,7 +7,7 @@
   "description": "The footer button that switches between the light and Night themes.",
   "supports": {
     "html": false,
-    "inserter": true,
+    "inserter": false,
     "interactivity": true
   },
   "textdomain": "ishot-concept",

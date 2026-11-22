@@ -16,7 +16,7 @@
   },
   "supports": {
     "html": false,
-    "inserter": true
+    "inserter": false
   },
   "textdomain": "ishot-blocks",
   "editorScript": "file:./index.js",

@@ -8,3 +8,14 @@
 .fo-footer__col > .wp-block-ishot-contact-details,
 .fo-footer__col > .wp-block-ishot-contact-details > *,
 .fo-footer__col > .wp-block-ishot-contact-details > * > * { display: contents; }
+
+/*
+ * The spectrum block's editor markup has an inner aria-hidden span (the focusable block wrapper itself must
+ * not be hidden), so the bars are one level deeper than on the front end. Same four bars, same tokens.
+ */
+.fo-spectrum > span { display: flex; flex: 1; }
+.fo-spectrum > span > i { flex: 1; }
+.fo-spectrum > span > i:nth-child(1) { background: var(--brand-orange); }
+.fo-spectrum > span > i:nth-child(2) { background: var(--brand-green); }
+.fo-spectrum > span > i:nth-child(3) { background: var(--brand-teal); }
+.fo-spectrum > span > i:nth-child(4) { background: var(--brand-blue); }

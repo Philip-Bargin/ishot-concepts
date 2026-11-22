@@ -51,16 +51,18 @@ foreach ( ishot_theme_nav_items( (int) ( $attributes['ref'] ?? 0 ) ) as $ishot_i
 }
 
 $ishot_contact = '';
-if ( class_exists( 'IShot\Booking\Studio' ) ) {
+if ( class_exists( 'IShot\Booking\Studio' ) && is_callable( array( 'IShot\Booking\Studio', 'details' ) ) ) {
 	$ishot_details = \IShot\Booking\Studio::details();
+	$ishot_address = trim( (string) ( $ishot_details['address'] ?? '' ) );
+	$ishot_phone   = trim( (string) ( $ishot_details['phone'] ?? '' ) );
 	$ishot_parts   = array();
-	if ( '' !== $ishot_details['address'] ) {
-		$ishot_parts[] = esc_html( $ishot_details['address'] );
+	if ( '' !== $ishot_address ) {
+		$ishot_parts[] = esc_html( $ishot_address );
 	}
-	if ( '' !== $ishot_details['phone'] ) {
-		$ishot_parts[] = null !== $ishot_details['phone_href']
-			? '<a href="' . esc_url( $ishot_details['phone_href'], array( 'tel' ) ) . '">' . esc_html( $ishot_details['phone'] ) . '</a>'
-			: esc_html( $ishot_details['phone'] );
+	if ( '' !== $ishot_phone ) {
+		$ishot_parts[] = ! empty( $ishot_details['phone_href'] )
+			? '<a href="' . esc_url( $ishot_details['phone_href'], array( 'tel' ) ) . '">' . esc_html( $ishot_phone ) . '</a>'
+			: esc_html( $ishot_phone );
 	}
 	$ishot_contact = implode( ' · ', $ishot_parts );
 }

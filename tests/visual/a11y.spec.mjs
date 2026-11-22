@@ -1,11 +1,10 @@
-// axe (WCAG 2.1 A/AA + best practice) on each state at 3 widths x 2 themes, menu closed and open.
+// axe (WCAG 2.0/2.1/2.2 A/AA + best practice) on each state at 3 widths x 2 themes, menu closed and open.
 // Target and states follow the visual harness: VISUAL_TARGET=wp, VISUAL_BASE_URL, VISUAL_STATES. 0 violations is the gate.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { openState, contextOptions, THEMES, VIEWPORTS, waitForAnimations } from './capture.mjs';
 import { ACTIVE_ROUTES, BASE_URL, TARGET, pathFor } from './target.mjs';
-
-export const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'];
+import { AXE_TAGS, menuToggleOutcome } from './axe-config.mjs';
 
 const summarise = (violations) =>
   violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.length} node(s), e.g. ${v.nodes[0]?.target.join(' ')}`);
@@ -20,8 +19,11 @@ for (const route of ACTIVE_ROUTES) {
             const page = await context.newPage();
             await openState(page, { url: `${BASE_URL}${pathFor(route)}`, width, theme });
             if (menu === 'open') {
-              if (!(await page.locator('.fo-menu-toggle').count())) {
-                test.info().annotations.push({ type: 'skipped', description: 'no .fo-menu-toggle on this page yet (menu arrives with Task 1.2)' });
+              const outcome = menuToggleOutcome(await page.locator('.fo-menu-toggle').count(), TARGET);
+              // In WP mode the header block always prints the toggle, so a missing one is a failure, not a skip.
+              expect(outcome, 'a .fo-menu-toggle must exist on the WordPress site').not.toBe('fail');
+              if (outcome === 'skip') {
+                test.info().annotations.push({ type: 'skipped', description: 'no .fo-menu-toggle on the prototype page' });
                 test.skip(true, 'no .fo-menu-toggle: open-menu variant skipped');
               }
               await page.locator('.fo-menu-toggle').click();

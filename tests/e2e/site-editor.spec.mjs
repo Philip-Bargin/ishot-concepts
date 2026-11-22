@@ -151,7 +151,9 @@ test('the Footer template part opens in the Site Editor with valid, editable cor
   await expectNoCodeView(page, canvas);
 
   // The spectrum previews as the design system's four bars, not as HTML source.
-  await expect(footer.locator('.ish-footer__brand .fo-spectrum > i')).toHaveCount(4);
+  await expect(footer.locator('.ish-footer__brand .fo-spectrum > span[aria-hidden="true"] > i')).toHaveCount(4);
+  // The focusable block wrapper is not aria-hidden; only the inner decorative span is.
+  await expect(footer.locator('.ish-footer__brand .fo-spectrum')).not.toHaveAttribute('aria-hidden', /.*/);
   const bars = await footer.locator('.ish-footer__brand .fo-spectrum').boundingBox();
   expect(bars.height).toBeGreaterThan(0);
 

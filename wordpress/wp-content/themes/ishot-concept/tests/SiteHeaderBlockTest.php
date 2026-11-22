@@ -278,6 +278,23 @@ final class SiteHeaderBlockTest extends WP_UnitTestCase {
 		$this->assertStringContainsString( '<p class="small"><a href="tel:+231881405259">+231 881 405 259</a></p>', self::render() );
 	}
 
+	public function test_a_whitespace_only_address_prints_no_separator(): void {
+		// Written straight to the option, bypassing the settings sanitiser, as an old or imported value could be.
+		update_option(
+			Settings::OPTION,
+			array_merge(
+				Settings::all(),
+				array(
+					'studio_address' => "  	 ",
+					'studio_phone'   => '0881405259',
+				)
+			)
+		);
+		$html = self::render();
+		$this->assertStringContainsString( '<p class="small"><a href="tel:0881405259">0881405259</a></p>', $html );
+		$this->assertStringNotContainsString( ' · ', $html );
+	}
+
 	public function test_a_phone_without_a_link_prints_as_text(): void {
 		Settings::update(
 			array(

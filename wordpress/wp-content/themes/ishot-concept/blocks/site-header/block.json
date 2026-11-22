@@ -12,7 +12,7 @@
 	},
 	"supports": {
 		"html": false,
-		"inserter": true,
+		"inserter": false,
 		"multiple": false,
 		"interactivity": true
 	},

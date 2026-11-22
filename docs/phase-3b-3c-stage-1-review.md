@@ -1,17 +1,18 @@
 # Stage 1 review pack: WordPress frame (header, footer, base templates)
 
-Owner checkpoint for Stage 1 of `docs/superpowers/plans/2026-11-21-wordpress-phase-3b-3c.md` (Task 1.5). Branch `redesign/wp-phase-3b-3c`, verified at `43a6349` (CI run 45058877266 green). Every result below comes from a command run for this gate on 2026-11-22; the commands and raw counts are also in `docs/phase-3b-3c-progress.md` ("Task 1.5").
+Owner checkpoint for Stage 1 of `docs/superpowers/plans/2026-11-21-wordpress-phase-3b-3c.md` (Task 1.5). Branch `redesign/wp-phase-3b-3c`, gates run at `43a6349` (CI run 45058877266 green), then the whole-stage review findings were fixed in the "Final review fix wave" (§13), which re-ran the suites listed there. Every result below comes from a command run for this gate on 2026-11-22; the commands and raw counts are also in `docs/phase-3b-3c-progress.md` ("Task 1.5").
 
 **Stage 2 needs the owner's approval.** Nothing has been deployed to Vercel or anywhere else.
 
 ## 1. Summary
 
-- **Gates passed:** prototype integrity; build, token lint, block-build check, PHPCS and PHPStan; all PHPUnit suites (booking 406, blocks 76, theme 100); script tests 50 (+1 Windows skip); all 29 end-to-end tests (keyboard, focus trap, skip link, sticky header, Night toggle, Site Editor); visual geometry (A) and styles (C) on the header and footer in all 96 frame states, apart from the expected footer `y` class; 404 full scope with 0 differences; alignment 24/24; axe 0 violations on `about` and `404` (menu closed and open), and on `home` with the menu open.
-- **Expected non-passes:**
-  - In 84 gated frame states the only failure is the footer's `y` position. It comes from main-content length, and the footer's own content is offset by 0.00 px relative to its top. Page bodies arrive in Stages 2–3.
-  - The `home` page fails axe `page-has-heading-one` with the menu closed (6 runs). The posts index has no h1 until the Stage 2 hero.
+- **Gates met except the exceptions in §9.2:** prototype integrity; build, token lint, block-build check, PHPCS and PHPStan; all PHPUnit suites (current counts in §3 and §13); script tests; all end-to-end tests (keyboard, focus trap, skip link, sticky header, Night toggle, Site Editor); visual geometry (A) and styles (C) on the header and footer, apart from the two exceptions below; 404 full scope with 0 differences; alignment 24/24; axe 0 violations on `about` and `404` (menu closed and open), and on `home` with the menu open.
+- **Exceptions that need owner agreement (§9.2, E-1 and E-2). These are unmet acceptance criteria, not expected passes:**
+  - **E-1, footer `y` in 84 of 96 frame states.** This misses Task 1.3 "frame geometry for every state passes" and Task 1.4 "about/home/journal-article pass in frame scope". Cause: the WordPress page bodies are shorter or longer than the prototype's until Stages 2–3, so the whole footer sits at a different `y`; measured from the footer's own top it is offset by 0.00 px (`tests/visual/summarise-frame.mjs`, §12). It clears when the Stage 2–3 bodies exist.
+  - **E-2, `home` axe `page-has-heading-one` (menu closed, 6 runs).** This misses "0 violations on home". Cause: `home` is the posts index and has no h1 until the Stage 2 hero.
+- **Deviation from the plan (§9.2, E-3):** `ishot/spectrum` is a native theme block, where plan §4.2 specifies a core block. It needs owner agreement.
 - **Booking regression:** the booking PHPUnit suite, three dev smokes, the public REST endpoints, and `/book/`, `/account/` and `/manage-booking/` (each with `main#main` and the skip link) all behave as expected. One smoke was skipped by design (see §5).
-- **Found in this gate (not a frame gate failure):** the `ishot/logo` block is in the inserter. When an editor inserts it on its own (default `isLink: false`), nothing gives it a `.fo-logo` wrapper, so it shows at the image's natural size and both logo files show (§9, D1).
+- **Found in this gate, fixed in the final fix wave (§13):** the frame-only blocks (`ishot/logo`, `ishot/site-header`, `ishot/contact-details`, `ishot/social-links`, `ishot/theme-toggle`) were in the inserter, and inserted alone they broke the page (§9.1, D1). They are now hidden from the inserter; template parts still render and edit them.
 
 ## 2. What was built
 
@@ -21,7 +22,7 @@ Owner checkpoint for Stage 1 of `docs/superpowers/plans/2026-11-21-wordpress-pha
 | Logo (`ishot/logo`) | theme `blocks/logo/`, `inc/logo.php` |
 | Site header (`ishot/site-header`: header, menu sheet, focus trap, scroll lock) | theme `blocks/site-header/` (`render.php`, `view.js` Interactivity module), `inc/navigation.php` |
 | Skip link | theme `inc/skip-link.php` (`a.ish-skip[href=#main]`, first in `<body>`) |
-| Footer spectrum (`ishot/spectrum`) | theme `blocks/spectrum/` |
+| Footer spectrum (`ishot/spectrum`). **Deviation from plan §4.2 (spectrum = native), see §9.2 E-3** | theme `blocks/spectrum/` |
 | Social links (`ishot/social-links`) | plugin `ishot-blocks/blocks/social-links/`, `src/SocialLinks.php` |
 | Contact details, footer variant (`ishot/contact-details`) | plugin `ishot-blocks/blocks/contact-details/`, `src/ContactDetails.php` |
 | Notice (`ishot/notice`) | plugin `ishot-blocks/blocks/notice/`, `src/Notice.php` |
@@ -43,10 +44,10 @@ Owner checkpoint for Stage 1 of `docs/superpowers/plans/2026-11-21-wordpress-pha
 | `npm run lint:tokens` | OK, no raw colours or durations outside tokens |
 | `npm run build:blocks:check` | up to date: theme 4 blocks, ishot-blocks 3 blocks |
 | `npm run qa` | PHPCS 107/107 files clean; PHPStan level 6 "No errors" |
-| `npm run test:scripts` | 51 tests: 50 pass, 0 fail, 1 skipped (POSIX signal test, Windows) |
+| `npm run test:scripts` | 51 tests: 50 pass, 0 fail, 1 skipped (POSIX signal test, Windows) at `43a6349`; 53 tests: 52 pass, 0 fail, 1 skipped after the final fix wave (§13) |
 | `npm run test:php` (booking) | OK (406 tests, 1588 assertions) |
 | `npm run test:blocks` (ishot-blocks unit + integration) | OK (76 tests, 367 assertions) |
-| `npm run test:theme` | OK (100 tests, 667 assertions) |
+| `npm run test:theme` | OK (100 tests, 667 assertions) at `43a6349`; OK (110 tests, 692 assertions) after the final fix wave (§13) |
 
 ## 4. Results: responsive visual comparison (run 5)
 
@@ -72,7 +73,7 @@ All 16 states × 375/768/1440 × light/Night = 96 states, frame scope (header an
 | work | `/work/birthday-call-concept/` (404: projects are drafts until Stage 3) | 6 | 0 | 6 | 0 | 0 | — | 4342.33 | 0.00 | 0 |
 
 - **Totals:** 96 states, Playwright 12 passed and 84 failed (plus the prototype-only determinism test skipped). There were 0 header failures and 0 style failures in 96/96. Every one of the 84 failures is the footer `y` class: 8 footer landmarks per state (48 per row) are shifted by the same amount as the `footer` box, and the footer-relative difference is 0.00 px. The `search` row is review-only (`gate: false`), so it fails nothing.
-- **Classification:** every non-pass is the known expected class. The cause is that WordPress page bodies (page shells, the posts index, the 404 template on unbuilt routes) are shorter or longer than the prototype's pages until Stages 2–3. No other failure was found.
+- **Classification:** every non-pass is the footer-`y` class (exception E-1, §9.2). The cause is that WordPress page bodies (page shells, the posts index, the 404 template on unbuilt routes) are shorter or longer than the prototype's pages until Stages 2–3. No other failure was found.
 - **Alignment (R-S1-1):** 24/24. `home`, `about`, `creative-direction` and `404` × 3 widths × 2 themes, with 0 alignment failures.
 - **404, full scope** (`VISUAL_SCOPE=full VISUAL_STATES=404`): 6/6 pass, with 0 geometry, 0 style and 0 alignment failures. All 130 region diffs are 0 pixels.
 - **Side-by-side report** (local, gitignored): `tests/visual/.output/compare-report.html`.
@@ -98,11 +99,11 @@ All 16 states × 375/768/1440 × light/Night = 96 states, frame scope (header an
 
 ## 6. Results: accessibility and keyboard (run 6)
 
-**axe** (`VISUAL_TARGET=wp VISUAL_STATES=home,about,404 npx playwright test tests/visual/a11y.spec.mjs --workers=1`; WCAG 2.0/2.1 A and AA plus best practice): 36 tests, 30 passed and 6 failed, with no browser crash.
+**axe** (`VISUAL_TARGET=wp VISUAL_STATES=home,about,404 npx playwright test tests/visual/a11y.spec.mjs --workers=1`; WCAG 2.0/2.1 A and AA plus best practice; this run at `43a6349` predates the WCAG 2.2 tags, see §13 for the re-run with them): 36 tests, 30 passed and 6 failed, with no browser crash.
 
 | State | Menu closed (6 combos) | Menu open (6 combos) |
 |---|---|---|
-| home | 6 × `page-has-heading-one` (moderate, 1 node: `html`). Accepted Stage 2 item. | 0 violations |
+| home | 6 × `page-has-heading-one` (moderate, 1 node: `html`). Unmet "0 violations on home"; owner exception E-2 (§9.2). | 0 violations |
 | about | 0 violations | 0 violations |
 | 404 | 0 violations | 0 violations |
 
@@ -181,7 +182,7 @@ Sources:
 
 | # | Item | Evidence | Suggested route |
 |---|---|---|---|
-| D1 (minor) | `ishot/logo` is in the inserter (`supports.inserter: true`, `isLink` defaults to `false`). On its own it prints only the two `<img>`s, with no `.fo-logo` parent, and every logo sizing and swapping rule (`.fo-logo img { height }`, `.fo-logo .ish-logo__rev { display:none }`) is scoped to `.fo-logo`. So an owner who inserts it gets the logo at natural size, with the full and reversed files both shown. The header and footer uses are unaffected: they pass A and C. | `frontend/post-editor-theme-blocks.png`; `blocks/logo/block.json`; `blocks/logo/render.php` line 15; `assets/css/app.css` lines 82–88 | Controller: hide the block from the inserter, or give the standalone render its own sized wrapper. |
+| D1 (minor, **fixed in §13**) | `ishot/logo` is in the inserter (`supports.inserter: true`, `isLink` defaults to `false`). On its own it prints only the two `<img>`s, with no `.fo-logo` parent, and every logo sizing and swapping rule (`.fo-logo img { height }`, `.fo-logo .ish-logo__rev { display:none }`) is scoped to `.fo-logo`. So an owner who inserts it gets the logo at natural size, with the full and reversed files both shown. The header and footer uses are unaffected: they pass A and C. | `frontend/post-editor-theme-blocks.png`; `blocks/logo/block.json`; `blocks/logo/render.php` line 15; `assets/css/app.css` lines 82–88 | Fixed: `supports.inserter: false` on the five frame-only blocks. The same class of problem existed for `ishot/site-header` (duplicate banner, `#site-menu` and focus traps), `ishot/contact-details` footer variant (text runs together) and `ishot/theme-toggle` (a second toggle out of sync). |
 
 ### 9.2 Rulings and accepted exceptions (decisions for the owner)
 
@@ -202,21 +203,27 @@ Sources:
 | Ruling I5 (1.3) | The importer seeds the custom post types only (projects and services are drafts by design). Pages and journal posts don't exist until Stage 3, so Task 1.4 added a guarded, dev-only page-shell fixture to exercise the page and single templates. | Header and footer are identical on every template, and no business copy is invented. | Done (`page-shells-dev.php`); the real pages come in Stage 3. |
 | R-1.4-1 | `main#main[tabindex=-1]` is a core Group (`tagName: main`, anchor `main`) and a direct child of `.fo-root.ish-app`. `tabindex` comes from the theme's single `render_block_core/group` filter. | Gives every template a skip-link target. | In force; the skip-link e2e passes on 5 templates, and `/book/`, `/account/` and `/manage-booking/` have the target. |
 | R-1.4-2 | The page and single H1 is `core/post-title`, with the extra class `wp-block-post-title`. | Binds the title to the post, with no visual effect. | Accepted markup exception. |
-| R-1.4-3 | `document_title_separator` is `·`, so titles read "{Title} · {Site Title}". | Matches the prototype's titles. | In force. **Preview note:** the dev site's Site Title is still the wp-env default "ishot-concepts", so dev titles read "… · ishot-concepts" until Settings → General is set. |
+| R-1.4-3 | `document_title_separator` is `·`, so titles read "{Title} · {Site Title}". | Matches the prototype's titles. | In force. **Preview note:** the dev site's Site Title was the wp-env default "ishot-concepts"; the final fix wave set it to "iShot Concept" on the dev site only (`wp option update blogname`, a dev database change, see §12). |
 | R-1.4-4 | The editor canvas root `.editor-styles-wrapper` gets the `.fo-root` base rules from a generated `editor-root.css`, which loads in the editor only. | The Site Editor part view has no `.fo-root` wrapper ("Book now" was about 54 px tall instead of 36 px). | In force; "Book now" is 36 px in the editor and on the front end. |
 | R-1.4-5 | A guarded dev-only fixture creates title-only page shells and one journal post shell (`content_status` = placeholder), and switches the wp-env permalink structure to `/journal/%postname%/`. | Exercises the page and single templates without inventing content. | Dev only. Stage 3 builds the real pages; Task 3.1 must handle the services `with_front`. |
 | Exceptions (1.4) | Each 404 button sits in a class-less `<p>` (an editable core Paragraph with `display: contents`). The gallery link is `/portfolio/` with a trailing slash. The 404 lead's apostrophe is written `&#39;`. | Keeps the 404 copy editable with core blocks. | Accepted; the 404 full scope shows 0 differences. |
 | Ruling (1.4 review) | Promoted and fixed: the 404 test asserts the real markup; e2e evidence goes to `ISHOT_EVIDENCE_DIR`; axe waits for the menu animations. | Gives stable, deterministic gate evidence. | Fixed in `43a6349`. |
 | Ruling (1.4) | **`settings.spacing.blockGap: null` theme-wide.** | Core's `(0,2,0)` first-child and last-child flow rules otherwise zero the prototype classes' margins, and the prototype geometry is the authority. | In force. **Cost to the owner:** no per-block "Block spacing" control in the editor. Row, Stack and Buttons get core's fixed 0.5em fallback gap. Stage 2–3 patterns must space content with prototype classes. |
 | Accepted (1.4 review) | `scripts/sync-design-system.mjs` gained 26 lines (one extra generated file; the other outputs are byte-identical). The `site-header` `view.js` early-open race fix (WCAG 2.4.3, RED then GREEN) is recorded as a Task 1.2 change. | A required generated file, and a real defect fix. | Done. |
+| **E-1** (needs owner agreement) | **Footer `y` fails in 84 of 96 frame states** (every state except `404`; 12 states pass A and C). Unmet acceptance: Task 1.3 "frame geometry for every state passes" and Task 1.4 "about/home/journal-article pass in frame scope". | Cause: WordPress `main` is shorter or longer than the prototype's page body until Stages 2–3, so every footer landmark is shifted by the same amount. Evidence: §4 table; `node tests/visual/summarise-frame.mjs` reports a footer-relative offset of 0.00 px in all 16 states; footer x, width, height and styles pass in 96/96. | Open. Clears when the Stage 2–3 bodies exist; not hidden or relaxed in the harness. |
+| **E-2** (needs owner agreement) | **`home` fails axe `page-has-heading-one`** with the menu closed (6 runs). Unmet acceptance: "0 violations on home". | Cause: `home` is the posts index; it has no h1 until the Stage 2 hero. Evidence: §6 table. | Open. Clears in Stage 2. |
+| **E-3** (needs owner agreement) | **`ishot/spectrum`: deviation from plan §4.2 (spectrum = native).** | Reason: `core/html` shows raw source in the Site Editor, and a Group can't print `<span aria-hidden><i>×4`. Front-end markup is exactly `<span class="fo-spectrum" aria-hidden="true"><i></i><i></i><i></i><i></i></span>`. | Open. Frame-only: hidden from the inserter. |
+| **E-4** (needs owner agreement) | **Degraded-footer override** in `theme.css`: `.ish-footer__grid > nav.fo-footer__col:last-child { grid-column: auto }`. It changes a prototype rule (the prototype's last-child rule makes the Visit column full width). | Without the Visit column (no Studio details or no plugin) the Studio and Book columns must stay side by side below 768 px. Evidence: `tests/e2e/footer.spec.mjs` (RED 572/732 px, then GREEN). | Accepted by the controller in Task 1.3 fix 1; listed here for owner agreement. |
+| **E-5** (needs owner agreement) | **ishot-booking gained production-autoloaded dev-only classes** `IShot\Booking\Dev\DevGuard` and `IShot\Booking\Dev\PageShellFixtures`, and `StudioDevFixtures` was refactored to use `DevGuard`. All are guarded and dev-only (`wp eval-file` fixtures; nothing runs on a normal request). This goes beyond plan §1, which names only the Importer seed as a change to ishot-booking. | The page-shell fixture needed a shared guard so the Studio and page-shell fixtures cannot run on production. Covered by `PageShellFixturesTest` (18 tests, 9 guard data sets). | Open. Alternative: move the fixtures out of the plugin's autoloaded `src/`. |
+| Ruling (controller) | **Task 1.5 had no separate task review.** It is covered by the Stage 1 whole-stage review, which produced the findings fixed in §13. | Task 1.5 only gathers gate evidence and writes this pack; the whole-stage review reads the same diff. | Done. |
 
 ### 9.3 Deferred minor items
 
 | Task | Item | Reason | When |
 |---|---|---|---|
-| 1.0a | Watch mode didn't forward SIGINT or kill siblings; `--watch --check` silently ignores `--check`. | Tooling. | Orphans fixed in `cac6d1c`; `--watch --check` is in the backlog. |
+| 1.0a | Watch mode didn't forward SIGINT or kill siblings; `--watch --check` silently ignores `--check`. | Tooling. | Orphans fixed in `cac6d1c`; `--watch --check` was fixed in Task 1.2 (`scripts/build-blocks.mjs` errors and exits 2). |
 | 1.0a | Theme block registration repeats the plugin's glob/decode logic; `$ours` isn't cleared by `forgetSkipped()`; no direct test of the brand PNG copy or the `app.css` banner (the CI diff covers them). | The plan sanctions separate folders. | Backlog. |
-| 1.0b | The a11y spec has no prototype integrity check; a worker-count claim; a possible click timeout when the toggle is hidden; `SCOPE` also applies in prototype mode; no HTTP status check on WordPress navigation; alignment uses box edges, not content edges. | Harness hardening. | Backlog. |
+| 1.0b | The a11y spec has no prototype integrity check; a worker-count claim; (the missing-toggle skip and the WCAG 2.2 tags were fixed in §13); `SCOPE` also applies in prototype mode; no HTTP status check on WordPress navigation; alignment uses box edges, not content edges. | Harness hardening. | Backlog. |
 | 1.0b | Prototype `gate:false` states also get a "regions over 1 %" annotation. | Harmless. | Backlog. |
 | 1.1 | The e2e throwaway page isn't cleaned if `beforeAll`/`afterAll` fail; NightModeTest matches on the key, not the script id; `type="text/javascript"` (needs html5 script/style support); the `aria-pressed` default is set in two places. | Minor. | Backlog. |
 | 1.2 | M2: SIGTERM/SIGHUP exit codes are 130 instead of 143/129. | Tooling. | Backlog. |
@@ -229,10 +236,10 @@ Sources:
 | 1.3 | M6: `FooterPartTest::expectedSave` re-implements core's save; the e2e `isValid` check is the real proof. | Test design. | Backlog. |
 | 1.3 | The degraded-footer e2e removes Visit in the browser (the server-side drop is proven in PHPUnit); the `capture.test` fake doesn't exercise the mask-paint wait; `site-bindings.js` calls `__()` without `wp_set_script_translations`; the client year comes from the browser clock, not `wp_date` in the site's timezone; the degraded footer isn't checked at ≥768 px; standalone editor entries need build-blocks support. | Minor. | Backlog; translations in Stage 3. |
 | 1.4 | `single.html` lacks the Article's `<article aria-labelledby>` and has an empty padded content div; the 404 links and copy are hard-coded (subdirectory installs, i18n); the dev permalink `/journal/%postname%/` moves the service singles (ServiceCatalog has no `with_front: false`); the CDP-only early-open regression test is slow. | The Article page and services arrive later. | Stage 3 (Task 3.1 for permalinks). |
-| 1.4 | The `templates.spec` header comment is stale, and its probe group isn't asserted to be `is-layout-flow`; the spectrum editor wrapper has `aria-hidden` on a focusable block wrapper (editor only); the spectrum render ignores the className supports in `block.json`; `editor.css` `display: contents` removes the contact-details selection outline; the evidence names lost their `task-1.4-` prefix. | Minor, editor only. | Backlog. |
+| 1.4 | The `templates.spec` header comment is stale, and its probe group isn't asserted to be `is-layout-flow`; (the spectrum `aria-hidden` wrapper and className supports items were fixed in §13, M-a); `editor.css` `display: contents` removes the contact-details selection outline; the evidence names lost their `task-1.4-` prefix. | Minor, editor only. | Backlog. |
 | 1.4 (noted) | **Post content isn't spaced as prose:** `post-content` isn't inside `.fo-prose`. | Page bodies arrive in Stages 2–3. | Stages 2–3. |
 | 1.4 (noted) | **The Site Editor's page template shows an empty, padded notice section.** This is editor only: the front end drops the section when the notice prints nothing. | The editor preview has no post context. | Stages 2–3. |
-| 1.4 (accepted) | `home` fails axe `page-has-heading-one` because the posts index has no h1. | The home hero (with its h1) arrives in Stage 2. | Stage 2. |
+| 1.4 (exception) | `home` fails axe `page-has-heading-one` because the posts index has no h1. Unmet "0 violations on home"; see E-2. | The home hero (with its h1) arrives in Stage 2. | Stage 2, owner agreement. |
 
 ## 10. Outstanding content checklist
 
@@ -278,13 +285,43 @@ npm run wp:setup                      # first time: composer install in both plu
 npm run wp:import                     # prototype content (projects, services, images, Primary menu)
 npx wp-env run cli wp eval-file wp-content/ishot-dev/studio-details-dev.php   # Studio details (dev only, marked unconfirmed)
 npx wp-env run cli wp eval-file wp-content/ishot-dev/page-shells-dev.php      # title-only page shells (dev only)
+npx wp-env run cli wp option update blogname "iShot Concept"                   # dev site title (dev cli container only, not tests-cli)
 ```
 
 Open http://localhost:8888 (admin: `admin` / `password`). The Site Editor is at Appearance → Editor.
 
 Re-run this gate with:
-- `npm run test:visual:wp -- --scope frame`;
+- `npm run test:visual:wp -- --scope frame`, then `node tests/visual/summarise-frame.mjs` from the repository root (it reads `tests/visual/.output/current`, or pass another folder) for the per-state table including the footer-relative offset;
 - `npm run test:a11y:wp -- --states home,about,404`;
 - `npm run test:e2e`.
 
 On a host short of memory, run the Playwright command directly with `--workers=1`, as in `docs/phase-3b-3c-progress.md`.
+
+## 13. Final review fix wave
+
+The Stage 1 whole-stage review (it also covers Task 1.5, which had no separate task review, see §9.2) returned findings. They were fixed on top of `396094e`, each test first (RED seen, then GREEN). Commands ran one at a time on a low-memory host, Playwright with `--workers=1`.
+
+| Finding | Change | Covering test (RED then GREEN) |
+|---|---|---|
+| I1/D1 inserter | `supports.inserter: false` on `ishot/logo`, `ishot/site-header`, `ishot/theme-toggle` (theme) and `ishot/contact-details`, `ishot/social-links` (plugin); builds regenerated and committed. | New `InserterTest` (theme suite): six frame blocks are not in the inserter, `ishot/notice` still is, and the header and footer parts still render the blocks. RED: 5 inserter failures (plus the spectrum case and a wrong needle in my first draft of the parts test); GREEN 110 tests. `site-editor.spec.mjs` stays green (8/8; the post-editor test still renders the blocks from post content). |
+| M-a spectrum | `block.json` `className: false`, `customClassName: false`; the editor markup puts `aria-hidden` on an inner span only; `editor.css` (tokens only) keeps the four bars; front-end markup unchanged (still asserted exactly by `FooterPartTest`). | `InserterTest::test_spectrum_has_no_class_field_...`: RED 1 failure, GREEN. `site-editor.spec.mjs` now counts `.fo-spectrum > span[aria-hidden=true] > i` = 4 and asserts the wrapper has no `aria-hidden` (RED first: the old selector failed once the markup changed, then GREEN after the `editor.css` rules). |
+| M-b | `site-header/render.php`: `class_exists` plus `is_callable` guard on `Studio::details`, address and phone trimmed before the empty checks. | `SiteHeaderBlockTest::test_a_whitespace_only_address_prints_no_separator`: RED (`<p class="small">  \t  · <a …`), GREEN. |
+| M-c | `tests/visual/axe-config.mjs` adds `wcag22a` and `wcag22aa`; `a11y.spec.mjs` uses it. | `tests/visual/axe-config.test.mjs`: RED (2 failures with the old tag list), GREEN 2/2. |
+| M-d | In WP mode a missing `.fo-menu-toggle` fails (`menuToggleOutcome`); the prototype still skips. | Same test file. |
+| Footer-relative figure | `tests/visual/summarise-frame.mjs` committed (no machine paths; usage in §12). | Run against the last 404 output: 0.00 px, 6/6. |
+| Dev preview | `wp option update blogname "iShot Concept"` on the dev `cli` container (not `tests-cli`). Dev database only, not code. | `blogname` was "ishot-concepts"; the command returned "Success: Updated 'blogname' option." |
+
+**Verification after the fixes (one command at a time):**
+
+| Command | Result |
+|---|---|
+| `npm run test:theme` | OK (110 tests, 692 assertions) |
+| `npm run test:blocks` | OK (76 tests, 367 assertions) |
+| `npm run test:php` (booking) | OK (406 tests, 1588 assertions) |
+| `npx playwright test --config playwright.e2e.config.mjs --workers=1` | 29 passed (first run before the `editor.css` rules: 28 passed, 1 failed, the spectrum selector above) |
+| axe with WCAG 2.2 tags (`VISUAL_TARGET=wp VISUAL_STATES=home,about,404 npx playwright test tests/visual/a11y.spec.mjs --workers=1`) | 36 tests: 30 passed, 6 failed. The 6 are the existing home `page-has-heading-one` (menu closed, exception E-2). **No new violations from `wcag22a` or `wcag22aa`**; no browser crash. |
+| `npm run build:blocks:check`, `npm run qa` (PHPCS clean, PHPStan 0 errors), `npm run lint:tokens`, `npm run build` | OK |
+| `npm run test:scripts` | 53 tests: 52 pass, 0 fail, 1 skipped (Windows) |
+| Prototype integrity | `assertPrototypeIntegrity()` passes; `git diff 50e60f4 HEAD` of `src public index.html vite.config.js design-system` is empty |
+
+No new axe findings, so there is no extra open item for the owner from the WCAG 2.2 run.

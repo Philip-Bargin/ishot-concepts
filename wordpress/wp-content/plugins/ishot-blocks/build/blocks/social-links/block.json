@@ -7,7 +7,7 @@
   "description": "Instagram, Facebook and WhatsApp from the studio details. A platform without a link shows as an inactive icon.",
   "supports": {
     "html": false,
-    "inserter": true
+    "inserter": false
   },
   "textdomain": "ishot-blocks",
   "editorScript": "file:./index.js",
