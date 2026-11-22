@@ -42,10 +42,33 @@ jobs:
       - run: npm run build
       - name: Generated design-system files are committed and up to date
         run: git diff --exit-code -- wordpress/wp-content/themes/ishot-concept wordpress/wp-content/plugins/ishot-booking/assets
+      # Rebuilds every block package into a temp folder and byte-compares it with the committed build/.
+      # Passes trivially (and says so) while there are no blocks.
+      - name: Built blocks are committed and up to date
+        run: npm run build:blocks:check
       # Report-only: the remaining advisories need major upgrades of dev tooling
       # (docs/dependency-remediation.md). Never blocks, never upgrades anything.
       - name: npm audit (report only)
         run: npm audit --omit=optional || true
+
+  script-tests:
+    name: Build and visual-harness script tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Playwright browser (Chromium)
+        run: npx playwright install --with-deps chromium
+      # Unit tests only: build-blocks.mjs against temp fixture packages and the visual harness's
+      # comparison helpers. The full visual reference run is a local, owner-triggered task, not CI.
+      - run: node --test tests/blocks/*.test.mjs tests/visual/*.test.mjs
 
   php-quality:
     name: PHPCS (WPCS + PHPCompatibility) + PHPStan level 6
@@ -89,10 +112,14 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - name: Start WordPress test environment
         run: npx wp-env start
-      - name: Plugin dependencies (inside the test container)
+      - name: Plugin dependencies, ishot-booking and ishot-blocks (inside the test container)
         run: npm run wp:setup
-      - name: PHPUnit (unit + integration, incl. concurrency)
+      - name: PHPUnit ishot-booking (unit + integration, incl. concurrency)
         run: npm run test:php
+      - name: PHPUnit ishot-blocks (unit + integration)
+        run: npm run test:blocks
+      - name: PHPUnit theme suite (theme active, both plugins loaded)
+        run: npm run test:theme
       - name: Stop environment
         if: always()
         run: npx wp-env stop || true

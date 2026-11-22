@@ -11,7 +11,14 @@ parameters:
 	paths:
 		- ../../wordpress/wp-content/plugins/ishot-booking/ishot-booking.php
 		- ../../wordpress/wp-content/plugins/ishot-booking/src
-		- ../../wordpress/wp-content/themes/ishot-concept/functions.php
+		- ../../wordpress/wp-content/plugins/ishot-blocks/ishot-blocks.php
+		- ../../wordpress/wp-content/plugins/ishot-blocks/src
+		- ../../wordpress/wp-content/themes/ishot-concept
+	excludePaths:
+		analyseAndScan:
+			- ../../wordpress/wp-content/themes/ishot-concept/tests
+			- ../../wordpress/wp-content/themes/ishot-concept/assets
+			- ../../wordpress/wp-content/themes/ishot-concept/build (?)
 	scanFiles:
 		- vendor/php-stubs/wp-cli-stubs/wp-cli-stubs.php
 		- ../../wordpress/wp-content/plugins/ishot-booking/vendor/woocommerce/action-scheduler/functions.php
