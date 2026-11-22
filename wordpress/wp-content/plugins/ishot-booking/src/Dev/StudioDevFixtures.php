@@ -47,7 +47,7 @@ final class StudioDevFixtures {
 	 * @return array{ok: bool, reason: string, written: list<string>}
 	 */
 	private static function execute( string $environment_type, mixed $opt_in, string $home_url ): array {
-		$reason = self::blocked( $environment_type, $opt_in, $home_url );
+		$reason = DevGuard::blocked( $environment_type, $opt_in, $home_url );
 		if ( '' !== $reason ) {
 			return array(
 				'ok'      => false,
@@ -76,26 +76,5 @@ final class StudioDevFixtures {
 			'reason'  => '',
 			'written' => $written,
 		);
-	}
-
-	/** The reason writes are not allowed, or '' when every guard passes. */
-	private static function blocked( string $environment_type, mixed $opt_in, string $home_url ): string {
-		if ( ! in_array( $environment_type, array( 'local', 'development' ), true ) ) {
-			return sprintf( 'Environment type is "%s"; only local or development may run dev fixtures.', $environment_type );
-		}
-		if ( true !== $opt_in ) {
-			return 'ISHOT_DEV_FIXTURES is not defined as true (set it in .wp-env.json env.development.config only).';
-		}
-		$host = wp_parse_url( $home_url, PHP_URL_HOST );
-		$host = is_string( $host ) ? strtolower( $host ) : '';
-		$user = wp_parse_url( $home_url, PHP_URL_USER );
-		if ( '' === $host || null !== $user || ! self::isLocalHost( $host ) ) {
-			return sprintf( 'Site host "%s" is not localhost, 127.0.0.1, *.local or *.test.', $host );
-		}
-		return '';
-	}
-
-	private static function isLocalHost( string $host ): bool {
-		return in_array( $host, array( 'localhost', '127.0.0.1' ), true ) || str_ends_with( $host, '.local' ) || str_ends_with( $host, '.test' );
 	}
 }
