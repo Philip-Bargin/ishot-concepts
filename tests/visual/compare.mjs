@@ -85,6 +85,7 @@ export function compareStyles(refStyles, actualStyles, skip = new Set()) {
 }
 
 function crop(png, box) {
+  if (box.y + box.height <= 0 || box.x + box.width <= 0) return null; // wholly off-screen (e.g. the skip link at y = -80)
   const x0 = Math.max(0, Math.round(box.x));
   const y0 = Math.max(0, Math.round(box.y));
   const w = Math.min(Math.round(box.width), png.width - x0);
@@ -142,10 +143,20 @@ export function compareStates(ref, actual, opts = {}) {
  * counterpart is the 404 page) still reports its A and C results but does not fail.
  */
 export function evaluateGate(result, { gate = true } = {}) {
-  const failures = { geometry: result.geometryFailures.length, style: result.styleFailures.length };
-  const failing = failures.geometry + failures.style > 0;
+  const failures = {
+    geometry: result.geometryFailures.length,
+    style: result.styleFailures.length,
+    alignment: (result.alignmentFailures ?? []).length,
+  };
+  const failing = failures.geometry + failures.style + failures.alignment > 0;
   return { pass: gate ? !failing : true, reviewOnly: !gate, failures };
 }
+
+/**
+ * Flagged regions that count towards the region assertion. A review-only state (gate: false) is exempt: its
+ * regions are still measured and shown in the report, but never fail the run.
+ */
+export const flaggedRegions = (result, { gate = true } = {}) => (gate ? result.regionDiffs.filter((r) => r.flagged) : []);
 
 /** Fingerprint of the committed reference JSON; stored beside the reference PNGs to detect stale PNGs. */
 export function referenceFingerprint(geometryFile, stylesFile) {
@@ -165,7 +176,8 @@ export function renderReport(entries) {
   const rows = entries
     .map((e) => {
       const flagged = e.regionDiffs.filter((r) => r.flagged);
-      const failing = e.geometryFailures.length || e.styleFailures.length;
+      const alignment = e.alignmentFailures ?? [];
+      const failing = e.geometryFailures.length || e.styleFailures.length || alignment.length;
       const status = failing ? (e.gate === false ? 'REVIEW-ONLY' : 'FAIL') : flagged.length ? 'REVIEW' : 'PASS';
       const list = (title, items, fmt) =>
         items.length ? `<h4>${title} (${items.length})</h4><ul>${items.slice(0, 40).map((i) => `<li>${esc(fmt(i))}</li>`).join('')}</ul>` : '';
@@ -176,14 +188,17 @@ export function renderReport(entries) {
       return `<section id="${esc(e.key)}"><h3>${esc(e.key)} <span class="s ${status}">${status}</span></h3>${notRun}
 ${list('Geometry failures', e.geometryFailures, (f) => `${f.name} ${f.field}: expected ${f.expected}, got ${f.actual}`)}
 ${list('Style failures', e.styleFailures, (f) => `${f.name} ${f.property}: expected ${f.expected}, got ${f.actual}`)}
+${list('Alignment failures', alignment, (f) => `${f.name} ${f.field} vs ${f.against}: expected ${f.expected}, got ${f.actual}`)}
 ${list('Regions over 1 %', flagged, (r) => `${r.name}: ${(r.ratio * 100).toFixed(2)} %`)}
 <div class="pair"><figure><figcaption>Reference</figcaption><img loading="lazy" src="${esc(e.refImage)}"></figure>
-<figure><figcaption>Actual</figcaption><img loading="lazy" src="${esc(e.actualImage)}"></figure></div></section>`;
+<figure><figcaption>Actual</figcaption><img loading="lazy" src="${esc(e.actualImage)}"></figure>
+<figure><figcaption>Overlay (50 % blend)</figcaption><div class="overlay"><img loading="lazy" src="${esc(e.refImage)}"><img loading="lazy" src="${esc(e.actualImage)}"></div></figure></div></section>`;
     })
     .join('\n');
   return `<!doctype html><meta charset="utf-8"><title>Visual comparison</title>
 <style>body{font:14px system-ui;margin:1rem}.pair{display:flex;gap:1rem;align-items:flex-start}figure{margin:0;flex:1;min-width:0}img{max-width:100%;border:1px solid #ccc}
-.s{font-size:12px;padding:2px 6px;border-radius:3px;color:#fff}.PASS{background:#2a7}.REVIEW,.REVIEW-ONLY{background:#c80}.FAIL{background:#c33}.warn{color:#a50;font-weight:600}</style>
+.s{font-size:12px;padding:2px 6px;border-radius:3px;color:#fff}.PASS{background:#2a7}.REVIEW,.REVIEW-ONLY{background:#c80}.FAIL{background:#c33}.warn{color:#a50;font-weight:600}
+.overlay{position:relative;border:1px solid #ccc;line-height:0}.overlay img{display:block;width:100%;max-width:none;border:0}.overlay img+img{position:absolute;inset:0;opacity:.5}</style>
 <h1>Visual comparison</h1>${rows}`;
 }
 

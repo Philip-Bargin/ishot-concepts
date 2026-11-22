@@ -1,14 +1,29 @@
 // Orchestrates the visual harness on the prototype.
 //   node scripts/visual-reference.mjs           regenerate tests/visual/reference/{geometry,styles}.json
 //   node scripts/visual-reference.mjs --check   re-capture and compare with the committed reference
-// Order: integrity check (aborts), prototype build, Playwright (its webServer runs vite preview), merge/report.
+//   node scripts/visual-reference.mjs --check --target wp [--scope frame] [--states 404,about]
+//                                               capture the WordPress dev site (VISUAL_BASE_URL, default
+//                                               http://localhost:8888) and compare it with the same reference
+// Order: integrity check (aborts), prototype build (not for wp), Playwright (prototype: its webServer runs
+// vite preview), merge/report.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { assertPrototypeIntegrity } from '../tests/visual/integrity.mjs';
 import { referenceFingerprint, writeReport } from '../tests/visual/compare.mjs';
 
-const check = process.argv.includes('--check');
+const argv = process.argv.slice(2);
+const check = argv.includes('--check');
+const flag = (name) => (argv.includes(`--${name}`) ? argv[argv.indexOf(`--${name}`) + 1] : undefined);
+const target = flag('target') ?? process.env.VISUAL_TARGET ?? 'prototype';
+const wp = target === 'wp';
+if (wp && !check) {
+  console.error('--target wp compares against the committed prototype reference: use it with --check.');
+  process.exit(2);
+}
+// flags win over the environment; the child Playwright process reads the environment
+const childEnv = { VISUAL_TARGET: target };
+for (const [name, key] of [['scope', 'VISUAL_SCOPE'], ['states', 'VISUAL_STATES'], ['base-url', 'VISUAL_BASE_URL']]) if (flag(name)) childEnv[key] = flag(name);
 const root = path.resolve(import.meta.dirname, '..');
 const out = path.join(root, 'tests/visual/.output');
 const refDir = path.join(root, 'tests/visual/reference');
@@ -23,10 +38,10 @@ try {
 // One command string (no args array): works through the shell on Windows without Node's DEP0190 warning.
 const run = (command, env = {}) => spawnSync(command, { cwd: root, stdio: 'inherit', shell: true, env: { ...process.env, ...env } }).status ?? 1;
 
-if (run('npm run build') !== 0) process.exit(1);
+if (!wp && run('npm run build') !== 0) process.exit(1);
 
 for (const dir of check ? ['current', 'results'] : ['partials', 'current', 'results', 'reference']) fs.rmSync(path.join(out, dir), { recursive: true, force: true });
-const status = run('npx playwright test', check ? {} : { VISUAL_MODE: 'reference' });
+const status = run('npx playwright test tests/visual/reference.spec.mjs', check ? childEnv : { VISUAL_MODE: 'reference' });
 
 if (check) {
   const dir = path.join(out, 'current');

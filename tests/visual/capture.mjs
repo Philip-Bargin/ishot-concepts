@@ -77,7 +77,8 @@ async function settle(page, viewportHeight) {
   }, viewportHeight);
 }
 
-export async function captureState(page, { url, width, theme, landmarks = 'common', masks = MASKS }) {
+/** Controlled rendering up to a settled page: viewport, media, fixed clock, theme, freeze stylesheet, load. */
+export async function openState(page, { url, width, theme }) {
   const viewport = VIEWPORTS[width];
   if (!viewport) throw new Error(`Unsupported width ${width}`);
   await page.setViewportSize(viewport);
@@ -93,12 +94,21 @@ export async function captureState(page, { url, width, theme, landmarks = 'commo
   const slides = await page.$$eval('.ish-slide', (els) => els.map((e) => e.classList.contains('is-active')));
   if (slides.length && !slides[0]) throw new Error(`Slideshow is not on slide 1 at ${url}`);
   if (slides.slice(1).some(Boolean)) throw new Error(`More than one active slide at ${url}`);
+  return viewport;
+}
+
+/**
+ * requireLandmarks: false for the WordPress target, where a missing landmark is a comparison failure
+ * (count mismatch) and must be reported, not thrown.
+ */
+export async function captureState(page, { url, width, theme, landmarks = 'common', masks = MASKS, requireLandmarks = true }) {
+  const viewport = await openState(page, { url, width, theme });
 
   await settle(page, viewport.height);
   const specs = landmarksFor(landmarks);
   const { geometry, styles, counts } = await probeLandmarks(page, specs);
   const absent = findMissingRequired(specs, counts);
-  if (absent.length) throw new Error(`Required landmarks not found at ${url} (${width}px, ${theme}): ${absent.join(', ')}`);
+  if (requireLandmarks && absent.length) throw new Error(`Required landmarks not found at ${url} (${width}px, ${theme}): ${absent.join(', ')}`);
   await page.addStyleTag({ content: maskCss(masks) });
   await page.mouse.move(0, 0);
   const png = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' });

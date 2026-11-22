@@ -8,6 +8,7 @@
 const L = (name, selector, opts = {}) => ({ name, selector, all: false, text: false, required: false, ...opts });
 
 export const COMMON = [
+  L('skip-link', '.ish-skip'),
   L('header', '.fo-header', { required: true }),
   L('header-container', '.fo-header .fo-container'),
   L('logo', '.fo-header .fo-logo', { required: true }),
@@ -22,7 +23,9 @@ export const COMMON = [
   L('image', 'main .fo-img', { all: true }),
   L('footer', '.fo-footer', { required: true }),
   L('footer-column', '.fo-footer__col', { all: true }),
+  L('footer-grid', '.fo-footer .ish-footer__grid'),
   L('footer-legal', '.fo-footer__legal'),
+  L('footer-legal-container', '.fo-footer__legal .fo-container'),
 ];
 
 export const EXTRAS = {

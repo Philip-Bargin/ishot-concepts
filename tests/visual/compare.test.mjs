@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PNG } from 'pngjs';
-import { compareStates, evaluateGate } from './compare.mjs';
+import { compareStates, evaluateGate, flaggedRegions } from './compare.mjs';
 
 const lm = (over = {}) => ({ name: 'card[0]', x: 20, y: 100, width: 100, height: 60, ...over });
 const st = (over = {}) => ({
@@ -154,7 +154,30 @@ test('region status says not-run when a PNG is missing, with a note', () => {
 
 test('gate: false makes geometry and style failures review-only', () => {
   const failing = { geometryFailures: [{ name: 'x' }], styleFailures: [{ name: 'y' }], regionDiffs: [] };
-  assert.deepEqual(evaluateGate(failing), { pass: false, reviewOnly: false, failures: { geometry: 1, style: 1 } });
-  assert.deepEqual(evaluateGate(failing, { gate: false }), { pass: true, reviewOnly: true, failures: { geometry: 1, style: 1 } });
+  assert.deepEqual(evaluateGate(failing), { pass: false, reviewOnly: false, failures: { geometry: 1, style: 1, alignment: 0 } });
+  assert.deepEqual(evaluateGate(failing, { gate: false }), { pass: true, reviewOnly: true, failures: { geometry: 1, style: 1, alignment: 0 } });
   assert.equal(evaluateGate({ geometryFailures: [], styleFailures: [], regionDiffs: [] }).pass, true);
+});
+
+test('flaggedRegions: review-only (gate: false) states are exempt from the region assertion', () => {
+  const result = { regionDiffs: [{ name: 'a', ratio: 0.5, flagged: true }, { name: 'b', ratio: 0, flagged: false }] };
+  assert.deepEqual(flaggedRegions(result, { gate: true }).map((r) => r.name), ['a']);
+  assert.deepEqual(flaggedRegions(result), flaggedRegions(result, { gate: true }));
+  assert.deepEqual(flaggedRegions(result, { gate: false }), []);
+});
+
+test('evaluateGate: alignment failures fail a gated state and are counted separately', () => {
+  const result = { geometryFailures: [], styleFailures: [], alignmentFailures: [{ name: 'header-container' }] };
+  const gate = evaluateGate(result, { gate: true });
+  assert.equal(gate.pass, false);
+  assert.deepEqual(gate.failures, { geometry: 0, style: 0, alignment: 1 });
+  assert.equal(evaluateGate(result, { gate: false }).pass, true);
+  assert.equal(evaluateGate({ geometryFailures: [], styleFailures: [] }).failures.alignment, 0);
+});
+
+test('regions wholly above the page (the off-screen skip link) are not pixel-compared', () => {
+  const png = makePng(200, 200, (x, y) => [x % 256, y % 256, 90]);
+  const skip = lm({ name: 'skip-link', x: 16, y: -80, width: 100, height: 44 });
+  const r = compareStates(state({ png, geometry: [skip], styles: [st({ name: 'skip-link' })] }), state({ png, geometry: [{ ...skip, y: -60 }], styles: [st({ name: 'skip-link' })] }));
+  assert.deepEqual(r.regionDiffs, []);
 });
