@@ -1,0 +1,14 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "ishot/social-links",
+	"title": "Social links",
+	"category": "widgets",
+	"description": "Instagram, Facebook and WhatsApp from the studio details. A platform without a link shows as an inactive icon.",
+	"supports": {
+		"html": false,
+		"inserter": true
+	},
+	"textdomain": "ishot-blocks",
+	"render": "file:./render.php"
+}

@@ -42,7 +42,9 @@ final class PluginTest extends WP_UnitTestCase {
 
 	public function test_registers_blocks_on_init_for_the_real_build_folder(): void {
 		$this->assertNotFalse( has_action( 'init', array( Plugin::class, 'registerBuiltBlocks' ) ) );
-		// The shipped build folder is valid even with zero blocks.
+		// The shipped build (first real block: ishot/social-links) was registered on init; registering
+		// the same folder again in this request is not reported as a problem.
+		$this->assertTrue( WP_Block_Type_Registry::get_instance()->is_registered( 'ishot/social-links' ) );
 		$this->assertSame( array(), Plugin::registerBlocks( dirname( __DIR__, 2 ) . '/build/blocks' )['missing'] );
 	}
 
@@ -71,7 +73,7 @@ final class PluginTest extends WP_UnitTestCase {
 			$this->assertSame( 10, has_action( 'init', array( Plugin::class, 'registerBuiltBlocks' ) ) );
 
 			Plugin::registerBuiltBlocks();
-			// The shipped build has no blocks yet: nothing fatal, nothing skipped.
+			// The shipped build (already registered on init) again: nothing fatal, nothing skipped.
 			$this->assertSame( array(), Plugin::registerBlocks( $build )['missing'] );
 
 			// And a block folder from the plugin registers while a different theme is active.
