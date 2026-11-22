@@ -1,5 +1,7 @@
 <?php
 // wp-env run cli wp eval-file wp-content/ishot-dev/privacy-smoke.php
+require_once __DIR__ . '/lib/guard.php';
+ishot_dev_guard_or_exit();
 do_action( 'plugins_loaded' );
 global $wpdb;
 echo 'schema ', get_option( 'ishot_booking_db_version' ), PHP_EOL;

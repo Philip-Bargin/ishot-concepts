@@ -28,7 +28,10 @@
       }
     },
     "tests": {
-      "port": 8889
+      "port": 8889,
+      "mappings": {
+        "wp-content/ishot-dev": "./wordpress/dev"
+      }
     }
   }
 }

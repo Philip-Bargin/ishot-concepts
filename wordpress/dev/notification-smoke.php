@@ -13,6 +13,9 @@
  * @package IShot\Booking
  */
 
+require_once __DIR__ . '/lib/guard.php';
+ishot_dev_guard_or_exit();
+
 use IShot\Booking\Application\BookingRequests;
 use IShot\Booking\Application\ClientBookings;
 use IShot\Booking\Application\HoldExpiry;

@@ -35,7 +35,7 @@
     "start:blocks": "node scripts/build-blocks.mjs --watch",
     "build:blocks:check": "node scripts/build-blocks.mjs --check",
     "test:e2e": "playwright test --config playwright.e2e.config.mjs",
-    "test:scripts": "node --test tests/blocks/*.test.mjs tests/visual/*.test.mjs"
+    "test:scripts": "node --test tests/blocks/*.test.mjs tests/visual/*.test.mjs tests/dev/*.test.mjs"
   },
   "dependencies": {
     "@fontsource/oswald": "^5.1.1",

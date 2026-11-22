@@ -1,6 +1,8 @@
 <?php
 // Dev only: creates/updates a "Style check" page exercising core blocks under the theme.
 // wp-env run cli wp eval-file wp-content/ishot-dev/style-check.php
+require_once __DIR__ . '/lib/guard.php';
+ishot_dev_guard_or_exit();
 $content = <<<'HTML'
 <!-- wp:heading {"level":1} --><h1 class="wp-block-heading">Heading one</h1><!-- /wp:heading -->
 <!-- wp:paragraph {"fontSize":"lead"} --><p class="has-lead-font-size">Lead paragraph: an editorial photography studio in Monrovia, telling stories with light.</p><!-- /wp:paragraph -->

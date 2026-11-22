@@ -1,5 +1,7 @@
 <?php
 // Dev only: checks the imported content on the dev site. wp eval-file wp-content/ishot-dev/content-smoke.php
+require_once __DIR__ . '/lib/guard.php';
+ishot_dev_guard_or_exit();
 use IShot\Booking\Content\ContentTypes;
 wp_set_current_user( 1 );
 $t   = wp_insert_post( array( 'post_type' => ContentTypes::TESTIMONIAL, 'post_title' => 'smoke' ) );

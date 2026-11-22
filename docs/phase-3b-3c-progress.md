@@ -319,3 +319,31 @@ The Stage 1 whole-stage review (which also stands in for a separate Task 1.5 rev
 - **M-c, M-d:** axe adds `wcag22a` and `wcag22aa`; in WP mode a missing `.fo-menu-toggle` fails. New `tests/visual/axe-config.mjs` and its test.
 - **Docs:** review pack §9.2 now lists E-1 to E-5 as items needing owner agreement, plus the Task 1.5 review ruling; `tests/visual/summarise-frame.mjs` is committed so the footer-relative offset claim is reproducible.
 - **Dev preview:** dev site title set to "iShot Concept" (`wp option update blogname`, dev database only).
+
+## Stage 1 owner decisions (2026-11-22)
+
+Binding on Stage 2. Recorded in Task 2.0.
+
+- **E-1 footer `y`:** accepted temporarily. Full-page comparisons are repeated once each page body exists (Stage 3/4), with **no artificial spacing** added to match the prototype's page length.
+- **E-2 home h1:** resolved in Task 2.2 (hero on a minimal `front-page.html`). `home` must then pass axe with 0 violations.
+- **E-3 `ishot/spectrum`:** kept.
+- **E-4 degraded-footer override:** accepted. To re-verify once real Studio contact details are configured.
+- **E-5 dev fixtures in `ishot-booking`:** conditionally accepted, on the condition that automated tests prove no dev fixture can run or write in staging or production. Proof added in Task 2.0 (below).
+
+**Deferred verifications**
+- E-1: full-page re-run once page bodies exist, with no artificial spacing.
+- E-4: re-verify the degraded footer with real Studio details configured.
+- B1 to B3 (real device, screen reader, OS reduced motion): **mandatory before production approval**.
+- Business content still outstanding: Facebook URL (empty Facebook stays an inactive icon), WhatsApp number (stays "to be confirmed"), founder details, and at least 3 consented testimonials (they stay hidden below 3).
+
+**Known limitation: `blockGap: null`.** `settings.spacing.blockGap` is `null` theme-wide (Stage 1 ruling): core's flow-layout block gaps are off, so editors do not get automatic vertical spacing between blocks. Patterns space content with the prototype's classes only. Post-content prose spacing is Stage 3 (Task 3.5).
+
+### Task 2.0: dev-fixture environment proof (E-5)
+
+- **Load-order assumption confirmed:** `wp --exec='define("WP_ENVIRONMENT_TYPE","staging");'` runs before `wp-config.php` loads. `wp_get_environment_type()` then returns `staging`, and wp-config's own `define( 'WP_ENVIRONMENT_TYPE', 'local' )` only logs "Constant already defined" (a PHP warning, harmless). The `--require` fallback was not needed.
+- **Guard:** `wordpress/dev/lib/guard.php` exposes `ishot_dev_guard_or_exit()` (fails closed when `DevGuard` is missing, else exits 1 with "Refused, nothing changed: {reason}" on STDERR). All 7 dev scripts, read-only probes included, call it first (`require_once` then the call). Before this, `content-smoke`, `notification-smoke` and `style-check` wrote data with no guard.
+- **`.wp-env.json`:** `env.tests.mappings` gets `wp-content/ishot-dev` -> `./wordpress/dev`; applied with `wp-env start` (dev 8888 and tests 8889 both answer 200). `ISHOT_DEV_FIXTURES` is still defined in `env.development` only.
+- **Finding:** wp-env leaves the plugins inactive on the tests site that `wp` boots (PHPUnit uses its own `wptests_` install). Without the plugin every script refuses with "the ishot-booking plugin is not active" (right outcome, wrong reason), so the test's `setUpBeforeClass` activates `ishot-booking` there if needed.
+- **RED:** static check 1 pass / 7 fail before the guard lines. `DevFixtureEnvironmentTest` 15 failures out of 23: exactly the 5 unguarded scripts (content-smoke, me-bookings-probe, notification-smoke, privacy-smoke, style-check) x 3 tests; `style-check` really wrote a page on the tests site (exit 0). The two fixture scripts already passed.
+- **GREEN:** `DevFixtureEnvironmentTest` OK (23 tests, 225 assertions: 1 directory check, 14 staging/production, 7 opt-in, 1 fixture-class). Static `tests/dev/dev-scripts-guard.test.mjs` 8 pass. `npm run test:scripts` 60 pass. Booking suite `npm run test:php`: OK (429 tests, 1813 assertions), the 23 new ones included. `StudioDevFixturesTest` and `PageShellFixturesTest` still pass. `npm run qa` (PHPCS, PHPStan) green; `lint:tokens` green; prototype files identical to `50e60f4`.
+- **Dev site:** `studio-details-dev.php` and `page-shells-dev.php` run twice on 8888: "none" written/created, permalinks unchanged.

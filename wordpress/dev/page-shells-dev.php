@@ -15,6 +15,9 @@
  * Otherwise it prints the reason and exits 1 having changed nothing.
  */
 
+require_once __DIR__ . '/lib/guard.php';
+ishot_dev_guard_or_exit();
+
 use IShot\Booking\Dev\PageShellFixtures;
 
 if ( ! class_exists( PageShellFixtures::class ) ) {

@@ -262,7 +262,7 @@ Studio details are entered under Booking → Settings → Studio details. On the
   - service tiles and list, category cards, testimonials (hidden below 3 entries);
   - founder and share links;
   - the home h1 (clears the axe item);
-  - prose spacing for post content.
+  - ~~prose spacing for post content~~: moved to Stage 3 (Task 3.5) (ruling R-2-9).
 - **Stage 3, page templates:**
   - activation setup: idempotent pages, front and posts page, `/journal/%postname%/`, services `with_front`;
   - the front page;
