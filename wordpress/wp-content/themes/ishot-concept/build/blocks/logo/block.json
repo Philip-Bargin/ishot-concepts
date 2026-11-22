@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "ishot/logo",
+  "title": "iShot logo",
+  "category": "theme",
+  "description": "The official iShot Concept logo files. Auto swaps to the reversed file in Night; reversed is for navy bands.",
+  "attributes": {
+    "variant": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "reversed"
+      ],
+      "default": "auto"
+    }
+  },
+  "supports": {
+    "html": false,
+    "inserter": true
+  },
+  "textdomain": "ishot-concept",
+  "render": "file:./render.php"
+}

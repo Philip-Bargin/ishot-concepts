@@ -57,6 +57,10 @@ add_action(
 	1
 );
 
+require_once __DIR__ . '/inc/logo.php';
+require_once __DIR__ . '/inc/navigation.php';
+require_once __DIR__ . '/inc/skip-link.php';
+
 /** Absolute path of the theme's compiled frame blocks (built by `npm run build:blocks`). */
 function ishot_theme_blocks_directory(): string {
 	return get_theme_file_path( 'build/blocks' );
