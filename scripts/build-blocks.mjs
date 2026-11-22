@@ -12,7 +12,9 @@
 //        node scripts/build-blocks.mjs --check    rebuild into a temp folder and byte-compare with
 //                                                 the committed build (CI: fails when stale)
 //        node scripts/build-blocks.mjs --watch    development: `wp-scripts start` for every package with blocks,
-//                                                 rebuilding into <package>/build/blocks on change
+//                                                 rebuilding into <package>/build/blocks on change; if one
+//                                                 watcher exits the others are stopped, and signals are
+//                                                 forwarded (--watch with --check is an error)
 //        --package <dir>  (repeatable) build these packages instead of the default two
 import { spawn, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
@@ -98,21 +100,46 @@ function diffTrees(committed, fresh) {
   return problems;
 }
 
+if (watch && check) {
+  console.error("build-blocks: --watch and --check cannot be combined (--check is a one-off CI comparison).");
+  process.exit(2);
+}
+
 if (watch) {
-  // One long-running `wp-scripts start` per package that has blocks; Ctrl+C stops them all.
+  // One long-running `wp-scripts start` per package that has blocks. They live and die together:
+  // when one exits, the others are stopped and its exit code is returned; SIGINT/SIGTERM/SIGHUP sent
+  // to this script are forwarded to every watcher, so none is left running on its own.
   const watchers = packages.filter((pkg) => {
     const has = findBlocks(pkg).length > 0;
     if (!has) console.log(`build-blocks: ${relative(root, pkg) || pkg}: no blocks found, nothing to watch.`);
     return has;
   });
+  const children = new Set();
   let exitCode = 0;
+  let stopping = false;
+  const stopAll = (signal = "SIGTERM") => {
+    stopping = true;
+    for (const child of children) child.kill(signal);
+  };
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+    process.on(signal, () => {
+      if (!exitCode) exitCode = 130;
+      stopAll(signal);
+    });
+  }
   await Promise.all(
     watchers.map(
       (pkg) =>
         new Promise((done) => {
           const child = spawn(process.execPath, wpArgs("start", pkg, join(pkg, "build", "blocks")), { cwd: root, stdio: ["ignore", "inherit", "inherit"] });
-          child.on("exit", (code) => {
-            if (code) exitCode = code;
+          children.add(child);
+          child.on("exit", (code, signal) => {
+            children.delete(child);
+            if (!stopping) {
+              console.error(`build-blocks: the watcher for ${relative(root, pkg) || pkg} stopped (${signal ?? `exit ${code}`}); stopping the others.`);
+              exitCode = code || 1;
+              stopAll();
+            }
             done();
           });
         }),
