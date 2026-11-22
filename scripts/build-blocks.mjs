@@ -5,21 +5,27 @@
 // package, with the source folder and output folder passed explicitly, so a package without
 // blocks is never touched. With no blocks anywhere the script says so and exits 0.
 //
+// Every call passes --experimental-modules, so `viewScriptModule` entries (Interactivity API) are built
+// as ES modules with a .asset.php. ISHOT_WP_SCRIPTS overrides the wp-scripts binary (used by the tests).
+//
 // Usage: node scripts/build-blocks.mjs            build into <package>/build/blocks
 //        node scripts/build-blocks.mjs --check    rebuild into a temp folder and byte-compare with
 //                                                 the committed build (CI: fails when stale)
+//        node scripts/build-blocks.mjs --watch    development: `wp-scripts start` for every package with blocks,
+//                                                 rebuilding into <package>/build/blocks on change
 //        --package <dir>  (repeatable) build these packages instead of the default two
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const wpScripts = join(root, "node_modules", "@wordpress", "scripts", "bin", "wp-scripts.js");
+const wpScripts = process.env.ISHOT_WP_SCRIPTS || join(root, "node_modules", "@wordpress", "scripts", "bin", "wp-scripts.js");
 
 const argv = process.argv.slice(2);
 const check = argv.includes("--check");
+const watch = argv.includes("--watch");
 const packages = [];
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === "--package") packages.push(resolve(argv[++i] ?? ""));
@@ -55,15 +61,21 @@ function listFiles(dir) {
   return out;
 }
 
+/** Arguments for `wp-scripts <command>`; always from the repo root, with ES-module view scripts enabled. */
+function wpArgs(command, pkg, outDir) {
+  return [
+    wpScripts, command,
+    `--webpack-src-dir=${relative(root, join(pkg, "blocks"))}`,
+    `--output-path=${relative(root, outDir)}`,
+    "--webpack-copy-php",
+    "--experimental-modules",
+  ];
+}
+
 function build(pkg, outDir) {
   const result = spawnSync(
     process.execPath,
-    [
-      wpScripts, "build",
-      `--webpack-src-dir=${relative(root, join(pkg, "blocks"))}`,
-      `--output-path=${relative(root, outDir)}`,
-      "--webpack-copy-php",
-    ],
+    wpArgs("build", pkg, outDir),
     // Always run from the repo root: that is where node_modules (loaders, browserslist config) lives.
     { cwd: root, stdio: ["ignore", "inherit", "inherit"] },
   );
@@ -84,6 +96,29 @@ function diffTrees(committed, fresh) {
     if (!readFileSync(join(committed, f)).equals(readFileSync(join(fresh, f)))) problems.push(`differs: ${f}`);
   }
   return problems;
+}
+
+if (watch) {
+  // One long-running `wp-scripts start` per package that has blocks; Ctrl+C stops them all.
+  const watchers = packages.filter((pkg) => {
+    const has = findBlocks(pkg).length > 0;
+    if (!has) console.log(`build-blocks: ${relative(root, pkg) || pkg}: no blocks found, nothing to watch.`);
+    return has;
+  });
+  let exitCode = 0;
+  await Promise.all(
+    watchers.map(
+      (pkg) =>
+        new Promise((done) => {
+          const child = spawn(process.execPath, wpArgs("start", pkg, join(pkg, "build", "blocks")), { cwd: root, stdio: ["ignore", "inherit", "inherit"] });
+          child.on("exit", (code) => {
+            if (code) exitCode = code;
+            done();
+          });
+        }),
+    ),
+  );
+  process.exit(exitCode);
 }
 
 let built = 0;

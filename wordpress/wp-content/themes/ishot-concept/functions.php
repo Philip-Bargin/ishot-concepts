@@ -4,7 +4,8 @@
  *
  * The design system's tokens.css and bundle.css are loaded unchanged (generated into assets/css by
  * `npm run sync:ds`), so the `fo-` markup renders exactly as in the approved React prototype.
- * theme.css only adapts WordPress core blocks to the tokens.
+ * app.css is the prototype's own app layer (`ish-` classes), generated the same way. theme.css only
+ * adapts WordPress core blocks to the tokens.
  *
  * @package IShot\Theme
  */
@@ -14,6 +15,7 @@ defined( 'ABSPATH' ) || exit;
 const ISHOT_THEME_STYLES = array(
 	'ishot-tokens' => 'assets/css/tokens.css',
 	'ishot-bundle' => 'assets/css/bundle.css',
+	'ishot-app'    => 'assets/css/app.css',
 	'ishot-theme'  => 'assets/css/theme.css',
 );
 
@@ -54,6 +56,40 @@ add_action(
 	},
 	1
 );
+
+/** Absolute path of the theme's compiled frame blocks (built by `npm run build:blocks`). */
+function ishot_theme_blocks_directory(): string {
+	return get_theme_file_path( 'build/blocks' );
+}
+
+/**
+ * Registers every `<dir>/<name>/block.json`. A folder without one is skipped silently, and a name
+ * that is already registered is left alone.
+ *
+ * @param string $dir Directory holding one sub-folder per built block.
+ * @return list<string> Names of the blocks registered by this call.
+ */
+function ishot_theme_register_blocks( string $dir ): array {
+	$registered = array();
+	foreach ( (array) glob( rtrim( $dir, '/\\' ) . '/*/block.json' ) as $file ) {
+		$meta = wp_json_file_decode( $file, array( 'associative' => true ) );
+		$name = is_array( $meta ) && isset( $meta['name'] ) && is_string( $meta['name'] ) ? $meta['name'] : '';
+		if ( '' !== $name && WP_Block_Type_Registry::get_instance()->is_registered( $name ) ) {
+			continue;
+		}
+		$type = register_block_type( dirname( $file ) );
+		if ( $type instanceof WP_Block_Type ) {
+			$registered[] = $type->name;
+		}
+	}
+	return $registered;
+}
+
+/** `init` callback: registers the theme's own frame blocks. */
+function ishot_theme_register_built_blocks(): void {
+	ishot_theme_register_blocks( ishot_theme_blocks_directory() );
+}
+add_action( 'init', 'ishot_theme_register_built_blocks' );
 
 // Core's remote pattern directory would offer the owner off-brand layouts.
 add_filter( 'should_load_remote_block_patterns', '__return_false' );

@@ -92,3 +92,80 @@ test("--check fails when a committed build has no source blocks left", () => {
     rmSync(pkg, { recursive: true, force: true });
   }
 });
+
+/** A stand-in for wp-scripts that records its arguments (one JSON line per call) and exits 0. */
+function makeRecorder(dir) {
+  const log = join(dir, "calls.jsonl");
+  const stub = join(dir, "wp-scripts-stub.mjs");
+  writeFileSync(
+    stub,
+    [
+      'import { appendFileSync } from "node:fs";',
+      `appendFileSync(${JSON.stringify(log)}, JSON.stringify(process.argv.slice(2)) + String.fromCharCode(10));`,
+    ].join(String.fromCharCode(10)),
+  );
+  return { stub, calls: () => (existsSync(log) ? readFileSync(log, "utf8").trim().split("\n").map((l) => JSON.parse(l)) : []) };
+}
+
+function runStubbed(pkg, stub, ...flags) {
+  return spawnSync(process.execPath, [script, "--package", pkg, ...flags], {
+    encoding: "utf8",
+    env: { ...process.env, ISHOT_WP_SCRIPTS: stub },
+  });
+}
+
+test("build, --check and --watch all pass --experimental-modules to wp-scripts", () => {
+  const pkg = makePackage(true);
+  const rec = mkdtempSync(join(tmpdir(), "ishot-blocks-recorder-"));
+  try {
+    const { stub, calls } = makeRecorder(rec);
+    // --check compares against the committed build; the stub builds nothing, so its verdict is irrelevant here.
+    for (const flags of [[], ["--check"], ["--watch"]]) runStubbed(pkg, stub, ...flags);
+    const [build, check, watch] = calls();
+    assert.equal(calls().length, 3);
+    assert.equal(build[0], "build");
+    assert.equal(check[0], "build");
+    assert.equal(watch[0], "start");
+    for (const args of [build, check, watch]) {
+      assert.ok(args.includes("--experimental-modules"), JSON.stringify(args));
+      assert.ok(args.includes("--webpack-copy-php"), JSON.stringify(args));
+    }
+    assert.ok(watch.some((a) => a.startsWith("--output-path=") && a.split("\\").join("/").endsWith("build/blocks")), JSON.stringify(watch));
+  } finally {
+    rmSync(pkg, { recursive: true, force: true });
+    rmSync(rec, { recursive: true, force: true });
+  }
+});
+
+test("--watch skips a package with no blocks", () => {
+  const pkg = makePackage(false);
+  const rec = mkdtempSync(join(tmpdir(), "ishot-blocks-recorder-"));
+  try {
+    const { stub, calls } = makeRecorder(rec);
+    const r = runStubbed(pkg, stub, "--watch");
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.equal(calls().length, 0);
+    assert.match(r.stdout, /no blocks/i);
+  } finally {
+    rmSync(pkg, { recursive: true, force: true });
+    rmSync(rec, { recursive: true, force: true });
+  }
+});
+
+test("a block with a viewScriptModule builds a view.js module and view.asset.php", { timeout: 180000 }, () => {
+  const pkg = makePackage(true);
+  try {
+    const dir = join(pkg, "blocks", "sample");
+    const meta = JSON.parse(readFileSync(join(dir, "block.json"), "utf8"));
+    meta.viewScriptModule = "file:./view.js";
+    writeFileSync(join(dir, "block.json"), JSON.stringify(meta));
+    writeFileSync(join(dir, "view.js"), "export const ready = true;\nconsole.log('view module', ready);\n");
+    const r = run(pkg);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.ok(existsSync(join(pkg, "build", "blocks", "sample", "view.js")));
+    assert.ok(existsSync(join(pkg, "build", "blocks", "sample", "view.asset.php")));
+    assert.equal(run(pkg, "--check").status, 0);
+  } finally {
+    rmSync(pkg, { recursive: true, force: true });
+  }
+});

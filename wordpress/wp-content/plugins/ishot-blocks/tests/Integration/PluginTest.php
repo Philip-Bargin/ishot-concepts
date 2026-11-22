@@ -16,9 +16,13 @@ final class PluginTest extends WP_UnitTestCase {
 	}
 
 	public function tear_down(): void {
-		if ( WP_Block_Type_Registry::get_instance()->is_registered( 'ishot-fixture/sample' ) ) {
-			unregister_block_type( 'ishot-fixture/sample' );
+		// Every test starts with a clean registry and an empty skipped list.
+		foreach ( array_keys( WP_Block_Type_Registry::get_instance()->get_all_registered() ) as $name ) {
+			if ( str_starts_with( $name, 'ishot-fixture/' ) ) {
+				unregister_block_type( $name );
+			}
 		}
+		Plugin::forgetSkipped();
 		parent::tear_down();
 	}
 
@@ -81,6 +85,31 @@ final class PluginTest extends WP_UnitTestCase {
 					$GLOBALS['wp_filter'][ $hook ] = $callbacks;
 				}
 			}
+		}
+	}
+
+	public function test_registering_the_same_build_twice_in_one_request_reports_nothing(): void {
+		// A real block in a real build folder: a copy of the sample fixture in a throwaway directory.
+		$build = trailingslashit( get_temp_dir() ) . 'ishot-blocks-twice-' . wp_generate_password( 8, false ) . '/blocks';
+		wp_mkdir_p( $build . '/sample' );
+		copy( self::FIXTURES . '/sample/block.json', $build . '/sample/block.json' );
+
+		try {
+			$first = Plugin::registerBlocks( $build );
+			$this->assertSame( array( 'ishot-fixture/sample' ), $first['registered'] );
+			$this->assertSame( array(), $first['missing'] );
+
+			$second = Plugin::registerBlocks( $build );
+			$this->assertSame( array(), $second['missing'] );
+			$this->assertTrue( WP_Block_Type_Registry::get_instance()->is_registered( 'ishot-fixture/sample' ) );
+
+			wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
+			$this->assertSame( '', $this->skippedNoticeHtml() );
+		} finally {
+			unlink( $build . '/sample/block.json' );
+			rmdir( $build . '/sample' );
+			rmdir( $build );
+			rmdir( dirname( $build ) );
 		}
 	}
 

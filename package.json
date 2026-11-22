@@ -29,6 +29,7 @@
     "test:theme": "wp-env run tests-cli --env-cwd=wp-content/plugins/ishot-blocks vendor/bin/phpunit --testsuite theme",
     "build:icons": "node scripts/export-icons.mjs",
     "build:blocks": "node scripts/build-blocks.mjs",
+    "start:blocks": "node scripts/build-blocks.mjs --watch",
     "build:blocks:check": "node scripts/build-blocks.mjs --check",
     "test:scripts": "node --test tests/blocks/*.test.mjs tests/visual/*.test.mjs"
   },

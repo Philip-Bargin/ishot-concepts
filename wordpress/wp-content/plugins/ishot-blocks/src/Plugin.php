@@ -23,6 +23,14 @@ final class Plugin {
 	 */
 	private static array $skipped = array();
 
+	/**
+	 * Names of the blocks this plugin has registered, so a second registration in the same request
+	 * (for instance `init` firing again) is not reported as a problem.
+	 *
+	 * @var array<string, true>
+	 */
+	private static array $ours = array();
+
 	public static function boot( string $plugin_file ): void {
 		self::$plugin_file = $plugin_file;
 		add_action( 'init', array( self::class, 'registerBuiltBlocks' ) );
@@ -81,9 +89,13 @@ final class Plugin {
 		}
 
 		foreach ( $found['found'] as $folder ) {
+			if ( self::alreadyRegisteredByUs( $folder ) ) {
+				continue;
+			}
 			$type = register_block_type( $folder );
 			if ( $type instanceof \WP_Block_Type ) {
-				$registered[] = $type->name;
+				$registered[]              = $type->name;
+				self::$ours[ $type->name ] = true;
 			} else {
 				$missing[] = $folder;
 				self::reportProblem( $folder, 'WordPress rejected its block.json (invalid, or the block name is already registered)' );
@@ -94,6 +106,13 @@ final class Plugin {
 			'registered' => $registered,
 			'missing'    => $missing,
 		);
+	}
+
+	/** True when the block in this folder was already registered by this plugin and is still registered. */
+	private static function alreadyRegisteredByUs( string $folder ): bool {
+		$meta = wp_json_file_decode( $folder . '/block.json', array( 'associative' => true ) );
+		$name = is_array( $meta ) && isset( $meta['name'] ) && is_string( $meta['name'] ) ? $meta['name'] : '';
+		return '' !== $name && isset( self::$ours[ $name ] ) && \WP_Block_Type_Registry::get_instance()->is_registered( $name );
 	}
 
 	/** Forgets the skipped-block list (used by tests). */
