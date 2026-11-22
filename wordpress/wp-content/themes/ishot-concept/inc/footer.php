@@ -62,6 +62,10 @@ function ishot_theme_footer_group( string $content ): string {
 		return $content;
 	}
 
+	// get_current_depth() is WP 6.6+. The theme requires 6.7; never fatal on an older core.
+	if ( ! method_exists( 'WP_HTML_Processor', 'get_current_depth' ) ) { // @phpstan-ignore function.alreadyNarrowedType (the stubs are 6.7; the guard is for older cores)
+		return $content;
+	}
 	$html = WP_HTML_Processor::create_fragment( $content );
 	if ( null === $html ) {
 		return $content;

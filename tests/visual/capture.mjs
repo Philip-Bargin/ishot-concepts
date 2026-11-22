@@ -35,6 +35,23 @@ const FREEZE_CSS = `
 
 const maskCss = (masks) => masks.map((m) => `${m.selector} { visibility: hidden !important; }`).join('\n');
 
+/**
+ * Hides the masked elements and waits until the browser has painted that: every match reports
+ * visibility hidden, then two animation frames pass. Screenshotting straight after addStyleTag
+ * sometimes caught the frame before the mask (Task 1.3: the footer year showed in ~21 of 96 states).
+ */
+export async function applyMasks(page, masks) {
+  if (!masks.length) return;
+  await page.addStyleTag({ content: maskCss(masks) });
+  await page.evaluate(async (selectors) => {
+    const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+    const hidden = () => selectors.every((s) => [...document.querySelectorAll(s)].every((el) => getComputedStyle(el).visibility === 'hidden'));
+    for (let i = 0; i < 60 && !hidden(); i += 1) await frame();
+    await frame();
+    await frame();
+  }, masks.map((m) => m.selector));
+}
+
 /** Runs before page scripts: theme, freeze stylesheet. */
 function initScript({ theme, themeKey, css }) {
   try {
@@ -109,7 +126,7 @@ export async function captureState(page, { url, width, theme, landmarks = 'commo
   const { geometry, styles, counts } = await probeLandmarks(page, specs);
   const absent = findMissingRequired(specs, counts);
   if (requireLandmarks && absent.length) throw new Error(`Required landmarks not found at ${url} (${width}px, ${theme}): ${absent.join(', ')}`);
-  await page.addStyleTag({ content: maskCss(masks) });
+  await applyMasks(page, masks);
   await page.mouse.move(0, 0);
   const png = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' });
   return { png, geometry, styles, counts };

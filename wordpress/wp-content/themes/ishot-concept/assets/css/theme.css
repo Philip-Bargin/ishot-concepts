@@ -95,3 +95,7 @@ body { margin: 0; }
 
 /* The link paragraphs generate no box, so their anchors are the column's grid items, as in the prototype. */
 .fo-footer__col > p:not([class]) { display: contents; }
+
+/* Without studio details the server leaves the Visit column out; the prototype's last-child rule
+   (full-width row below 768 px) would then stretch the Book column, so the link columns stay paired. */
+.ish-footer__grid > nav.fo-footer__col:last-child { grid-column: auto; }

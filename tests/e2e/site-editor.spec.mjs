@@ -102,6 +102,9 @@ test('the Footer template part opens in the Site Editor with valid, editable cor
   await expect(footer.locator('[data-type="ishot/social-links"] .fo-icon-btn')).toHaveCount(3);
   await expect(footer.locator('[data-type="ishot/contact-details"] a[href^="mailto:"]')).toHaveCount(1);
   await expect(footer.locator('[data-type="ishot/theme-toggle"] button.ish-linkbtn')).toHaveText('Night mode');
+  // The bound legal paragraph shows the line from the client bindings source, not the source label.
+  const year = new Date().getFullYear();
+  await expect(footer.locator('.ish-footer__legal [data-type="core/paragraph"]')).toHaveText(`© ${year} iShot Concept · Photography, creative direction, visual storytelling`);
 
   // The six link columns' items are core paragraphs the owner can edit in place.
   const links = footer.locator('nav.fo-footer__col [data-type="core/paragraph"][contenteditable="true"] a');

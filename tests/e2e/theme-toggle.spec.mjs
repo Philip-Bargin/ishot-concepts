@@ -1,10 +1,10 @@
 // Night bootstrap and the ishot/theme-toggle block, on the wp-env dev site. Since Task 1.3 the block is
-// in the footer part's legal band on every page, so the tests use the footer's button on /about/.
+// in the footer part's legal band on every page, so the tests use the footer's button on the home page.
 import { test, expect } from '@playwright/test';
 
 const KEY = 'ishot-theme';
 
-const url = () => '/about/';
+const url = () => '/';
 const toggle = (page) => page.getByRole('contentinfo').getByRole('button', { name: 'Night mode' });
 const theme = (page) => page.evaluate(() => document.documentElement.dataset.theme);
 

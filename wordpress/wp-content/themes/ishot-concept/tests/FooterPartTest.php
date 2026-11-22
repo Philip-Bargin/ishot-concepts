@@ -170,6 +170,29 @@ final class FooterPartTest extends WP_UnitTestCase {
 		$this->assertNull( $source->get_value( array(), $block, 'content' ) );
 	}
 
+	public function test_site_bindings_source_is_registered_in_the_editor_too(): void {
+		// WP 6.7 shows a server-only source's label ("iShot Concept site") in the editor; the client
+		// source (getValues) shows the legal line. Built from blocks/theme-toggle (the legal band's block).
+		$type    = WP_Block_Type_Registry::get_instance()->get_registered( 'ishot/theme-toggle' );
+		$sources = array();
+		foreach ( $type->editor_script_handles as $handle ) {
+			$sources[] = (string) wp_scripts()->registered[ $handle ]->src;
+		}
+		$bindings = array_values( array_filter( $sources, static fn( $src ) => str_ends_with( $src, '/build/blocks/theme-toggle/site-bindings.js' ) ) );
+		$this->assertCount( 1, $bindings, implode( ', ', $sources ) );
+
+		$asset = require get_theme_file_path( 'build/blocks/theme-toggle/site-bindings.asset.php' );
+		$this->assertContains( 'wp-blocks', $asset['dependencies'] );
+		$built = (string) file_get_contents( get_theme_file_path( 'build/blocks/theme-toggle/site-bindings.js' ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- local theme file.
+		$this->assertStringContainsString( 'ishot-concept/site', $built );
+		$this->assertStringContainsString( self::LEGAL, $built );
+	}
+
+	public function test_theme_requires_wordpress_6_7(): void {
+		// The footer filter uses WP_HTML_Processor::get_current_depth() (6.6) and 6.7 block bindings.
+		$this->assertSame( '6.7', wp_get_theme()->get( 'RequiresWP' ) );
+	}
+
 	public function test_part_holds_only_valid_registered_blocks_that_round_trip(): void {
 		$file   = self::partFile();
 		$blocks = parse_blocks( $file );

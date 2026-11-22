@@ -11,7 +11,10 @@
     "interactivity": true
   },
   "textdomain": "ishot-concept",
-  "editorScript": "file:./index.js",
+  "editorScript": [
+    "file:./index.js",
+    "file:./site-bindings.js"
+  ],
   "render": "file:./render.php",
   "viewScriptModule": "file:./view.js"
 }
