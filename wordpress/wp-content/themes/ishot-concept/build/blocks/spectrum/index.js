@@ -1,0 +1,1 @@
+(()=>{"use strict";const s=window.wp.blocks,e=window.wp.blockEditor,i=JSON.parse('{"UU":"ishot/spectrum"}'),o=window.ReactJSXRuntime;(0,s.registerBlockType)(i.UU,{edit:()=>(0,o.jsxs)("span",{...(0,e.useBlockProps)({className:"fo-spectrum","aria-hidden":"true"}),children:[(0,o.jsx)("i",{}),(0,o.jsx)("i",{}),(0,o.jsx)("i",{}),(0,o.jsx)("i",{})]}),save:()=>null})})();

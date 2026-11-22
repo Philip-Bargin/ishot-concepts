@@ -2,13 +2,16 @@
 // Each block has an editorScript (ServerSideRender), so the editors show the server markup instead of
 // "Your site doesn't include support for ..." or an invalid-block warning. A throwaway page holding the
 // blocks not yet placed in a template part is created with wp-cli in beforeAll and deleted in afterAll.
-// Screenshots are attached to the test output (tests/e2e/.output, gitignored); the template and part checks
-// also save theirs to the task workspace (.superpowers/sdd/..., gitignored) as review evidence.
+// Screenshots are attached to the test output (tests/e2e/.output, gitignored). The template and part checks
+// also save named screenshots: to ISHOT_EVIDENCE_DIR when it is set (review evidence), else to the test's
+// own output folder, so an ordinary run never overwrites a task's evidence.
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 import { test, expect } from '@playwright/test';
 
-const EVIDENCE = path.resolve(import.meta.dirname, '../../.superpowers/sdd/2026-11-21-wordpress-phase-3b-3c');
+/** Saves a named screenshot to ISHOT_EVIDENCE_DIR, or to the test's output folder when it is unset. */
+const saveShot = (page, testInfo, name) =>
+  page.screenshot({ path: process.env.ISHOT_EVIDENCE_DIR ? path.join(process.env.ISHOT_EVIDENCE_DIR, name) : testInfo.outputPath(name) });
 
 const wp = (args) =>
   execSync(`npx wp-env run cli wp ${args}`, {
@@ -64,6 +67,16 @@ const invalidBlocks = (page) =>
     return be.getClientIdsWithDescendants().map((id) => be.getBlock(id)).filter((b) => b && !b.isValid).map((b) => b.name);
   });
 
+/** No block in the canvas shows source instead of a preview (core/html textarea, code editor). */
+async function expectNoCodeView(page, canvas) {
+  const names = await page.evaluate(() => {
+    const be = window.wp.data.select('core/block-editor');
+    return be.getClientIdsWithDescendants().map((id) => be.getBlockName(id));
+  });
+  expect(names).not.toContain('core/html');
+  await expect(canvas.locator('textarea, .block-editor-plain-text, .wp-block-html')).toHaveCount(0);
+}
+
 const siteEditor = (type, slug) => `/wp-admin/site-editor.php?postType=${type}&postId=ishot-concept%2F%2F${slug}&canvas=edit`;
 
 test('the Header template part shows the site header in the Site Editor', async ({ page }, testInfo) => {
@@ -82,11 +95,12 @@ test('the Header template part shows the site header in the Site Editor', async 
   await expect(canvas.locator('#site-menu')).toBeHidden();
   await expectSupported(page, canvas);
   expect(await invalidBlocks(page)).toEqual([]);
+  await expectNoCodeView(page, canvas);
 
   // The canvas has the design system's .fo-root base (editor-root.css, ruling R-1.4-4): the header
   // button has the front end's border-box height, not a taller content-box one.
   const editorBox = await header.getByText('Book now').boundingBox();
-  await page.screenshot({ path: path.join(EVIDENCE, 'task-1.4-site-editor-part-header.png') });
+  await saveShot(page, testInfo, 'site-editor-part-header.png');
   await testInfo.attach('site-editor-header', { body: await page.screenshot(), contentType: 'image/png' });
   await page.goto('/about/');
   const frontBox = await page.locator('header.fo-header').getByText('Book now').boundingBox();
@@ -134,8 +148,27 @@ test('the Footer template part opens in the Site Editor with valid, editable cor
 
   // Every block of the part passed block validation (no "attempt recovery").
   expect(await invalidBlocks(page)).toEqual([]);
+  await expectNoCodeView(page, canvas);
 
-  await page.screenshot({ path: path.join(EVIDENCE, 'task-1.4-site-editor-part-footer.png') });
+  // The spectrum previews as the design system's four bars, not as HTML source.
+  await expect(footer.locator('.ish-footer__brand .fo-spectrum > i')).toHaveCount(4);
+  const bars = await footer.locator('.ish-footer__brand .fo-spectrum').boundingBox();
+  expect(bars.height).toBeGreaterThan(0);
+
+  // The Visit lines lay out as on the front end: each on its own row, left-aligned with the eyebrow.
+  const visit = footer.locator('.fo-footer__col', { hasText: 'Visit' });
+  const rows = await visit.evaluate((col) =>
+    [col.querySelector('.fo-eyebrow'), col.querySelector('span.small'), col.querySelector('a[href^="tel:"]'), col.querySelector('a[href^="mailto:"]')].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: Math.round(r.left), top: Math.round(r.top), bottom: Math.round(r.bottom) };
+    })
+  );
+  for (let i = 1; i < rows.length; i += 1) {
+    expect(rows[i].x, `line ${i} left edge`).toBe(rows[0].x);
+    expect(rows[i].top, `line ${i} starts below line ${i - 1}`).toBeGreaterThanOrEqual(rows[i - 1].bottom);
+  }
+
+  await saveShot(page, testInfo, 'site-editor-part-footer.png');
   await testInfo.attach('site-editor-footer', { body: await page.screenshot(), contentType: 'image/png' });
 });
 
@@ -160,6 +193,7 @@ for (const slug of ['index', 'page', 'single', '404', 'search']) {
     await expect(root.locator('footer.fo-footer')).toBeVisible();
     await expectSupported(page, canvas);
     expect(await invalidBlocks(page)).toEqual([]);
+    await expectNoCodeView(page, canvas);
 
     // Design-system styles in the canvas: tokens, bundle and app layer.
     const styles = await root.evaluate((el) => {
@@ -176,7 +210,7 @@ for (const slug of ['index', 'page', 'single', '404', 'search']) {
       await expect(root.locator('main .ish-actions a.fo-btn')).toHaveCount(2);
     }
 
-    await page.screenshot({ path: path.join(EVIDENCE, `task-1.4-site-editor-template-${slug}.png`) });
+    await saveShot(page, testInfo, `site-editor-template-${slug}.png`);
     await testInfo.attach(`site-editor-template-${slug}`, { body: await page.screenshot(), contentType: 'image/png' });
   });
 }

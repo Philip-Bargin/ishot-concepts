@@ -87,13 +87,6 @@ final class TemplatesTest extends WP_UnitTestCase {
 				$el->setAttribute( 'class', implode( ' ', $keep ) );
 			}
 		}
-		// Class-less paragraphs in an action row generate no box (theme.css display: contents): unwrap them.
-		foreach ( iterator_to_array( $xpath->query( '//*[contains(concat(" ", @class, " "), " ish-actions ")]/p[not(@class)]' ) ) as $p ) {
-			while ( $p->firstChild ) {
-				$p->parentNode->insertBefore( $p->firstChild, $p );
-			}
-			$p->parentNode->removeChild( $p );
-		}
 		$el = $xpath->query( $root )->item( 0 );
 		return $el ? (string) $el->ownerDocument->saveHTML( $el ) : '';
 	}
@@ -158,11 +151,16 @@ final class TemplatesTest extends WP_UnitTestCase {
 		$this->assertSame( 10, has_filter( 'render_block_core/group', 'ishot_theme_render_group' ) );
 	}
 
-	/** The prototype's NotFound inside App's main (src/App.jsx), as React renders it. */
+	/**
+	 * The prototype's NotFound inside App's main (src/App.jsx), as React renders it, with the two
+	 * accepted markup exceptions (docs/phase-3b-3c-progress.md, Task 1.4): each button sits in a
+	 * class-less paragraph (an editable core Paragraph; theme.css gives it display: contents), and the
+	 * gallery link has WordPress's trailing slash (`/portfolio/`; the prototype's Link renders `/portfolio`).
+	 */
 	private static function notFound(): string {
 		return '<main id="main" tabindex="-1">'
 			. '<section class="fo-section ish-title"><div class="fo-container ish-stack"><p class="fo-eyebrow">404</p><h1 class="fo-h1">Page not found</h1><p class="lead fo-muted ish-measure">' . self::LEAD . '</p></div></section>'
-			. '<section class="fo-section"><div class="fo-container ish-actions"><a class="fo-btn fo-btn--primary" href="/">Go home</a><a class="fo-btn fo-btn--outline" href="/portfolio">View gallery</a></div></section>'
+			. '<section class="fo-section"><div class="fo-container ish-actions"><p><a class="fo-btn fo-btn--primary" href="/">Go home</a></p><p><a class="fo-btn fo-btn--outline" href="/portfolio/">View gallery</a></p></div></section>'
 			. '</main>';
 	}
 
@@ -176,8 +174,9 @@ final class TemplatesTest extends WP_UnitTestCase {
 		$this->assertSame( MarkupNormaliser::normalise( self::notFound() ), MarkupNormaliser::normalise( $main ) );
 		// The normaliser ignores these; they matter for the skip link and the buttons.
 		$this->assertMatchesRegularExpression( '#^<main (?=[^>]*id="main")(?=[^>]*tabindex="-1")#', $main );
-		$this->assertStringContainsString( '<a class="fo-btn fo-btn--primary" href="/">Go home</a>', $html );
-		$this->assertStringContainsString( '<a class="fo-btn fo-btn--outline" href="/portfolio/">View gallery</a>', $html );
+		// Exact button markup, hrefs included (the normaliser ignores href).
+		$this->assertStringContainsString( '<p><a class="fo-btn fo-btn--primary" href="/">Go home</a></p>', $html );
+		$this->assertStringContainsString( '<p><a class="fo-btn fo-btn--outline" href="/portfolio/">View gallery</a></p>', $html );
 		$this->assertStringContainsString( ">The page you&#39;re looking for has moved or never existed.</p>", $html, 'straight apostrophe, as in the source (not texturized)' );
 	}
 
@@ -220,17 +219,34 @@ final class TemplatesTest extends WP_UnitTestCase {
 
 		$this->assertSame( get_stylesheet() . '//page', $GLOBALS['_wp_current_template_id'] );
 		// PageTitle with the post title; the template's empty eyebrow and lead are not printed, and
-		// approved content has no notice.
+		// approved content prints no notice section at all.
 		$this->assertSame( array( 'h1.fo-h1|About' ), self::titleStack( $html ) );
 		$main = self::reduced( $html, '//main' );
 		$this->assertMatchesRegularExpression( '#^<main[^>]*><section class="fo-section ish-title"><div class="fo-container ish-stack"><h1 class="fo-h1">About</h1></div></section><div class="entry-content"><p>Body copy.</p></div></main>$#', $main );
 	}
 
-	public function test_page_shows_the_sample_notice_for_placeholder_content(): void {
+	public function test_page_shows_the_sample_notice_in_its_own_section_after_the_title(): void {
 		$id   = $this->page( Fields::PLACEHOLDER );
 		$html = $this->request( get_permalink( $id ) );
 
-		$this->assertSame( array( 'div.fo-alert.ish-alert--info.ish-measure|Sample content.', 'h1.fo-h1|About' ), self::titleStack( $html ), 'first in the title stack, as in the prototype' );
+		// PageTitle stays exactly PageTitle; the notice follows in the next section, as on the
+		// prototype's Journal, Account and ManageBooking pages.
+		$this->assertSame( array( 'h1.fo-h1|About' ), self::titleStack( $html ) );
+		$main = self::reduced( $html, '//main' );
+		$this->assertMatchesRegularExpression( '#^<main[^>]*><section class="fo-section ish-title">.*?</section><section class="fo-section"><div class="fo-container"><div class="fo-alert ish-alert--info ish-measure"><svg .*?</svg><p><strong>Sample content\.</strong> ?</p></div></div></section><div class="entry-content"><p>Body copy\.</p></div></main>$#s', $main );
+	}
+
+	public function test_a_group_holding_only_an_empty_notice_is_not_printed(): void {
+		$section = parse_blocks( '<!-- wp:group {"tagName":"section","className":"fo-section"} --><section class="wp-block-group fo-section"><!-- wp:group {"className":"fo-container"} --><div class="wp-block-group fo-container"><!-- wp:ishot/notice /--></div><!-- /wp:group --></section><!-- /wp:group -->' )[0];
+		$inner   = $section['innerBlocks'][0];
+
+		$this->assertSame( '', ishot_theme_render_group( "<div class=\"wp-block-group fo-container\">\n</div>", $inner ) );
+		$this->assertSame( '', ishot_theme_render_group( "<section class=\"wp-block-group fo-section\">\n\n</section>", $section ) );
+		$shown = '<section class="wp-block-group fo-section"><div class="wp-block-group fo-container"><div class="fo-alert"><p><strong>Sample content.</strong> </p></div></div></section>';
+		$this->assertSame( $shown, ishot_theme_render_group( $shown, $section ) );
+		// Any other empty group is the owner's business.
+		$other = parse_blocks( '<!-- wp:group --><div class="wp-block-group"><!-- wp:paragraph --><p></p><!-- /wp:paragraph --></div><!-- /wp:group -->' )[0];
+		$this->assertSame( '<div class="wp-block-group"><p></p></div>', ishot_theme_render_group( '<div class="wp-block-group"><p></p></div>', $other ) );
 	}
 
 	public function test_single_shows_the_notice_the_title_and_the_content(): void {
@@ -247,7 +263,7 @@ final class TemplatesTest extends WP_UnitTestCase {
 
 		update_post_meta( $id, 'content_status', Fields::PLACEHOLDER );
 		$html = $this->request( get_permalink( $id ) );
-		$this->assertSame( array( 'div.fo-alert.ish-alert--info.ish-measure|Sample content.', 'h1.fo-h1|What to wear for your portrait session' ), self::titleStack( $html ), 'notice first, as in the prototype article' );
+		$this->assertSame( array( 'div.fo-alert.ish-alert--info.ish-measure|Sample content.', 'h1.fo-h1|What to wear for your portrait session' ), self::titleStack( $html ), 'notice first in the article header, as in the prototype Article' );
 	}
 
 	public function test_search_shows_the_query_title_and_a_result_list(): void {
@@ -258,6 +274,12 @@ final class TemplatesTest extends WP_UnitTestCase {
 		$this->assertMatchesRegularExpression( '#<h1 class="[^"]*wp-block-query-title[^"]*fo-h1|<h1 class="[^"]*fo-h1[^"]*wp-block-query-title#', $html );
 		$this->assertStringContainsString( 'Portrait tips', $html );
 		$this->assertStringContainsString( 'wp-block-post-template', $html );
+	}
+
+	public function test_page_title_pattern_is_exactly_page_title_and_not_in_the_inserter(): void {
+		$pattern = WP_Block_Patterns_Registry::get_instance()->get_registered( 'ishot-concept/page-title' );
+		$this->assertStringNotContainsString( 'ishot/notice', $pattern['content'] );
+		$this->assertFalse( $pattern['inserter'] );
 	}
 
 	public function test_page_title_pattern_matches_the_prototype_page_title(): void {
@@ -289,9 +311,35 @@ final class TemplatesTest extends WP_UnitTestCase {
 		$this->assertSame( $plain, ishot_theme_render_title_paragraph( $plain, array( 'attrs' => array() ) ) );
 	}
 
-	public function test_theme_css_neutralises_core_flow_gaps_in_main_with_tokens_only(): void {
+	public function test_theme_css_unwraps_the_action_paragraphs(): void {
 		$css = (string) file_get_contents( get_theme_file_path( 'assets/css/theme.css' ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- local theme file.
 		$this->assertMatchesRegularExpression( '#\.ish-actions > p:not\(\[class\]\)\s*\{\s*display: contents;\s*\}#', $css );
-		$this->assertMatchesRegularExpression( '#\.ish-app > main > \*,\s*\.ish-app > main > \.wp-block-post-content > \*,\s*\.ish-app > main \.wp-block-group\.is-layout-flow > \*\s*\{\s*margin-block: 0;\s*\}#', $css );
+		// No high-specificity margin reset in main: it beat the prototype's own margins (Task 1.4 review I3).
+		$this->assertStringNotContainsString( '.ish-app > main', $css );
+	}
+
+	/**
+	 * Core's flow layout adds a block gap between children, and its first/last-child rules (specificity
+	 * 0,2,0) beat the design system's own margins (`.ish-strip`, `.fo-heading`, …). The design system
+	 * spaces everything with its own classes, so the theme opts out of core's block gap styles
+	 * (`settings.spacing.blockGap: null`): core prints no flow margin rule at all (Task 1.4 review I3).
+	 */
+	public function test_core_prints_no_flow_layout_margins(): void {
+		$this->assertNull( wp_get_global_settings( array( 'spacing', 'blockGap' ) ) );
+		$css = wp_get_global_stylesheet();
+		$this->assertStringNotContainsString( 'is-layout-flow) > :first-child', $css );
+		$this->assertStringNotContainsString( 'is-layout-flow) > *{margin-block-start', $css );
+		// Flex and grid layouts keep core's fallback gap (owner rows and buttons still lay out).
+		$this->assertStringContainsString( 'is-layout-flex', $css );
+
+		// No per-block gap rule either, even for a Group asking for one.
+		$html = do_blocks( '<!-- wp:group {"style":{"spacing":{"blockGap":"2rem"}},"layout":{"type":"default"}} --><div class="wp-block-group"><!-- wp:paragraph --><p>a</p><!-- /wp:paragraph --></div><!-- /wp:group -->' );
+		$this->assertStringNotContainsString( 'wp-container-', $html );
+	}
+
+	public function test_templates_carry_no_block_gap_attributes(): void {
+		foreach ( self::TEMPLATES as $slug ) {
+			$this->assertStringNotContainsString( 'blockGap', self::source( $slug ), $slug );
+		}
 	}
 }

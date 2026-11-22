@@ -36,7 +36,7 @@ final class ThemeSetupTest extends WP_UnitTestCase {
 		foreach ( $expected as $path ) {
 			$this->assertFileExists( get_theme_file_path( $path ) );
 		}
-		$this->assertSame( array_merge( $expected, array( ISHOT_THEME_EDITOR_ROOT_STYLE ) ), array_values( $GLOBALS['editor_styles'] ?? array() ) );
+		$this->assertSame( array_merge( $expected, array( ISHOT_THEME_EDITOR_ROOT_STYLE, ISHOT_THEME_EDITOR_CANVAS_STYLE ) ), array_values( $GLOBALS['editor_styles'] ?? array() ) );
 	}
 
 	public function test_editor_canvas_root_gets_the_design_systems_fo_root_rules(): void {
@@ -53,7 +53,18 @@ final class ThemeSetupTest extends WP_UnitTestCase {
 		do_action( 'wp_enqueue_scripts' );
 		foreach ( wp_styles()->registered as $style ) {
 			$this->assertStringNotContainsString( 'editor-root.css', (string) $style->src );
+			$this->assertStringNotContainsString( 'editor.css', (string) $style->src );
 		}
+	}
+
+	public function test_editor_canvas_styles_lay_out_server_rendered_blocks_as_on_the_front_end(): void {
+		// In the editor a dynamic block's markup sits inside the block wrapper and ServerSideRender's own
+		// div, so the footer's Visit lines would be inline runs of one grid item instead of three grid
+		// items. The block wrapper, Disabled's div and ServerSideRender's div generate no box in the canvas
+		// (Task 1.4 review I1).
+		$this->assertSame( 'assets/css/editor.css', ISHOT_THEME_EDITOR_CANVAS_STYLE );
+		$css = (string) file_get_contents( get_theme_file_path( ISHOT_THEME_EDITOR_CANVAS_STYLE ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- local theme file.
+		$this->assertMatchesRegularExpression( '#\.fo-footer__col > \.wp-block-ishot-contact-details,\s*\.fo-footer__col > \.wp-block-ishot-contact-details > \*,\s*\.fo-footer__col > \.wp-block-ishot-contact-details > \* > \*\s*\{\s*display: contents;\s*\}#', $css );
 	}
 
 	public function test_registers_theme_blocks_from_a_build_folder_and_skips_one_without_block_json(): void {

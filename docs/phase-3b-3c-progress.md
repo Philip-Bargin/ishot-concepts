@@ -229,3 +229,40 @@ Verdict: **With fixes.** Important items and their handling:
 - **Visual:** `--scope full --states 404`: 6/6 states, 0 geometry, 0 style, 0 alignment failures, every region pixel diff 0. `--scope frame` (96 states): header landmarks and footer x/width/height and styles pass in 96/96; alignment 0 failures; 404 passes fully. In the other 15 states the only failures are the footer landmarks' `y`, equal to the main-content length difference: worst footer-relative difference 0 px (expected until Stages 2–3; not hidden). The 1.3 footer-`y` failures are therefore not cleared by shells alone: title-only shells are much shorter than the prototype pages.
 - **axe (`--states home,about,404`, menu closed and open, 36 runs):** about and 404 0 violations (24/24, three consecutive runs). home: `page-has-heading-one` in the 6 menu-closed runs (the posts index has no h1; the home hero arrives in Stage 2). One intermittent `color-contrast` hit (about@768@dark, menu open, Journal link) in the first run only: the menu items' staggered `ish-rise` animation keeps its `animation-delay` under reduced motion, so axe can catch an item mid-fade (Task 1.2 CSS, harness timing; 0/72 in reruns).
 - **Editor screenshots** (not committed): `.superpowers/sdd/2026-11-21-wordpress-phase-3b-3c/task-1.4-site-editor-template-{index,page,single,404,search}.png`, `task-1.4-site-editor-part-{header,footer}.png`.
+
+#### Task 1.4 fix round 1 (review: six findings)
+
+- **Accepted markup exceptions (Task 1.4):**
+  1. `page-title` / `single`: the H1 is `core/post-title` and carries `wp-block-post-title` (R-1.4-2).
+  2. 404 actions: each button sits in a class-less `<p>` (an editable core Paragraph). `theme.css` `.ish-actions > p:not([class]) { display: contents; }` makes the links the `.ish-actions` flex items, as in the prototype; 404 full scope shows 0 differences.
+  3. The 404 gallery link is `/portfolio/` (WordPress trailing slash), where the prototype's `<Link to="/portfolio">` renders `/portfolio`.
+  4. The 404 lead's apostrophe is written `&#39;` so `wptexturize` keeps it straight, as in the source.
+- **I1 Site Editor footer:**
+  - The spectrum is now the theme block `ishot/spectrum` (static `render.php` printing the prototype's exact span; `inserter: false`). Its editorScript renders the same span directly, so the canvas shows the bars instead of a core/html source textarea.
+  - A hand-written editor-only `assets/css/editor.css` (`ISHOT_THEME_EDITOR_CANVAS_STYLE`, tokens only, never on the front end) gives the contact-details block wrapper, Disabled's div and ServerSideRender's div `display: contents` inside `.fo-footer__col`, so the Visit lines are separate grid rows as on the front end.
+  - New e2e checks: no `core/html` block and no textarea or code view in either part or any template; four spectrum bars; the Visit eyebrow, address, phone and email each start below the previous line at the same left edge.
+- **I2 notice placement:**
+  - `patterns/page-title.php` is exactly PageTitle (no notice) and `Inserter: no`.
+  - `templates/page.html` prints `ishot/notice` in its own `section.fo-section > div.fo-container` after the title, as the prototype's Journal, Account and ManageBooking pages do.
+  - The group filter (`ishot_theme_render_group`, now given the parsed block) drops any Group whose only content is `ishot/notice` (through nested single-child Groups) when the notice prints nothing, so approved pages have no empty padded section.
+  - `single` keeps the notice first in the article header, as the prototype's Article does.
+- **I3 margins:**
+  - The `.ish-app > main … { margin-block: 0 }` reset is gone.
+  - Core's flow rules `:root :where(.is-layout-flow) > :first-child / :last-child` have specificity 0,2,0, so even a per-group zero gap could not stop them beating a prototype class margin on a first or last child.
+  - The theme now opts out of core's block-gap styles (`theme.base.json` `settings.spacing.blockGap: null`, and the unused `styles.spacing.blockGap` removed). Core prints no flow or constrained margin rules and no per-block gap rules; flex and grid layouts keep core's fallback gap.
+  - The equivalent footer reset from Task 1.3 (`.fo-footer .is-layout-flow > *`) is removed as redundant; the footer frame comparison is unchanged.
+  - The fo-root wrapper's `blockGap: 0` attribute (now ignored) is removed from the templates.
+  - New e2e `tests/e2e/templates.spec.mjs`: an `.ish-strip` inside the title container group keeps app.css's `margin-block` (48 px at 375, 64 px at 1440). RED: 0 px with the old reset, then bottom 0 px with only per-group zero gaps (core's last-child rule).
+- **I4 404 test:** no longer unwraps anything. The expected markup holds the `<p>` wrappers and `/portfolio/`, and the exact anchors are asserted with their hrefs.
+- **I5 evidence path:** the Site Editor spec saves its named screenshots to `ISHOT_EVIDENCE_DIR` when set, else to `testInfo.outputPath()`; an ordinary run writes nothing to the task workspace.
+- **I6 axe:** `waitForAnimations(page, 3000)` (`tests/visual/capture.mjs`) waits for `document.getAnimations()` to finish, bounded, before axe runs (menu closed and open). Unit-tested in `capture.test.mjs` (resolves after a finishing animation; an endless one cannot hang the run).
+- **Why theme-wide, not per group (I3):**
+  - `settings.spacing.blockGap: null` removes the global-styles flow and constrained spacing rules: `:root :where(.is-layout-flow) > :first-child { margin-block-start: 0 }`, `> :last-child { margin-block-end: 0 }` and `> * { margin-block-start: <gap>; margin-block-end: 0 }` (likewise for `.is-layout-constrained`). It also removes every per-block `.wp-container-…` gap rule.
+  - Flex and grid layouts keep core's 0.5em fallback gap.
+  - A per-group `blockGap: "0"` only adds `.wp-container-N > * { margin-block: 0 }` (0,1,0). Core's first-child/last-child rules are 0,2,0, so they still zeroed a prototype class's margin on the first or last child of every Group (`templates.spec.mjs` received `margin-bottom: 0px` instead of 48 px).
+- **Fix round 1 verification** (one suite at a time; Playwright with `--workers=1`):
+  - `test:theme` OK 100 tests, 667 assertions; `test:blocks` OK 76, 367; `test:php` OK 406, 1588.
+  - `qa` (PHPCS 107 files, PHPStan L6) clean; `build:blocks:check` up to date (theme 4 blocks, plugin 3); `build` and `lint:tokens` OK; `test:scripts` 50 pass, 1 skipped (Windows); prototype matches `50e60f4`.
+  - `test:e2e` 29 passed.
+  - Visual: 404 full scope 6/6 with 0 differences. Frame scope for about/home/journal-article: footer `y` only (0 px footer-relative), as before.
+  - axe on home/about/404, three runs of 36 tests: runs 1 and 2 had 30 passed + 6 failed each; run 3 crashed under memory pressure, and its re-run with `--workers=1` had 30 passed + 6 failed. All 6 failures in each run are home's accepted `page-has-heading-one`; no other violation in any completed run.

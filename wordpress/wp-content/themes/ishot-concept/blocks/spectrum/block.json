@@ -1,0 +1,15 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "ishot/spectrum",
+	"title": "Spectrum bars",
+	"category": "design",
+	"description": "The design system's four brand-colour bars (decorative), as in the prototype's footer.",
+	"supports": {
+		"html": false,
+		"inserter": false
+	},
+	"textdomain": "ishot-concept",
+	"editorScript": "file:./index.js",
+	"render": "file:./render.php"
+}

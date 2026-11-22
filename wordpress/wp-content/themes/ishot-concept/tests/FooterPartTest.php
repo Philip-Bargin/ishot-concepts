@@ -199,6 +199,19 @@ final class FooterPartTest extends WP_UnitTestCase {
 		$this->assertValidBlockMarkup( self::partFile(), 'parts/footer.html' );
 	}
 
+	public function test_spectrum_is_a_theme_block_printing_the_prototypes_span(): void {
+		// A core/html block showed its raw source in the Site Editor (Task 1.4 review I1).
+		$file = self::partFile();
+		$this->assertStringContainsString( '<!-- wp:ishot/spectrum /-->', $file );
+		$this->assertStringNotContainsString( '<!-- wp:html', $file );
+
+		$type = WP_Block_Type_Registry::get_instance()->get_registered( 'ishot/spectrum' );
+		$this->assertNotNull( $type );
+		$this->assertNotEmpty( $type->editor_script_handles, 'the Site Editor needs an editorScript' );
+		$this->assertFalse( $type->supports['inserter'] ?? true, 'frame-only: not offered in the inserter' );
+		$this->assertSame( '<span class="fo-spectrum" aria-hidden="true"><i></i><i></i><i></i><i></i></span>', trim( do_blocks( '<!-- wp:ishot/spectrum /-->' ) ) );
+	}
+
 	public function test_part_uses_core_blocks_for_the_editable_link_columns(): void {
 		$file = self::partFile();
 		$this->assertSame( 2, substr_count( $file, '"tagName":"nav"' ) );
@@ -271,7 +284,8 @@ final class FooterPartTest extends WP_UnitTestCase {
 	public function test_theme_css_neutralises_the_core_wrappers_with_tokens_only(): void {
 		$css = (string) file_get_contents( get_theme_file_path( 'assets/css/theme.css' ) ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- local theme file.
 
-		$this->assertMatchesRegularExpression( '#\.fo-footer\.is-layout-flow > \*,\s*\.fo-footer \.is-layout-flow > \*\s*\{\s*margin-block: 0;\s*\}#', $css );
+		// Core prints no flow-layout margins (theme.json blockGap: null), so no reset is needed (Task 1.4 review I3).
+		$this->assertStringNotContainsString( 'is-layout-flow', $css );
 		$this->assertMatchesRegularExpression( '#\.fo-footer__col > p:not\(\[class\]\)\s*\{\s*display: contents;\s*\}#', $css );
 	}
 }

@@ -52,6 +52,19 @@ export async function applyMasks(page, masks) {
   }, masks.map((m) => m.selector));
 }
 
+/**
+ * Waits until every animation on the page has finished, at most `timeoutMs`. The menu sheet's links rise
+ * in with staggered delays (app.css ish-rise); reduced motion shortens the duration but not the delay, so
+ * a check run straight after opening can see a link mid-fade (Task 1.4: an intermittent axe colour-contrast hit).
+ */
+export async function waitForAnimations(page, timeoutMs = 3000) {
+  await page.evaluate(async (timeout) => {
+    const all = Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {})));
+    await Promise.race([all, new Promise((r) => setTimeout(r, timeout))]);
+    await new Promise((r) => requestAnimationFrame(() => r()));
+  }, timeoutMs);
+}
+
 /** Runs before page scripts: theme, freeze stylesheet. */
 function initScript({ theme, themeKey, css }) {
   try {

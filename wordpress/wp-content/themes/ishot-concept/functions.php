@@ -27,6 +27,9 @@ const ISHOT_THEME_STYLES = array(
  */
 const ISHOT_THEME_EDITOR_ROOT_STYLE = 'assets/css/editor-root.css';
 
+/** Editor only, last: hand-written canvas fixes for blocks the editor wraps (assets/css/editor.css). */
+const ISHOT_THEME_EDITOR_CANVAS_STYLE = 'assets/css/editor.css';
+
 /** Fonts used above the fold on every page; preloaded so headings don't swap late. */
 const ISHOT_THEME_PRELOAD_FONTS = array(
 	'assets/fonts/oswald-latin-700-normal.woff2',
@@ -38,7 +41,7 @@ add_action(
 	static function (): void {
 		load_theme_textdomain( 'ishot-concept', get_template_directory() . '/languages' );
 		add_theme_support( 'editor-styles' );
-		add_editor_style( array_merge( array_values( ISHOT_THEME_STYLES ), array( ISHOT_THEME_EDITOR_ROOT_STYLE ) ) );
+		add_editor_style( array_merge( array_values( ISHOT_THEME_STYLES ), array( ISHOT_THEME_EDITOR_ROOT_STYLE, ISHOT_THEME_EDITOR_CANVAS_STYLE ) ) );
 		// Core's generic patterns don't follow the design system; the theme ships its own (Phase 3f).
 		remove_theme_support( 'core-block-patterns' );
 	}

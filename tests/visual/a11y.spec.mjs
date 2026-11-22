@@ -2,7 +2,7 @@
 // Target and states follow the visual harness: VISUAL_TARGET=wp, VISUAL_BASE_URL, VISUAL_STATES. 0 violations is the gate.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { openState, contextOptions, THEMES, VIEWPORTS } from './capture.mjs';
+import { openState, contextOptions, THEMES, VIEWPORTS, waitForAnimations } from './capture.mjs';
 import { ACTIVE_ROUTES, BASE_URL, TARGET, pathFor } from './target.mjs';
 
 export const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'];
@@ -27,6 +27,8 @@ for (const route of ACTIVE_ROUTES) {
               await page.locator('.fo-menu-toggle').click();
               await page.locator('#site-menu').waitFor({ state: 'visible' });
             }
+            // Staggered menu and reveal animations must have finished, or axe can sample a link mid-fade.
+            await waitForAnimations(page);
             const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
             expect(summarise(violations), 'axe violations').toEqual([]);
           } finally {

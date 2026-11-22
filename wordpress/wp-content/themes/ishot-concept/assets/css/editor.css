@@ -1,0 +1,10 @@
+/*
+ * Editor canvas only (add_editor_style; never loaded on the front end). Hand-written, tokens only.
+ *
+ * A dynamic block is wrapped in the canvas by its block wrapper, the Disabled wrapper and
+ * ServerSideRender's div. On the front end the footer's Visit lines (ishot/contact-details) are direct
+ * grid items of their column; here those three wrappers generate no box, so the lines lay out the same.
+ */
+.fo-footer__col > .wp-block-ishot-contact-details,
+.fo-footer__col > .wp-block-ishot-contact-details > *,
+.fo-footer__col > .wp-block-ishot-contact-details > * > * { display: contents; }

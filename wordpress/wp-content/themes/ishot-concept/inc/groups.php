@@ -10,6 +10,8 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
+ * - A group whose only content is the `ishot/notice` block (possibly through nested groups) is not
+ *   printed when the notice prints nothing, so the page template has no empty padded section.
  * - The templates' `main#main` gets `tabindex="-1"` (src/App.jsx: `<main id="main" tabIndex={-1}>`),
  *   so the skip link moves focus to it. A tabindex already set is kept.
  * - Footer columns (`.fo-footer__col`) and the social wrapper (`.ish-social`): a column whose only
@@ -17,9 +19,13 @@ defined( 'ABSPATH' ) || exit;
  *   or landmark when a plugin block prints nothing); a `nav.fo-footer__col` is labelled by its
  *   eyebrow (`aria-labelledby` = the eyebrow's id). A value already set is kept.
  *
- * @param string $content Rendered group markup.
+ * @param string               $content Rendered group markup.
+ * @param array<string, mixed> $block   Parsed block (its inner blocks), when called as the filter.
  */
-function ishot_theme_render_group( string $content ): string {
+function ishot_theme_render_group( string $content, array $block = array() ): string {
+	if ( ishot_theme_holds_only_notice( $block ) && '' === trim( wp_strip_all_tags( $content ) ) ) {
+		return '';
+	}
 	$tags = new WP_HTML_Tag_Processor( $content );
 	if ( ! $tags->next_tag() ) {
 		return $content;
@@ -84,4 +90,22 @@ function ishot_theme_render_group( string $content ): string {
 	}
 	return $content;
 }
-add_filter( 'render_block_core/group', 'ishot_theme_render_group' );
+add_filter( 'render_block_core/group', 'ishot_theme_render_group', 10, 2 );
+
+/**
+ * Whether a parsed Group block holds nothing but one `ishot/notice`, directly or through nested
+ * single-child Groups (the page template's notice section).
+ *
+ * @param array<string, mixed> $block Parsed block.
+ */
+function ishot_theme_holds_only_notice( array $block ): bool {
+	$inner = is_array( $block['innerBlocks'] ?? null ) ? $block['innerBlocks'] : array();
+	if ( 1 !== count( $inner ) || ! is_array( $inner[0] ) ) {
+		return false;
+	}
+	$child = $inner[0];
+	if ( 'ishot/notice' === ( $child['blockName'] ?? null ) ) {
+		return true;
+	}
+	return 'core/group' === ( $child['blockName'] ?? null ) && ishot_theme_holds_only_notice( $child );
+}
