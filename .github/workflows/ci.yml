@@ -68,7 +68,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       # Unit tests only: build-blocks.mjs against temp fixture packages and the visual harness's
       # comparison helpers. The full visual reference run is a local, owner-triggered task, not CI.
-      - run: node --test tests/blocks/*.test.mjs tests/visual/*.test.mjs
+      - run: node --test tests/blocks/*.test.mjs tests/visual/*.test.mjs tests/dev/*.test.mjs
 
   php-quality:
     name: PHPCS (WPCS + PHPCompatibility) + PHPStan level 6

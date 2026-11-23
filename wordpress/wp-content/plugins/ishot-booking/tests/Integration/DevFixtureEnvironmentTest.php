@@ -80,6 +80,34 @@ final class DevFixtureEnvironmentTest extends TestCase {
 	}
 
 	/**
+	 * The fail-closed branch of guard.php: when the plugin (and so DevGuard) is missing, every script must still
+	 * refuse. The plugin's prior active state is restored even if an assertion fails.
+	 */
+	public function test_every_dev_script_fails_closed_when_the_plugin_is_not_active(): void {
+		$was_active = 0 === self::exec( array( 'plugin', 'is-active', 'ishot-booking' ) )['code'];
+		$before     = $this->snapshot();
+		try {
+			$off = self::exec( array( 'plugin', 'deactivate', 'ishot-booking' ) );
+			$this->assertSame( 0, $off['code'], $off['stderr'] );
+			$count = 0;
+			foreach ( self::scripts() as $name => $args ) {
+				++$count;
+				// Opt-in set and a non-local type: only the missing plugin can be the reason to refuse.
+				$run = $this->runScript( $args[0], 'staging', true );
+				$this->assertSame( 1, $run['code'], $name . ': ' . $run['stderr'] );
+				$this->assertStringContainsString( 'Refused: the ishot-booking plugin is not active.', $run['stderr'], $name );
+				$this->assertSame( $before, $this->snapshot(), $name . ': a refused script must change nothing.' );
+			}
+			$this->assertGreaterThanOrEqual( 7, $count );
+		} finally {
+			if ( $was_active ) {
+				self::exec( array( 'plugin', 'activate', 'ishot-booking' ) );
+			}
+		}
+		$this->assertSame( $was_active ? 1 : 0, ( 0 === self::exec( array( 'plugin', 'is-active', 'ishot-booking' ) )['code'] ) ? 1 : 0, 'Plugin state must be restored.' );
+	}
+
+	/**
 	 * @return array{code: int, stdout: string, stderr: string}
 	 */
 	private function runScript( string $script, string $type, bool $opt_in ): array {
