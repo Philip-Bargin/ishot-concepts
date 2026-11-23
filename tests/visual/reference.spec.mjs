@@ -3,6 +3,7 @@
 //   VISUAL_MODE=reference  writes partial reference data (scripts/visual-reference.mjs merges it into
 //                          tests/visual/reference/*.json and keeps the PNGs in .output/reference/).
 //   default (check)        captures again and compares with the committed reference.
+// The component gate (VISUAL_SCOPE=component) lives in components.spec.mjs.
 import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect } from '@playwright/test';
@@ -56,7 +57,10 @@ const browserMeta = (browser, testInfo) => ({
   channel: testInfo.project.use.channel ?? 'bundled',
 });
 
-for (const route of ACTIVE_ROUTES) {
+// VISUAL_SCOPE=component compares the component fixtures only (components.spec.mjs); no page state runs here.
+const PAGE_ROUTES = SCOPE === 'component' ? [] : ACTIVE_ROUTES;
+
+for (const route of PAGE_ROUTES) {
   for (const width of Object.keys(VIEWPORTS).map(Number)) {
     for (const theme of THEMES) {
       const key = keyOf(route.name, width, theme);
@@ -114,6 +118,7 @@ for (const route of ACTIVE_ROUTES) {
 
 test('determinism: two captures of the same state are identical', async ({ browser }) => {
   test.skip(IS_WP, 'the determinism check runs on the prototype');
+  test.skip(SCOPE === 'component', 'component scope: see the component determinism test');
   const route = ACTIVE_ROUTES.find((r) => r.name === 'home');
   test.skip(!route, 'home is not in VISUAL_STATES');
   const a = await capture(browser, route, 1440, 'dark');

@@ -173,6 +173,11 @@ export function referenceFingerprint(geometryFile, stylesFile) {
   return hash.digest('hex');
 }
 
+/** Fingerprint of the committed component reference (components.json), stored beside the component PNGs. */
+export function componentReferenceFingerprint(componentsFile) {
+  return crypto.createHash('sha256').update(fs.readFileSync(componentsFile)).digest('hex');
+}
+
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 /**

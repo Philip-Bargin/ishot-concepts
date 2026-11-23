@@ -15,6 +15,7 @@ parameters:
 		- ../../wordpress/wp-content/plugins/ishot-blocks/src
 		- ../../wordpress/wp-content/plugins/ishot-blocks/blocks
 		- ../../wordpress/wp-content/themes/ishot-concept
+		- ../../wordpress/dev/lib
 	excludePaths:
 		analyseAndScan:
 			- ../../wordpress/wp-content/themes/ishot-concept/tests

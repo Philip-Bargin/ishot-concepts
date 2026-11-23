@@ -1,7 +1,9 @@
 // Controlled rendering (plan §5.1). One capture = one page state at one width and theme.
 //   captureState(page, { url, width, theme, landmarks?, masks? }) -> { png, geometry, styles }
+//   captureComponent(page, { url, width, theme, root, landmarks?, action? }) -> { png, geometry, styles, counts }
 import { probeLandmarks } from './geometry.mjs';
-import { findMissingRequired, landmarksFor } from './landmarks.mjs';
+import { componentLandmarksFor, findMissingRequired, landmarksFor } from './landmarks.mjs';
+import { ACTIONS, relativeToRoot } from './components.mjs';
 import { FIXED_TIME, MASKS } from './masks.mjs';
 
 export const THEME_KEY = 'ishot-theme'; // src/lib/theme.js
@@ -143,4 +145,27 @@ export async function captureState(page, { url, width, theme, landmarks = 'commo
   await page.mouse.move(0, 0);
   const png = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' });
   return { png, geometry, styles, counts };
+}
+
+/**
+ * One component (plan §6 Stage 2, R-2-C) at one width and theme: the same controlled rendering as captureState,
+ * then the optional `action` (components.mjs ACTIONS), then a probe resolved inside `root`. Geometry is relative
+ * to the root (relativeToRoot); the screenshot is clipped to the root's box. A missing root throws with
+ * code ROOT_MISSING (the caller decides whether that is a capture error or a reported failure).
+ */
+export async function captureComponent(page, { url, width, theme, root, landmarks = 'component', action, masks = MASKS }) {
+  const viewport = await openState(page, { url, width, theme });
+  await settle(page, viewport.height);
+  if (action) {
+    if (!Object.hasOwn(ACTIONS, action)) throw new Error(`Unknown component action "${action}"`);
+    await ACTIONS[action](page);
+  }
+  await waitForAnimations(page);
+  const raw = await probeLandmarks(page, componentLandmarksFor(landmarks), { root });
+  const state = relativeToRoot(raw, { root, url });
+  await applyMasks(page, masks);
+  await page.mouse.move(0, 0);
+  const { x, y, width: w, height: h } = raw.root;
+  const png = await page.screenshot({ fullPage: true, clip: { x, y, width: w, height: h }, animations: 'disabled', caret: 'hide' });
+  return { png, ...state };
 }

@@ -16,7 +16,7 @@ if ( ! function_exists( 'ishot_dev_guard_or_exit' ) ) {
 	 */
 	function ishot_dev_guard_or_exit(): void {
 		if ( ! class_exists( DevGuard::class ) ) {
-			fwrite( STDERR, "Refused: the ishot-booking plugin is not active.\n" );
+			fwrite( STDERR, "Refused: the ishot-booking plugin is not active.\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- WP-CLI script: the refusal goes to STDERR.
 			exit( 1 );
 		}
 
@@ -27,7 +27,7 @@ if ( ! function_exists( 'ishot_dev_guard_or_exit' ) ) {
 		);
 
 		if ( '' !== $reason ) {
-			fwrite( STDERR, 'Refused, nothing changed: ' . $reason . "\n" );
+			fwrite( STDERR, 'Refused, nothing changed: ' . $reason . "\n" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- WP-CLI script: the refusal goes to STDERR.
 			exit( 1 );
 		}
 	}

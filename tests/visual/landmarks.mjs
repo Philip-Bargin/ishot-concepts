@@ -76,6 +76,35 @@ export const EXTRAS = {
   ],
 };
 
+// Component gate (R-2-C, tests/visual/components.mjs). These selectors are resolved inside the component root
+// (root.querySelectorAll), never from the document, so a section's landmarks are its own. The root itself is
+// recorded by the capture as `component-root`. Selectors use design-system classes and native elements only,
+// which the prototype and the WordPress blocks both print.
+export const COMPONENT_LANDMARKS = [
+  L('section', 'section', { all: true }),
+  L('heading', 'h1, h2, h3', { all: true, text: true }),
+  L('eyebrow', '.fo-eyebrow', { all: true, text: true }),
+  L('button', '.fo-btn', { all: true }),
+  L('image', '.fo-img', { all: true }),
+  L('card', '.fo-card', { all: true }),
+  L('tile', '.fo-tile, .ish-tile', { all: true }),
+  L('chip', '.fo-chip', { all: true }),
+  L('feature', '.fo-feature', { all: true }),
+  L('stat', '.fo-stat', { all: true }),
+  L('quote', 'blockquote, .fo-quote', { all: true, text: true }),
+  L('control', 'button, [role="button"], input, select, textarea', { all: true }),
+];
+
+// Extra specs per component, keyed by the component entry's `landmarks` value. Later tasks add keys here.
+export const COMPONENT_EXTRAS = {
+  component: [],
+};
+
+export function componentLandmarksFor(key) {
+  if (!Object.hasOwn(COMPONENT_EXTRAS, key)) throw new Error(`Unknown component landmark set "${key}". Known: ${Object.keys(COMPONENT_EXTRAS).join(', ')}`);
+  return [...COMPONENT_LANDMARKS, ...COMPONENT_EXTRAS[key]];
+}
+
 /** Names of required specs that matched nothing. Capture fails when this is non-empty. */
 export const findMissingRequired = (specs, counts) => specs.filter((sp) => sp.required && !counts[sp.name]).map((sp) => sp.name);
 

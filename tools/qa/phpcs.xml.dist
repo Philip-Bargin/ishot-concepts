@@ -9,6 +9,8 @@
 	<!-- Block sources: render.php files (where output escaping happens) must be linted. build/ stays excluded below. -->
 	<file>../../wordpress/wp-content/plugins/ishot-blocks/blocks</file>
 	<file>../../wordpress/wp-content/themes/ishot-concept</file>
+	<!-- Dev-only classes the dev scripts load (wordpress/dev/lib, e.g. ComponentFixtures; deferred M-f closed in Task 2.1a). -->
+	<file>../../wordpress/dev/lib</file>
 
 	<exclude-pattern>*/vendor/*</exclude-pattern>
 	<exclude-pattern>*/node_modules/*</exclude-pattern>
