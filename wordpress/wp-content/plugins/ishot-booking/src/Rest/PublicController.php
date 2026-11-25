@@ -8,6 +8,7 @@ use IShot\Booking\Application\RequestOutcome;
 use IShot\Booking\Catalog\Service;
 use IShot\Booking\Catalog\ServiceCatalog;
 use IShot\Booking\Persistence\BookingRepository;
+use IShot\Booking\Persistence\CalendarBusy;
 use IShot\Booking\Settings;
 use WP_Error;
 use WP_REST_Request;
@@ -199,19 +200,23 @@ final class PublicController {
 		}
 
 		$requests = $this->requests();
-		$outcome  = $requests->submit(
-			$service,
-			$start,
-			array(
-				'name'     => (string) $request['name'],
-				'email'    => sanitize_email( (string) $request['email'] ),
-				'phone'    => (string) $request['phone'],
-				'location' => (string) $request['location'],
-				'notes'    => (string) $request['notes'],
-			),
-			$key,
-			self::now()
-		);
+		try {
+			$outcome = $requests->submit(
+				$service,
+				$start,
+				array(
+					'name'     => (string) $request['name'],
+					'email'    => sanitize_email( (string) $request['email'] ),
+					'phone'    => (string) $request['phone'],
+					'location' => (string) $request['location'],
+					'notes'    => (string) $request['notes'],
+				),
+				$key,
+				self::now()
+			);
+		} catch ( CalendarBusy $e ) {
+			return BusyError::create();
+		}
 
 		return match ( $outcome->kind ) {
 			RequestOutcome::REJECTED => new WP_Error( 'ishot_' . $outcome->violation->value, $outcome->violation->message(), array( 'status' => 422 ) ),

@@ -5,6 +5,7 @@ use IShot\Booking\Application\StaffActions;
 use IShot\Booking\Domain\BookingStatus;
 use IShot\Booking\Domain\TimeRange;
 use IShot\Booking\Persistence\BookingRepository;
+use IShot\Booking\Persistence\CalendarBusy;
 use IShot\Booking\Persistence\NewBooking;
 use IShot\Booking\Persistence\SlotConflict;
 use IShot\Booking\Persistence\StaleBooking;
@@ -262,6 +263,8 @@ final class StaffController {
 			return new WP_Error( 'ishot_stale', __( 'Someone else changed this booking. Reload it and try again.', 'ishot-booking' ), array( 'status' => 409 ) );
 		} catch ( SlotConflict $e ) {
 			return self::slotTaken();
+		} catch ( CalendarBusy $e ) {
+			return BusyError::create();
 		} catch ( InvalidArgumentException $e ) {
 			return new WP_Error( 'ishot_invalid_transition', $e->getMessage(), array( 'status' => 422 ) );
 		}
@@ -291,6 +294,8 @@ final class StaffController {
 			);
 		} catch ( SlotConflict $e ) {
 			return self::slotTaken();
+		} catch ( CalendarBusy $e ) {
+			return BusyError::create();
 		}
 		return new WP_REST_Response( self::present( $repo->find( $id ) ), 201 );
 	}

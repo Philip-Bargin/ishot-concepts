@@ -39,6 +39,7 @@ final class BookingRepository {
 	/**
 	 * @return int Booking id. A repeated idempotency key returns the original booking's id.
 	 * @throws SlotConflict When any part of the buffered range is already held.
+	 * @throws CalendarBusy  Every attempt lost a deadlock and the range is still free.
 	 */
 	public function create( NewBooking $booking ): int {
 		if ( null !== $booking->idempotency_key ) {
@@ -94,10 +95,11 @@ final class BookingRepository {
 				$this->log( $id, 'created', null, $booking->status->value );
 				return $id;
 			},
-			function ( Throwable $e ) use ( $booking ) {
+			function ( Throwable $e ) use ( $booking, $units ) {
 				if ( $e instanceof IdempotentReplay ) {
 					return $this->idForKey( (string) $booking->idempotency_key );
 				}
+				$this->throwIfHeldByOthers( $e, $booking->resource_id, $units );
 				throw $e;
 			}
 		);
@@ -158,10 +160,12 @@ final class BookingRepository {
 	 * @throws SlotConflict             Part of the new time is held by another booking.
 	 * @throws StaleBooking             The booking changed since $expected_version was read.
 	 * @throws InvalidArgumentException Unknown booking, or one that no longer holds a slot.
+	 * @throws CalendarBusy             Every attempt lost a deadlock and the new time is still free.
 	 */
 	public function reschedule( int $id, DateTimeImmutable $new_start, int $expected_version, ?int $actor_user_id = null ): void {
+		$claim = null; // [resource id, units] the last attempt tried to lock
 		$this->inTransaction(
-			function () use ( $id, $new_start, $expected_version, $actor_user_id ): void {
+			function () use ( $id, $new_start, $expected_version, $actor_user_id, &$claim ): void {
 				$row    = $this->lockForUpdate( $id, $expected_version );
 				$status = BookingStatus::from( $row['status'] );
 				if ( ! $status->holdsSlot() ) {
@@ -178,8 +182,9 @@ final class BookingRepository {
 				$end     = $start->modify( "+{$duration} seconds" );
 				$blocked = new TimeRange( $start->modify( "-{$before} seconds" ), $end->modify( "+{$after} seconds" ) );
 
+				$claim = array( (int) $row['resource_id'], SlotUnits::cover( $blocked, $this->granularity_minutes ) );
 				$this->db->delete( Schema::locks(), array( 'booking_id' => $id ) );
-				$this->lockUnits( (int) $row['resource_id'], SlotUnits::cover( $blocked, $this->granularity_minutes ), $id );
+				$this->lockUnits( $claim[0], $claim[1], $id );
 
 				$this->db->update(
 					Schema::bookings(),
@@ -204,6 +209,12 @@ final class BookingRepository {
 						'to'   => $start->format( self::DATETIME ),
 					)
 				);
+			},
+			function ( Throwable $e ) use ( $id, &$claim ) {
+				if ( null !== $claim ) {
+					$this->throwIfHeldByOthers( $e, $claim[0], $claim[1], $id );
+				}
+				throw $e;
 			}
 		);
 	}
@@ -392,6 +403,29 @@ final class BookingRepository {
 	}
 
 	/**
+	 * After every attempt lost a deadlock, tells a genuine loser from a busy calendar: if another
+	 * booking has since committed any of the units, the honest answer is SlotConflict, not "busy".
+	 * Runs after the ROLLBACK, as a plain read of committed locks, so it writes and queues nothing.
+	 *
+	 * @param string[] $units
+	 * @throws SlotConflict
+	 */
+	private function throwIfHeldByOthers( Throwable $e, int $resource_id, array $units, ?int $own_booking_id = null ): void {
+		if ( ! $e instanceof CalendarBusy || array() === $units ) {
+			return;
+		}
+		$sql  = 'SELECT COUNT(*) FROM ' . Schema::locks() . ' WHERE resource_id = %d AND unit_start_utc IN (' . implode( ', ', array_fill( 0, count( $units ), '%s' ) ) . ')';
+		$args = array_merge( array( $resource_id ), $units );
+		if ( null !== $own_booking_id ) {
+			$sql   .= ' AND booking_id <> %d'; // a booking's own units never conflict with its move
+			$args[] = $own_booking_id;
+		}
+		if ( (int) $this->db->get_var( $this->db->prepare( $sql, $args ) ) > 0 ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			throw new SlotConflict( 'That time has just been booked by someone else.', 0, $e );
+		}
+	}
+
+	/**
 	 * @param string[] $units
 	 * @throws SlotConflict
 	 */
@@ -446,7 +480,8 @@ final class BookingRepository {
 	 * Concurrent inserts into the unique slot-lock index can deadlock; InnoDB then rolls one
 	 * transaction back and asks for it to be restarted. $work is re-run from the top (it reads
 	 * everything it needs inside the transaction), so the retry sees the winner's committed
-	 * locks and ends in a clean SlotConflict instead of a 500.
+	 * locks and ends in a clean SlotConflict instead of a 500. If every attempt loses, $on_error
+	 * gets a CalendarBusy (create() and reschedule() then re-check the units: see throwIfHeldByOthers()).
 	 */
 	private function inTransaction( callable $work, ?callable $on_error = null ): mixed {
 		for ( $attempt = 1; ; $attempt++ ) {
@@ -465,7 +500,7 @@ final class BookingRepository {
 					usleep( wp_rand( 5000, 25000 ) * $attempt ); // jitter so the victims don't collide again
 					continue;
 				}
-				$e = new RuntimeException( 'The booking could not be saved because the calendar is busy. Please try again.', 0, $e );
+				$e = new CalendarBusy( 'The booking could not be saved because the calendar is busy. Please try again.', 0, $e );
 				if ( null === $on_error ) {
 					throw $e;
 				}

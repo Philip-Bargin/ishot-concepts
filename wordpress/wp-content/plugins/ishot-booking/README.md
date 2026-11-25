@@ -76,6 +76,7 @@ NODE_OPTIONS="--require /path/to/dns-lookup-shim.cjs" npm run wp:start
 - **409** `ishot_slot_taken`: `data.alternatives` lists up to 3 of the nearest free starts.
 - **422** `ishot_too_soon | too_far | misaligned | outside_hours | unknown_service`
 - **429**: rate limited. The default is 10 requests per 10 minutes per address; change it with the `ishot_booking_rate_limit` filter.
+- **503** `ishot_busy`: every retry lost a database deadlock while the time was still free. Nothing was stored; send the same request again (with the same Idempotency-Key).
 
 ## Roles
 
@@ -103,6 +104,7 @@ Error responses:
 - **409** `ishot_stale`: someone else changed the booking first. Reload and retry with the new `version`.
 - **409** `ishot_slot_taken`: the new time clashes with another booking or block.
 - **422** `ishot_invalid_transition`: for example, completing a booking that was never confirmed.
+- **503** `ishot_busy`: every retry lost a database deadlock while the new time was still free. Nothing changed; try again.
 
 **Reschedule:** the old slots are released and the new ones claimed in one transaction. On a clash, the rollback leaves the booking exactly where it was.
 
@@ -128,6 +130,7 @@ The 64-character token from `POST /bookings`, or from any client email, is the c
 - **Errors:**
   - unknown tokens: **404**, never 403
   - after the cut-off: **422** `ishot_past_cutoff`
+  - a reschedule whose every retry lost a database deadlock while the new time was free: **503** `ishot_busy` (nothing changed; try again)
   - cancelled or finished bookings: **422** `ishot_not_changeable`
 - **Link lifetime:** the link stops working 30 days after the session.
 - **Rate limit:** 30 requests per 10 minutes per address. Change it with the `ishot_booking_manage_rate_limit` filter.

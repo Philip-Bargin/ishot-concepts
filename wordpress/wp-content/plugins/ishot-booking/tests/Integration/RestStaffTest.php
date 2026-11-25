@@ -188,6 +188,23 @@ final class RestStaffTest extends TestCase {
 		$this->assertSame( '2026-12-14 12:00:00', $this->repo->find( $id )['start_utc'] );
 	}
 
+	public function test_staff_changes_that_keep_losing_deadlocks_get_a_clean_503(): void {
+		$id = $this->booking();
+		$this->as( 'ishot_manager' );
+
+		DeadlockingWpdb::swapIn();
+		try {
+			$moved = $this->act( $id, 'reschedule', 1, array( 'start' => '2026-12-14T15:00' ) );
+			$block = self::call( 'POST', '/blocks', array( 'start' => '2026-12-15T09:00', 'end' => '2026-12-15T12:00', 'reason' => 'Maintenance' ) );
+		} finally {
+			DeadlockingWpdb::restore();
+		}
+
+		$this->assertSame( array( 503, 'ishot_busy' ), array( $moved->get_status(), $moved->get_data()['code'] ) );
+		$this->assertSame( array( 503, 'ishot_busy' ), array( $block->get_status(), $block->get_data()['code'] ) );
+		$this->assertSame( '2026-12-14 10:00:00', $this->repo->find( $id )['start_utc'] );
+	}
+
 	public function test_unknown_booking_or_action_is_rejected(): void {
 		$id = $this->booking();
 		$this->as( 'ishot_manager' );

@@ -14,6 +14,7 @@ The backend for all of it is built and tested; this is the contract the front en
 | Account option | `create_account: true` | Offered to guests only. The response's `account` is `check_email` or `not_created`; show the same neutral text for both (for example "If you don't have an account yet, check your email to set a password"). Never say "an account already exists". |
 | Clash | 409 `ishot_slot_taken` | Show `data.alternatives` (ISO times) as one-tap choices, as the prototype does. |
 | Policy | 422 `ishot_*` | Show `message` next to the date/time field. |
+| Busy | 503 `ishot_busy` | Rare: the database was too contended to save. Nothing was stored; offer "Try again" and resend with the same `Idempotency-Key`. |
 | Success | 201 | Has `token`. Build the manage link with the fragment convention (section 3) and **never put the token in a URL path or query**. |
 
 ## 2. My bookings (`/account`)

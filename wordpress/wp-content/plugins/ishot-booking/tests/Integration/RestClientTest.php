@@ -169,6 +169,21 @@ final class RestClientTest extends TestCase {
 		$this->assertSame( '2', $this->repo->find( 1 )['version'] );
 	}
 
+	public function test_a_reschedule_that_keeps_losing_deadlocks_gets_a_clean_503_and_keeps_the_booking(): void {
+		$token = $this->book( '10:00' );
+
+		DeadlockingWpdb::swapIn();
+		try {
+			$response = self::call( 'PATCH', "/bookings/{$token}", array( 'action' => 'reschedule', 'start' => "{$this->monday}T15:00" ) );
+		} finally {
+			DeadlockingWpdb::restore();
+		}
+
+		$this->assertSame( 503, $response->get_status() );
+		$this->assertSame( 'ishot_busy', $response->get_data()['code'] );
+		$this->assertSame( "{$this->monday} 10:00:00", $this->repo->find( 1 )['start_utc'] );
+	}
+
 	public function test_rescheduling_onto_a_taken_time_offers_alternatives_and_keeps_the_booking(): void {
 		$token = $this->book( '10:00' );
 		$this->book( '14:00', 'bea@example.com' ); // holds 14:00–15:30

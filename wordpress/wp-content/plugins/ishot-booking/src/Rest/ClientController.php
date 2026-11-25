@@ -9,6 +9,7 @@ use IShot\Booking\Application\RequestOutcome;
 use IShot\Booking\Catalog\ServiceCatalog;
 use IShot\Booking\Frontend\ManageUrl;
 use IShot\Booking\Persistence\BookingRepository;
+use IShot\Booking\Persistence\CalendarBusy;
 use IShot\Booking\Persistence\StaleBooking;
 use IShot\Booking\Settings;
 use WP_Error;
@@ -210,6 +211,8 @@ final class ClientController {
 			return new WP_Error( 'ishot_' . $e->reason, $e->getMessage(), array( 'status' => 422 ) );
 		} catch ( StaleBooking $e ) {
 			return new WP_Error( 'ishot_stale', __( 'This booking was just updated. Reload the page and try again.', 'ishot-booking' ), array( 'status' => 409 ) );
+		} catch ( CalendarBusy $e ) {
+			return BusyError::create();
 		}
 
 		return self::present( $bookings, $bookings->find( $token, $now ), $now );

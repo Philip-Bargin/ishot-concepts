@@ -130,6 +130,19 @@ final class RestBookingsTest extends TestCase {
 		$this->assertNotNull( $row['hold_expires_at'] );
 	}
 
+	public function test_a_request_that_keeps_losing_deadlocks_gets_a_clean_503_to_retry(): void {
+		DeadlockingWpdb::swapIn(); // every slot-lock insert is a deadlock victim; the time is free
+		try {
+			$response = $this->book( '10:00' );
+		} finally {
+			DeadlockingWpdb::restore();
+		}
+
+		$this->assertSame( 503, $response->get_status() );
+		$this->assertSame( 'ishot_busy', $response->get_data()['code'] );
+		$this->assertSame( 0, self::bookingCount() );
+	}
+
 	public function test_overlapping_request_gets_409_with_the_nearest_free_times(): void {
 		$this->assertSame( 201, $this->book( '10:00' )->get_status() );
 
