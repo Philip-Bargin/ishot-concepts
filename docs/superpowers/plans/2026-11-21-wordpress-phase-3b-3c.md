@@ -441,7 +441,7 @@ Stage 2 builds no real pages, so components are compared **section by section** 
 - **Fixtures:**
   - Create `wordpress/dev/lib/ComponentFixtures.php` (namespace `IShot\Dev`, in no plugin's autoloaded `src`, ruling R-2-1) and `wordpress/dev/component-fixtures-dev.php` (guarded by Task 2.0's `ishot_dev_guard_or_exit()`, plus the same `DevGuard` check inside `ComponentFixtures::run()`).
   - `run(): array{ok: bool, reason: string, created: list<string>, skipped: list<string>}`: creates a published parent page `ishot-fixtures` and one published child page per entry in `ComponentFixtures::PAGES` (`slug => block markup`). Every item gets `content_status` placeholder (so the notice shows) and the marker meta `_ishot_dev_fixture`. An existing slug is never touched.
-  - `remove(): array{ok: bool, removed: list<string>}` (argument `--remove`) deletes only marker-carrying items and restores what the fixture changed (see 2.4a and 2.4b).
+  - `remove(): array{ok: bool, removed: list<string>}` (positional argument `remove`, not `--remove`: `wp eval-file` rejects unknown flags and passes only positional arguments) deletes only marker-carrying items and restores what the fixture changed (see 2.4a and 2.4b).
   - Image ids come from `IShot\Booking\Content\Importer::KEY_META` (`photo:{key}`).
   - Add `wordpress/dev/lib` to PHPCS and PHPStan (closes the deferred M-f for the code that is now real).
 - This task ships the harness, the fixture framework and one fixture: `strip` (filled in 2.1b) is enough to prove the pipeline. Each later task adds its own `PAGES` entries and `COMPONENTS` rows.
@@ -717,7 +717,7 @@ Stage 2 builds no real pages, so components are compared **section by section** 
   - the B1–B3 and business-content items, still open;
   - what's left for Stage 3.
 - Update `docs/phase-3b-3c-progress.md`, with screenshot evidence links.
-- Run `component-fixtures-dev.php --remove` after capture, and record it.
+- Run `component-fixtures-dev.php remove` after capture, and record it.
 - Commit, push (owner-authorised for verified changes) and confirm CI is green on the pushed head.
 - **Stop for the owner checkpoint.** Stage 3 needs the owner's approval.
 

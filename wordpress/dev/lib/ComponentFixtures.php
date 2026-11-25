@@ -62,9 +62,34 @@ final class ComponentFixtures {
 	}
 
 	/**
+	 * Which action the script's positional arguments ask for: none creates, `remove` removes, anything else is an error.
+	 *
+	 * @param list<string> $args Positional arguments as `wp eval-file` passes them.
+	 * @return array{command: string, error: string}
+	 */
+	public static function command( array $args ): array {
+		if ( array() === $args ) {
+			return array(
+				'command' => 'run',
+				'error'   => '',
+			);
+		}
+		if ( array( 'remove' ) === $args ) {
+			return array(
+				'command' => 'remove',
+				'error'   => '',
+			);
+		}
+		return array(
+			'command' => '',
+			'error'   => 'Unknown argument "' . implode( ' ', $args ) . '": pass nothing to create the fixture pages, or the single word `remove` to delete them (not --remove).',
+		);
+	}
+
+	/**
 	 * Deletes every page carrying MARKER. Same guards as run().
 	 *
-	 * @return array{ok: bool, reason: string, removed: list<string>}
+	 * @return array{ok: bool, reason: string, removed: list<string>, kept: list<string>}
 	 */
 	public static function remove(): array {
 		return self::executeRemove( ...self::guardInputs() );
@@ -113,6 +138,7 @@ final class ComponentFixtures {
 		}
 		$result['ok'] = true;
 
+		self::restoreTrashedParent();
 		$existing = self::find( self::PARENT, 0 );
 		if ( null !== $existing && ! self::isFixture( $existing ) ) {
 			$result['skipped'][] = self::PARENT;
@@ -140,6 +166,8 @@ final class ComponentFixtures {
 			if ( is_string( $markup ) ) {
 				if ( 0 !== self::create( $slug, self::title( $slug ), $markup, $parent_id ) ) {
 					$result['created'][] = $slug;
+				} else {
+					$result['skipped'][] = $slug . ' (could not be created)';
 				}
 				continue;
 			}
@@ -152,13 +180,14 @@ final class ComponentFixtures {
 	 * @param string $environment_type wp_get_environment_type().
 	 * @param mixed  $opt_in           The value of ISHOT_DEV_FIXTURES, or null when undefined.
 	 * @param string $home_url         home_url().
-	 * @return array{ok: bool, reason: string, removed: list<string>}
+	 * @return array{ok: bool, reason: string, removed: list<string>, kept: list<string>}
 	 */
 	private static function executeRemove( string $environment_type, mixed $opt_in, string $home_url ): array {
 		$result = array(
 			'ok'      => false,
 			'reason'  => DevGuard::blocked( $environment_type, $opt_in, $home_url ),
 			'removed' => array(),
+			'kept'    => array(),
 		);
 		if ( '' !== $result['reason'] ) {
 			return $result;
@@ -170,18 +199,80 @@ final class ComponentFixtures {
 				'post_type'        => 'page',
 				'post_status'      => array_keys( get_post_stati() ),
 				'posts_per_page'   => -1,
-				'meta_key'         => self::MARKER, // phpcs:ignore WordPress.DB.SlowDBQuery
+				'meta_key'         => self::MARKER, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- dev-only script: finds our own marked pages, a handful at most.
 				'orderby'          => 'ID',
 				'order'            => 'DESC', // children (created later) first
 				'suppress_filters' => true,
 			)
 		);
 		foreach ( $marked as $post ) {
-			if ( self::isFixture( $post ) && false !== wp_delete_post( $post->ID, true ) ) {
+			if ( ! self::isFixture( $post ) ) {
+				continue;
+			}
+			// wp_delete_post() reparents remaining children to the deleted page's parent, which would change an
+			// owner page's URL: keep the marked page while anything unmarked still hangs under it.
+			$owner_children = self::remainingChildren( $post->ID );
+			if ( array() !== $owner_children ) {
+				$result['kept'][] = sprintf( '%s (kept: owner content still under it: %s)', $post->post_name, implode( ', ', $owner_children ) );
+				continue;
+			}
+			if ( false !== wp_delete_post( $post->ID, true ) ) {
 				$result['removed'][] = $post->post_name;
 			}
 		}
 		return $result;
+	}
+
+	/**
+	 * Slugs (with status) of everything still parented to the page, of any post type and status (trash included).
+	 *
+	 * @return list<string>
+	 */
+	private static function remainingChildren( int $parent_id ): array {
+		$types    = array_values( array_diff( get_post_types(), array( 'revision' ) ) );
+		$children = get_posts(
+			array(
+				'post_type'        => $types,
+				'post_status'      => array_keys( get_post_stati() ),
+				'post_parent'      => $parent_id,
+				'posts_per_page'   => -1,
+				'suppress_filters' => true,
+			)
+		);
+		return array_map(
+			static fn( \WP_Post $child ): string => sprintf( '%s [%s %s]', $child->post_name, $child->post_type, $child->post_status ),
+			$children
+		);
+	}
+
+	/**
+	 * Trashing renames a page's slug to "{slug}__trashed", so find() never sees a trashed parent and children would
+	 * hang under a second one. Our own (marked) trashed parent is restored; an owner's trashed page is never touched.
+	 */
+	private static function restoreTrashedParent(): void {
+		$trashed = get_posts(
+			array(
+				'post_type'        => 'page',
+				'post_status'      => 'trash',
+				'post_parent'      => 0,
+				'posts_per_page'   => -1,
+				'orderby'          => 'ID',
+				'order'            => 'ASC',
+				'meta_key'         => self::MARKER, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- dev-only script: finds our own marked pages, a handful at most.
+				'suppress_filters' => true,
+			)
+		);
+		foreach ( $trashed as $post ) {
+			if ( self::isFixture( $post ) && 0 === strpos( $post->post_name, self::PARENT ) && null === self::find( self::PARENT, 0 ) ) {
+				wp_untrash_post( $post->ID ); // restores as a draft (WordPress 5.6+), but the fixture parent must be public.
+				wp_update_post(
+					array(
+						'ID'          => $post->ID,
+						'post_status' => 'publish',
+					)
+				);
+			}
+		}
 	}
 
 	/** A page with that slug under that parent, whatever its status (trash included). */
@@ -256,8 +347,10 @@ final class ComponentFixtures {
 				'post_status'      => 'inherit',
 				'posts_per_page'   => 1,
 				'fields'           => 'ids',
-				'meta_key'         => Importer::KEY_META, // phpcs:ignore WordPress.DB.SlowDBQuery
-				'meta_value'       => 'photo:' . $key, // phpcs:ignore WordPress.DB.SlowDBQuery
+				'orderby'          => 'ID',
+				'order'            => 'ASC', // a duplicate import always resolves to the same (oldest) attachment
+				'meta_key'         => Importer::KEY_META, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- dev-only script: attachments are found by their importer key, one lookup per photo.
+				'meta_value'       => 'photo:' . $key, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- same lookup, by value.
 				'suppress_filters' => true,
 			)
 		);

@@ -22,7 +22,13 @@ require_once __DIR__ . '/lib/ComponentFixtures.php';
 
 use IShot\Dev\ComponentFixtures;
 
-$ishot_remove = in_array( 'remove', (array) ( $args ?? array() ), true );
+$ishot_command = ComponentFixtures::command( array_values( array_map( 'strval', (array) ( $args ?? array() ) ) ) );
+if ( '' !== $ishot_command['error'] ) {
+	fwrite( STDERR, 'Refused, nothing changed: ' . $ishot_command['error'] . "
+" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- WP-CLI script: the refusal goes to STDERR.
+	exit( 1 );
+}
+$ishot_remove = 'remove' === $ishot_command['command'];
 
 if ( $ishot_remove ) {
 	$ishot_result = ComponentFixtures::remove();
@@ -31,6 +37,7 @@ if ( $ishot_remove ) {
 		exit( 1 );
 	}
 	echo 'Fixture pages removed: ', array() === $ishot_result['removed'] ? 'none' : implode( ', ', $ishot_result['removed'] ), PHP_EOL;
+	echo 'Kept: ', array() === $ishot_result['kept'] ? 'none' : implode( '; ', $ishot_result['kept'] ), PHP_EOL;
 	return;
 }
 

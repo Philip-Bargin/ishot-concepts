@@ -37,12 +37,21 @@ final class ComponentFixturesTest extends WP_UnitTestCase {
 		}
 	}
 
+	public function tear_down(): void {
+		// The rollback removes the rows but not the uploaded files (about 2 MB per test otherwise piles up in uploads/).
+		foreach ( $this->photos as $id ) {
+			wp_delete_attachment( $id, true );
+		}
+		$this->photos = array();
+		parent::tear_down();
+	}
+
 	/** @return array{ok: bool, reason: string, created: list<string>, skipped: list<string>} */
 	private static function exec( string $env, mixed $opt_in, string $home ): array {
 		return ( new \ReflectionMethod( ComponentFixtures::class, 'execute' ) )->invoke( null, $env, $opt_in, $home );
 	}
 
-	/** @return array{ok: bool, reason: string, removed: list<string>} */
+	/** @return array{ok: bool, reason: string, removed: list<string>, kept: list<string>} */
 	private static function execRemove( string $env, mixed $opt_in, string $home ): array {
 		return ( new \ReflectionMethod( ComponentFixtures::class, 'executeRemove' ) )->invoke( null, $env, $opt_in, $home );
 	}
@@ -210,14 +219,6 @@ final class ComponentFixturesTest extends WP_UnitTestCase {
 	public function test_remove_deletes_only_marked_items(): void {
 		self::exec( 'development', true, self::LOCAL );
 		$parent = self::page( ComponentFixtures::PARENT );
-		$owner_child = self::factory()->post->create(
-			array(
-				'post_type'   => 'page',
-				'post_name'   => 'owner-notes',
-				'post_parent' => $parent->ID,
-				'post_status' => 'publish',
-			)
-		);
 		$elsewhere = self::factory()->post->create( array( 'post_type' => 'page', 'post_name' => 'about' ) );
 
 		$result = self::execRemove( 'development', true, self::LOCAL );
@@ -228,9 +229,122 @@ final class ComponentFixturesTest extends WP_UnitTestCase {
 			$this->assertNull( self::page( ComponentFixtures::PARENT . '/' . $slug ), $slug );
 		}
 		$this->assertNull( get_post( $parent->ID ) );
-		$this->assertNotNull( get_post( $owner_child ), 'an unmarked child is kept' );
+		$this->assertSame( array(), $result['kept'] );
 		$this->assertNotNull( get_post( $elsewhere ) );
 		$this->assertSame( array(), self::execRemove( 'development', true, self::LOCAL )['removed'], 'idempotent' );
+	}
+
+	/** @return array<string, array{0: string}> every status an owner child may have */
+	public static function owner_child_statuses(): array {
+		return array(
+			'publish' => array( 'publish' ),
+			'draft'   => array( 'draft' ),
+			'private' => array( 'private' ),
+			'trash'   => array( 'trash' ),
+		);
+	}
+
+	/** @dataProvider owner_child_statuses */
+	public function test_remove_keeps_the_parent_while_an_owner_child_exists_and_never_reparents_it( string $status ): void {
+		self::exec( 'development', true, self::LOCAL );
+		$parent = self::page( ComponentFixtures::PARENT );
+		$owner_child = self::factory()->post->create(
+			array(
+				'post_type'   => 'page',
+				'post_name'   => 'owner-notes',
+				'post_parent' => $parent->ID,
+				'post_status' => $status,
+			)
+		);
+		$before = get_post( $owner_child );
+		$path   = 'trash' === $status ? '' : wp_parse_url( get_permalink( $owner_child ), PHP_URL_PATH );
+
+		$result = self::execRemove( 'development', true, self::LOCAL );
+
+		$this->assertTrue( $result['ok'] );
+		$this->assertEqualsCanonicalizing( array_keys( ComponentFixtures::PAGES ), $result['removed'] );
+		$this->assertCount( 1, $result['kept'] );
+		$this->assertStringContainsString( ComponentFixtures::PARENT, $result['kept'][0] );
+		$this->assertStringContainsString( 'owner', $result['kept'][0] );
+		$this->assertNotNull( get_post( $parent->ID ), 'the parent is kept' );
+		$this->assertSame( '1', get_post_meta( $parent->ID, ComponentFixtures::MARKER, true ) );
+		$after = get_post( $owner_child );
+		$this->assertSame( $parent->ID, (int) $after->post_parent, 'the owner child is not reparented' );
+		$this->assertSame( $before->post_name, $after->post_name );
+		$this->assertSame( $status, $after->post_status );
+		if ( '' !== $path ) {
+			$this->assertSame( $path, wp_parse_url( get_permalink( $owner_child ), PHP_URL_PATH ), 'the owner permalink path is unchanged' );
+		}
+
+		$again = self::execRemove( 'development', true, self::LOCAL );
+		$this->assertSame( array(), $again['removed'], 'idempotent' );
+		$this->assertCount( 1, $again['kept'], 'still kept' );
+		$this->assertSame( $parent->ID, (int) get_post( $owner_child )->post_parent );
+
+		wp_delete_post( $owner_child, true );
+		$last = self::execRemove( 'development', true, self::LOCAL );
+		$this->assertSame( array( ComponentFixtures::PARENT ), $last['removed'], 'once the owner child is gone the parent goes' );
+		$this->assertSame( array(), $last['kept'] );
+	}
+
+	public function test_a_child_that_cannot_be_created_is_reported_as_skipped_with_a_reason(): void {
+		$block = static fn( bool $empty, array $postarr ): bool => 'strip' === ( $postarr['post_name'] ?? '' ) ? true : $empty;
+		add_filter( 'wp_insert_post_empty_content', $block, 10, 2 );
+		$result = self::exec( 'development', true, self::LOCAL );
+		remove_filter( 'wp_insert_post_empty_content', $block, 10 );
+
+		$this->assertNotContains( 'strip', $result['created'] );
+		$this->assertContains( 'strip (could not be created)', $result['skipped'] );
+		$this->assertNull( self::page( ComponentFixtures::PARENT . '/strip' ) );
+	}
+
+	public function test_a_trashed_fixture_parent_is_restored_before_children_are_created(): void {
+		self::exec( 'development', true, self::LOCAL );
+		$parent = self::page( ComponentFixtures::PARENT );
+		wp_delete_post( self::page( ComponentFixtures::PARENT . '/strip' )->ID, true );
+		wp_trash_post( $parent->ID );
+		$this->assertSame( 'trash', get_post_status( $parent->ID ) );
+
+		$result = self::exec( 'development', true, self::LOCAL );
+
+		$this->assertSame( 'publish', get_post_status( $parent->ID ), 'our own parent is restored' );
+		$this->assertContains( 'strip', $result['created'] );
+		$this->assertSame( 'publish', self::page( ComponentFixtures::PARENT . '/strip' )->post_status );
+	}
+
+	public function test_a_trashed_owner_page_with_the_parent_slug_is_still_owner_content(): void {
+		$owner = self::factory()->post->create( array( 'post_type' => 'page', 'post_name' => ComponentFixtures::PARENT, 'post_status' => 'publish' ) );
+		wp_trash_post( $owner );
+		$result = self::exec( 'development', true, self::LOCAL );
+
+		$this->assertTrue( $result['ok'] );
+		$this->assertSame( 'trash', get_post_status( $owner ), 'the owner page stays in the trash' );
+		$this->assertSame( '', get_post_meta( $owner, ComponentFixtures::MARKER, true ) );
+		$this->assertSame( ComponentFixtures::PARENT . '__trashed', get_post( $owner )->post_name );
+	}
+
+	/** @return array<string, array{list<string>, string, bool}> */
+	public static function arguments(): array {
+		return array(
+			'none creates'        => array( array(), 'run', true ),
+			'remove removes'      => array( array( 'remove' ), 'remove', true ),
+			'--remove is refused' => array( array( '--remove' ), '', false ),
+			'removed is refused'  => array( array( 'removed' ), '', false ),
+			'extra is refused'    => array( array( 'remove', 'now' ), '', false ),
+		);
+	}
+
+	/**
+	 * @dataProvider arguments
+	 * @param list<string> $args Positional arguments as wp eval-file passes them.
+	 */
+	public function test_only_no_argument_or_remove_is_accepted( array $args, string $command, bool $ok ): void {
+		$parsed = ComponentFixtures::command( $args );
+		$this->assertSame( $command, $parsed['command'] );
+		$this->assertSame( $ok, '' === $parsed['error'] );
+		if ( ! $ok ) {
+			$this->assertStringContainsString( 'remove', $parsed['error'] );
+		}
 	}
 
 	public function test_run_and_remove_read_the_guard_inputs_themselves(): void {
