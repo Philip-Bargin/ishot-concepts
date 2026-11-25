@@ -20,6 +20,7 @@ import { assertPrototypeIntegrity } from '../tests/visual/integrity.mjs';
 import { componentReferenceFingerprint, referenceFingerprint, writeReport } from '../tests/visual/compare.mjs';
 import { COMPONENTS, componentKey } from '../tests/visual/components.mjs';
 import { resolveScope, selectComponents } from '../tests/visual/scope.mjs';
+import { metaMergeProblem, referenceChildEnv, serialiseComponents } from '../tests/visual/reference-args.mjs';
 
 const argv = process.argv.slice(2);
 const check = argv.includes('--check');
@@ -32,7 +33,17 @@ if (wp && !check) {
 }
 // flags win over the environment; the child Playwright process reads the environment
 const childEnv = { VISUAL_TARGET: target };
-for (const [name, key] of [['scope', 'VISUAL_SCOPE'], ['states', 'VISUAL_STATES'], ['components', 'VISUAL_COMPONENTS'], ['base-url', 'VISUAL_BASE_URL']]) if (flag(name)) childEnv[key] = flag(name);
+if (check) {
+  for (const [name, key] of [['scope', 'VISUAL_SCOPE'], ['states', 'VISUAL_STATES'], ['components', 'VISUAL_COMPONENTS'], ['base-url', 'VISUAL_BASE_URL']]) if (flag(name)) childEnv[key] = flag(name);
+} else {
+  // reference mode supports only the full run and the component-only run: forward nothing else
+  const reference = referenceChildEnv({ flags: { scope: flag('scope'), states: flag('states'), components: flag('components') }, env: process.env });
+  if (reference.error) {
+    console.error(reference.error);
+    process.exit(2);
+  }
+  Object.assign(childEnv, reference.env);
+}
 // validated here, before any build or capture (unknown names and scope conflicts are errors)
 let componentScope;
 let selected;
@@ -104,13 +115,16 @@ function writeComponents({ replace }) {
     console.error(`Component reference incomplete, missing: ${missing.join(', ')}`);
     process.exit(1);
   }
-  const previous = !replace && fs.existsSync(componentsFile) ? JSON.parse(fs.readFileSync(componentsFile, 'utf8')).components : {};
-  const merged = { ...previous };
+  const previousFile = !replace && fs.existsSync(componentsFile) ? JSON.parse(fs.readFileSync(componentsFile, 'utf8')) : null;
+  const mismatch = metaMergeProblem(previousFile?.meta, partials[0].meta);
+  if (mismatch) {
+    console.error(mismatch);
+    process.exit(1);
+  }
+  const merged = { ...(previousFile?.components ?? {}) };
   for (const p of partials) merged[p.key] = { counts: p.counts, landmarks: p.geometry, styles: p.styles };
-  const components = Object.fromEntries(Object.entries(merged).sort(([a], [b]) => a.localeCompare(b)));
-  const meta = { ...partials[0].meta, components: Object.keys(components).length };
-  fs.writeFileSync(componentsFile, `${JSON.stringify({ meta, components }, null, 1)}
-`);
+  const meta = { ...partials[0].meta, components: Object.keys(merged).length };
+  fs.writeFileSync(componentsFile, serialiseComponents(meta, merged));
   fs.mkdirSync(refPngDir, { recursive: true });
   fs.writeFileSync(path.join(refPngDir, 'components-fingerprint.json'), JSON.stringify({ sha256: componentReferenceFingerprint(componentsFile) }));
   console.log(`Wrote tests/visual/reference/components.json: ${partials.length} captured, ${meta.components} in total (${meta.browser}, ${meta.channel}).`);

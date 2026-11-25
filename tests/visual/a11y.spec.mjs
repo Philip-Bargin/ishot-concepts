@@ -7,7 +7,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { openState, contextOptions, THEMES, VIEWPORTS, waitForAnimations } from './capture.mjs';
 import { ACTIONS } from './components.mjs';
 import { ACTIVE_COMPONENTS, ACTIVE_ROUTES, BASE_URL, SCOPE, TARGET, componentTarget, pathFor } from './target.mjs';
-import { AXE_TAGS, menuToggleOutcome } from './axe-config.mjs';
+import { AXE_TAGS, componentRenderProblem, menuToggleOutcome } from './axe-config.mjs';
 
 const summarise = (violations) =>
   violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.length} node(s), e.g. ${v.nodes[0]?.target.join(' ')}`);
@@ -22,7 +22,15 @@ for (const component of COMPONENT_MODE ? ACTIVE_COMPONENTS : []) {
           const context = await browser.newContext(contextOptions(width));
           try {
             const page = await context.newPage();
-            await openState(page, { url: `${BASE_URL}${componentTarget(component).path}`, width, theme });
+            const { path, root } = componentTarget(component);
+            const url = `${BASE_URL}${path}`;
+            let status = null;
+            page.on('response', (r) => {
+              if (r.request().isNavigationRequest() && r.frame() === page.mainFrame()) status = r.status();
+            });
+            await openState(page, { url, width, theme });
+            const problem = componentRenderProblem({ status, rootCount: await page.locator(root).count(), root, url });
+            expect(problem, 'component rendered').toBe('');
             if (state !== 'rest') await ACTIONS[state](page);
             await waitForAnimations(page);
             const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
