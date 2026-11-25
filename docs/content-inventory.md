@@ -41,15 +41,15 @@ The design system's 4 "service tiles" show your top 4 services on the Home page.
 
 ## E. Brand assets and copy
 - ☐ **Vector logo** (SVG, AI or PDF). Only PNGs are available now.
-- ☐ Founder/CEO name, job title, short bio (60–100 words) and portrait photo. The Home page shows a labelled placeholder until these are supplied.
+- ◐ Founder: name (**Judah Darlington Lindah**) and portrait photo supplied 2026-11-25; title shown as "Founder" (☐ confirm). ☐ **Short bio (60–100 words) still needed**; the Home page shows a labelled placeholder bio until then.
 - ☐ Studio story for the About page (150–300 words)
 - ☐ Stats you can back up (e.g. years in business, sessions shot). The design system forbids unsourced numbers.
 - ☐ 4 "Why us" points (title + one sentence each)
 - ☐ 4–8 FAQs with answers
 - ☐ Social links. The site shows **only Instagram, Facebook and WhatsApp** (owner decision 2026-11-21):
-  - Instagram: `@ishotconcept` (from the brand brief). ☐ Confirm.
-  - Facebook: ☐ **page URL needed.** Until it's supplied, the icon shows as inactive ("link not added yet").
-  - WhatsApp: ☐ **confirm that 0881405259 (+231) is the studio's WhatsApp number.** The link currently uses it.
+  - Instagram: ☑ `@ishot_concept` (owner-supplied 2026-11-25).
+  - Facebook: ☑ `facebook.com/people/Ishot-Concept/100083810506889/` (owner-supplied 2026-11-25).
+  - WhatsApp: ☑ 0881405259 (+231) confirmed 2026-11-25; linked as `wa.me/231881405259`. ☐ The owner's Linktree uses `wa.me/0881405259`, which doesn't open a chat; fix there.
   - Where to enter these in WordPress: **Booking → Settings → Studio details** (Instagram address, Facebook address, WhatsApp number, phone, public email).
 - ☐ Studio address and/or "on-location only"
   - Enter it in WordPress at **Booking → Settings → Studio details → Address**.

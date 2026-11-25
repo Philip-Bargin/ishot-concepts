@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { photos, portfolio } from "../assets.js";
-import { categories, contact, promises, services, stats } from "../data.js";
+import { categories, contact, founder, promises, services, stats } from "../data.js";
 import { usePageTitle } from "../lib/hooks.js";
 import HeroSlideshow from "../components/HeroSlideshow.jsx";
 import Gallery from "../components/Gallery.jsx";
@@ -9,7 +9,7 @@ import Reveal from "../components/Reveal.jsx";
 import Icon from "../components/Icon.jsx";
 import Testimonials from "../components/Testimonials.jsx";
 import Founder from "../components/Founder.jsx";
-import { founderPlaceholder, testimonialPlaceholders } from "../prototype/sampleContent.js";
+import { testimonialPlaceholders } from "../prototype/sampleContent.js";
 import { CategoryCard, CtaBand, FeatureList, Marquee, Photo, SectionHeading, ServiceTiles, Stats } from "../components/ui.jsx";
 
 const slides = [photos.phoneBirthday, photos.gownStair, photos.graduate, photos.denimSmile];
@@ -151,7 +151,7 @@ export default function Home() {
 
       {/* Testimonials (band) sits between two paper sections so no two band grounds touch. */}
       <Testimonials items={testimonialPlaceholders} />
-      <Founder person={founderPlaceholder} />
+      <Founder person={{ ...founder, photo: photos[founder.photo] }} />
 
       <CtaBand />
       <Marquee words={categories.map((c) => c.label)} />

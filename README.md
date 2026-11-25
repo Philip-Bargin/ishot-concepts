@@ -77,4 +77,4 @@ src/
 
 ## Brand
 
-Monrovia, Liberia · 0881405259 · ishotconcept01@gmail.com · [@ishotconcept](https://instagram.com/ishotconcept)
+Monrovia, Liberia · 0881405259 · ishotconcept01@gmail.com · [@ishot_concept](https://instagram.com/ishot_concept)

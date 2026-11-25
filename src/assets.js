@@ -57,6 +57,13 @@ export const photos = {
     cat: "creative",
     focus: "55% 45%",
   },
+  // Not in the portfolio grid: used by the Founder block only.
+  founder: {
+    file: "founder-judah-lindah",
+    alt: "Judah Darlington Lindah, founder of iShot Concept, seated with arms folded in a grey check three-piece suit and red tie beside a camera on a tripod",
+    cat: "studio",
+    focus: "60% 25%",
+  },
 };
 
 // Portfolio grid order (each photo appears once).

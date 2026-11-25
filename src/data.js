@@ -17,9 +17,12 @@ export const contact = {
   location: "Monrovia, Liberia",
   phone: "0881405259",
   email: "ishotconcept01@gmail.com",
-  instagram: "@ishotconcept",
-  instagramUrl: "https://www.instagram.com/ishotconcept/",
-  // Built from the studio phone above (+231). Owner to confirm this number is on WhatsApp.
+  instagram: "@ishot_concept",
+  instagramUrl: "https://www.instagram.com/ishot_concept/",
+  // Owner-supplied 2026-11-25 (share link resolved to the page's permanent URL).
+  facebookUrl: "https://www.facebook.com/people/Ishot-Concept/100083810506889/",
+  // Owner confirmed this number (0881405259) is on WhatsApp, 2026-11-25. wa.me needs the
+  // international form (+231, no leading 0); Book.jsx appends `?text=` to this URL.
   whatsappUrl: "https://wa.me/231881405259",
   website: "www.ishotconcept.com",
 };
@@ -28,9 +31,18 @@ export const contact = {
 // `url: null` = not supplied yet: the icon renders inactive and says so. Never guess a URL.
 export const socials = [
   { id: "instagram", label: "Instagram", url: contact.instagramUrl },
-  { id: "facebook", label: "Facebook", url: null },
+  { id: "facebook", label: "Facebook", url: contact.facebookUrl },
   { id: "whatsapp", label: "WhatsApp", url: contact.whatsappUrl },
 ];
+
+// Founder (owner-supplied 2026-11-25: name and photo). `photo` is a key in assets.js `photos`.
+// `bio: null` = not supplied yet: the Founder block marks it as pending. Never write one for them.
+export const founder = {
+  name: "Judah Darlington Lindah",
+  title: "Founder",
+  bio: null,
+  photo: "founder",
+};
 
 // Categories cycle the logo's aperture colours in order (see index.css [data-cat]).
 export const categories = [
