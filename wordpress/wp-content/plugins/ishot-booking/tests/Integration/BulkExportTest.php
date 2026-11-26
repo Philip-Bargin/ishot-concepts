@@ -5,6 +5,7 @@ use DateTimeImmutable;
 use DateTimeZone;
 use IShot\Booking\Admin\BulkActions;
 use IShot\Booking\Admin\CsvExport;
+use IShot\Booking\Admin\ListScreen;
 use IShot\Booking\Domain\BookingStatus;
 use WP_UnitTestCase;
 
@@ -46,6 +47,41 @@ final class BulkExportTest extends WP_UnitTestCase {
 			$events = $this->repo->events( $id );
 			$this->assertSame( array( 'bulk' => true ), json_decode( end( $events )['payload'], true ) );
 		}
+	}
+
+	public function test_a_booking_that_keeps_losing_deadlocks_is_skipped_as_busy_and_the_run_goes_on(): void {
+		$ids = array( $this->bookingAt( '2026-12-14 10:00:00' ), $this->bookingAt( '2026-12-14 12:00:00' ) );
+		$this->actAs( 'ishot_manager' );
+
+		DeadlockingWpdb::swapIn()->deadlock_row_locks = true;
+		try {
+			$result = BulkActions::apply( $ids, 'confirm', self::now() );
+		} finally {
+			DeadlockingWpdb::restore();
+		}
+
+		$this->assertSame( 0, $result['done'] );
+		$this->assertSame( array_fill_keys( $ids, 'busy' ), $result['skipped'] );
+		foreach ( $ids as $id ) {
+			$this->assertSame( 'requested', $this->status( $id ) );
+		}
+	}
+
+	public function test_the_bulk_notice_reports_busy_bookings_apart_and_says_to_retry_them(): void {
+		$text = ListScreen::bulkSummary( 3, 1, 2 );
+
+		$this->assertStringContainsString( '3 bookings updated.', $text );
+		$this->assertStringContainsString( '1 skipped', $text );
+		$this->assertStringContainsString( '2 not changed because the calendar was busy. Select them and try again.', $text );
+		$this->assertStringNotContainsString( 'busy', ListScreen::bulkSummary( 3, 1, 0 ) );
+		$this->assertSame(
+			array(
+				'skipped' => 2,
+				'busy'    => 2,
+			),
+			ListScreen::skipCounts( array( 4 => 'busy', 7 => 'changed', 9 => 'busy', 12 => 'not_allowed' ) ),
+			'what the redirect after a bulk run carries'
+		);
 	}
 
 	public function test_bookings_the_action_does_not_apply_to_are_skipped_not_forced(): void {

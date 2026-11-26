@@ -17,12 +17,14 @@ final class AdminActionsTest extends TestCase {
 	use BookingFixtures;
 
 	protected function setUp(): void {
+		DeadlockingWpdb::settle();
 		$this->resetBookings();
 		$this->makeStaff();
 	}
 
 	protected function tearDown(): void {
 		$this->removeStaff();
+		DeadlockingWpdb::settle();
 	}
 
 	private static function post( int $id, string $action, int $version = 1, array $extra = array() ): array {
@@ -92,6 +94,64 @@ final class AdminActionsTest extends TestCase {
 		$this->assertSame( array( 'manual', 'MP2611 20.991' ), array( $row['deposit_gateway'], $row['deposit_reference'] ) );
 		$events = $this->repo->events( $id );
 		$this->assertSame( array( 'note' => 'MoMo ref 991' ), json_decode( end( $events )['payload'], true ) );
+	}
+
+	public function test_a_change_that_keeps_losing_deadlocks_shows_busy_and_changes_nothing(): void {
+		$id = $this->bookingAt( '2026-12-14 10:00' );
+		$this->actAs( 'ishot_photographer' );
+
+		DeadlockingWpdb::swapIn()->deadlock_row_locks = true;
+		try {
+			$result = ActionHandler::process( self::post( $id, 'confirm' ) );
+		} finally {
+			DeadlockingWpdb::restore();
+		}
+
+		$this->assertSame( array( 'error', 'busy' ), array( $result['type'], $result['code'] ) );
+		$this->assertNotSame( '', ActionHandler::message( 'busy' ), 'the notice has words' );
+		$this->assertSame( 'requested', $this->repo->find( $id )['status'] );
+	}
+
+	public function test_a_block_that_keeps_losing_deadlocks_shows_busy(): void {
+		$this->actAs( 'ishot_photographer' );
+		$block = array(
+			'start'    => '2026-12-14T09:00',
+			'end'      => '2026-12-14T11:00',
+			'reason'   => 'Lens repair',
+			'_wpnonce' => wp_create_nonce( ActionHandler::BLOCK_NONCE ),
+		);
+
+		DeadlockingWpdb::swapIn();
+		try {
+			$result = ActionHandler::processBlock( $block );
+		} finally {
+			DeadlockingWpdb::restore();
+		}
+
+		$this->assertSame( array( 'error', 'busy' ), array( $result['type'], $result['code'] ) );
+		global $wpdb;
+		$this->assertSame( '0', $wpdb->get_var( 'SELECT COUNT(*) FROM ' . \IShot\Booking\Persistence\Schema::bookings() ), 'no block row was saved' ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	public function test_an_unblock_that_keeps_losing_deadlocks_shows_busy_and_keeps_the_block(): void {
+		$this->actAs( 'ishot_photographer' );
+		$block = array(
+			'start'    => '2026-12-14T09:00',
+			'end'      => '2026-12-14T11:00',
+			'reason'   => 'Lens repair',
+			'_wpnonce' => wp_create_nonce( ActionHandler::BLOCK_NONCE ),
+		);
+		$this->assertSame( 'blocked', ActionHandler::processBlock( $block )['code'] );
+
+		DeadlockingWpdb::swapIn()->deadlock_row_locks = true;
+		try {
+			$result = ActionHandler::processUnblock( array( 'booking' => '1', '_wpnonce' => wp_create_nonce( ActionHandler::nonceAction( 1 ) ) ) );
+		} finally {
+			DeadlockingWpdb::restore();
+		}
+
+		$this->assertSame( array( 'error', 'busy' ), array( $result['type'], $result['code'] ) );
+		$this->assertSame( 'confirmed', $this->repo->find( 1 )['status'] );
 	}
 
 	public function test_staff_block_and_unblock_time_from_the_calendar(): void {

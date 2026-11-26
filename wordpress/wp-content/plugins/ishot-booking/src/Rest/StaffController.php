@@ -311,6 +311,8 @@ final class StaffController {
 				$repo->transition( (int) $row['id'], BookingStatus::Cancelled, (int) $row['version'], get_current_user_id() );
 			} catch ( StaleBooking $e ) {
 				return new WP_Error( 'ishot_stale', __( 'This block was just changed. Reload and try again.', 'ishot-booking' ), array( 'status' => 409 ) );
+			} catch ( CalendarBusy $e ) {
+				return BusyError::create();
 			}
 		}
 		return new WP_REST_Response(

@@ -77,6 +77,42 @@ NODE_OPTIONS="--require /path/to/dns-lookup-shim.cjs" npm run wp:start
 - **422** `ishot_too_soon | too_far | misaligned | outside_hours | unknown_service`
 - **429**: rate limited. The default is 10 requests per 10 minutes per address; change it with the `ishot_booking_rate_limit` filter.
 - **503** `ishot_busy`: every retry lost a database deadlock while the time was still free. Nothing was stored; send the same request again (with the same Idempotency-Key).
+  The response carries `Retry-After: 2` (also `data.retry_after`) and never the database's own error text.
+  Retries are bounded (3 attempts with jitter, each rolled back first). After the last one the repository
+  re-checks before answering: a same-key twin that committed meanwhile is returned as that booking (no 409
+  for a request that succeeded), a time taken by someone else is 409 `ishot_slot_taken` with alternatives,
+  and only a time that is still free is 503. In wp-admin the same case shows the notice "The calendar is busy
+  right now…" (bulk runs report busy bookings separately and say to try them again), and the hold-expiry
+  sweep leaves a busy hold for its next run.
+
+### Database contention: what is guaranteed
+
+- **All or nothing.** Every write inside a booking change (create, status change, move, block/unblock),
+  and its COMMIT, is checked. If any statement fails, the whole change is rolled back and retried
+  (deadlock or lock wait) or reported as an error (anything else). A change is never reported as saved
+  unless its COMMIT succeeded on the connection it started on.
+- **Bounded waits.** Inside a booking change each statement waits at most 5 s for a row lock (filter
+  `ishot_booking_lock_wait_timeout`; 0 keeps the server's own setting), and the session's previous value
+  is restored afterwards. A change usually finishes in milliseconds. In the worst case (every statement
+  of every attempt waiting the full time) a request takes about 30-45 s: still inside common PHP and
+  proxy limits, so the client gets the 503 rather than a timeout.
+- **Error classification** uses the MySQL error number (1213 deadlock, 1205 lock wait timeout, 1062
+  duplicate key), so it works whatever language the server's messages are in.
+- **Hold expiry** skips a hold it cannot expire right now and carries on with the rest: a busy hold, one
+  that staff or the client changed at the same moment, and one that fails for any other reason. Only that
+  last kind fires `ishot_booking_hold_expiry_failed` (booking id, exception; id 0 when the safety net
+  below fails). Every skipped hold is tried again on the next request or five-minute sweep.
+- **Safety net.** The five-minute sweep also frees lock rows whose booking is gone or no longer holds a
+  slot (`BookingRepository::releaseOrphanLocks()`), so a time can never stay unbookable for good.
+- **Lost connections.** While a change runs, wpdb's automatic reconnect is switched off. If the database
+  server drops the connection mid-change, the request fails (WordPress's database error page, or an error
+  from the plugin once a page has started rendering) and the server rolls the whole change back; nothing is
+  half-saved and nothing is reported as saved. (Without this,
+  wpdb would re-run the failed statement outside the transaction.)
+- **Database drop-ins with several servers** (HyperDB, LudicrousDB with read replicas): every query of
+  this plugin must go to the primary (with HyperDB, enable `srtm`), because slot locking relies on
+  `SELECT … FOR UPDATE` inside a transaction. On such sites the connection check is off by default
+  (filter `ishot_booking_connection_guard`).
 
 ## Roles
 
@@ -104,7 +140,7 @@ Error responses:
 - **409** `ishot_stale`: someone else changed the booking first. Reload and retry with the new `version`.
 - **409** `ishot_slot_taken`: the new time clashes with another booking or block.
 - **422** `ishot_invalid_transition`: for example, completing a booking that was never confirmed.
-- **503** `ishot_busy`: every retry lost a database deadlock while the new time was still free. Nothing changed; try again.
+- **503** `ishot_busy` (`Retry-After: 2`): any change (confirm, cancel, deposit, complete, no-show, reschedule, block, unblock) whose every retry lost a database deadlock or lock wait, and, for a move, while the new time was still free. Nothing changed; try again.
 
 **Reschedule:** the old slots are released and the new ones claimed in one transaction. On a clash, the rollback leaves the booking exactly where it was.
 
@@ -130,7 +166,7 @@ The 64-character token from `POST /bookings`, or from any client email, is the c
 - **Errors:**
   - unknown tokens: **404**, never 403
   - after the cut-off: **422** `ishot_past_cutoff`
-  - a reschedule whose every retry lost a database deadlock while the new time was free: **503** `ishot_busy` (nothing changed; try again)
+  - a cancel or reschedule whose every retry lost a database deadlock or lock wait (for a reschedule, while the new time was free): **503** `ishot_busy` with `Retry-After: 2` (nothing changed; try again)
   - cancelled or finished bookings: **422** `ishot_not_changeable`
 - **Link lifetime:** the link stops working 30 days after the session.
 - **Rate limit:** 30 requests per 10 minutes per address. Change it with the `ishot_booking_manage_rate_limit` filter.

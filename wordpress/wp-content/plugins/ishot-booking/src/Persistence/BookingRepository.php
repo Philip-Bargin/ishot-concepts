@@ -29,6 +29,18 @@ final class BookingRepository {
 	/** Emails queued by the transaction in progress; delivery is kicked only after it commits. */
 	private int $queued = 0;
 
+	/**
+	 * The connection handle the open transaction started on. wpdb silently reconnects (and re-runs
+	 * the statement) when the server goes away; the new session has no transaction, so anything
+	 * after that must not be reported as saved.
+	 *
+	 * @var \WeakReference<object>|null
+	 */
+	private ?\WeakReference $txn_handle = null;
+
+	/** Seconds a statement may wait for a row lock inside a booking change (filter: ishot_booking_lock_wait_timeout). */
+	private const LOCK_WAIT_SECONDS = 5;
+
 	public function __construct(
 		private readonly wpdb $db,
 		private readonly int $granularity_minutes
@@ -99,7 +111,23 @@ final class BookingRepository {
 				if ( $e instanceof IdempotentReplay ) {
 					return $this->idForKey( (string) $booking->idempotency_key );
 				}
-				$this->throwIfHeldByOthers( $e, $booking->resource_id, $units );
+				// A same-key twin may have committed while every attempt here lost: that request succeeded.
+				if ( $e instanceof CalendarBusy && null !== $booking->idempotency_key ) {
+					$twin = $this->idForKey( $booking->idempotency_key );
+					if ( null !== $twin ) {
+						return $twin;
+					}
+				}
+				try {
+					$this->throwIfHeldByOthers( $e, $booking->resource_id, $units );
+				} catch ( SlotConflict $conflict ) {
+					// The twin may have committed between the lookup above and the lock count.
+					$twin = null === $booking->idempotency_key ? null : $this->idForKey( $booking->idempotency_key );
+					if ( null !== $twin ) {
+						return $twin;
+					}
+					throw $conflict;
+				}
 				throw $e;
 			}
 		);
@@ -112,10 +140,13 @@ final class BookingRepository {
 	 * Moves a booking to a new status. Releasing statuses (cancelled, expired, completed, no-show)
 	 * free its slot units in the same transaction.
 	 *
+	 * @throws StaleBooking             The booking changed since $expected_version was read.
+	 * @throws InvalidArgumentException Unknown booking, a transition the lifecycle forbids, or a disallowed column.
+	 * @throws CalendarBusy             Every attempt lost a deadlock or lock wait; nothing changed.
+	 * @throws RuntimeException         Any other database failure (the change was rolled back).
+	 *
 	 * @param array<string, scalar|null> $changes Extra columns to set (TRANSITION_COLUMNS only).
 	 * @param array<string, mixed>       $payload Context for the audit log (e.g. a reason or payment reference).
-	 * @throws InvalidArgumentException Unknown booking, a transition the lifecycle forbids, or a disallowed column.
-	 * @throws StaleBooking             The booking changed since $expected_version was read.
 	 */
 	public function transition( int $id, BookingStatus $to, int $expected_version, ?int $actor_user_id = null, array $changes = array(), array $payload = array() ): void {
 		$unknown = array_diff( array_keys( $changes ), self::TRANSITION_COLUMNS );
@@ -131,20 +162,23 @@ final class BookingRepository {
 					throw new InvalidArgumentException( "A {$from->value} booking cannot become {$to->value}." );
 				}
 
-				$this->db->update(
-					Schema::bookings(),
-					array_merge(
-						$changes,
-						array(
-							'status'     => $to->value,
-							'version'    => $expected_version + 1,
-							'updated_at' => gmdate( self::DATETIME ),
-						)
+				$this->write(
+					fn() => $this->db->update(
+						Schema::bookings(),
+						array_merge(
+							$changes,
+							array(
+								'status'     => $to->value,
+								'version'    => $expected_version + 1,
+								'updated_at' => gmdate( self::DATETIME ),
+							)
+						),
+						array( 'id' => $id )
 					),
-					array( 'id' => $id )
+					'update the booking'
 				);
 				if ( ! $to->holdsSlot() ) {
-					$this->db->delete( Schema::locks(), array( 'booking_id' => $id ) );
+					$this->write( fn() => $this->db->delete( Schema::locks(), array( 'booking_id' => $id ) ), 'release the time slot' );
 				}
 				$this->log( $id, 'status_changed', $from->value, $to->value, $actor_user_id, $payload );
 			}
@@ -183,20 +217,23 @@ final class BookingRepository {
 				$blocked = new TimeRange( $start->modify( "-{$before} seconds" ), $end->modify( "+{$after} seconds" ) );
 
 				$claim = array( (int) $row['resource_id'], SlotUnits::cover( $blocked, $this->granularity_minutes ) );
-				$this->db->delete( Schema::locks(), array( 'booking_id' => $id ) );
+				$this->write( fn() => $this->db->delete( Schema::locks(), array( 'booking_id' => $id ) ), 'release the old time' );
 				$this->lockUnits( $claim[0], $claim[1], $id );
 
-				$this->db->update(
-					Schema::bookings(),
-					array(
-						'start_utc'       => $start->format( self::DATETIME ),
-						'end_utc'         => $end->format( self::DATETIME ),
-						'block_start_utc' => $blocked->start->format( self::DATETIME ),
-						'block_end_utc'   => $blocked->end->format( self::DATETIME ),
-						'version'         => $expected_version + 1,
-						'updated_at'      => gmdate( self::DATETIME ),
+				$this->write(
+					fn() => $this->db->update(
+						Schema::bookings(),
+						array(
+							'start_utc'       => $start->format( self::DATETIME ),
+							'end_utc'         => $end->format( self::DATETIME ),
+							'block_start_utc' => $blocked->start->format( self::DATETIME ),
+							'block_end_utc'   => $blocked->end->format( self::DATETIME ),
+							'version'         => $expected_version + 1,
+							'updated_at'      => gmdate( self::DATETIME ),
+						),
+						array( 'id' => $id )
 					),
-					array( 'id' => $id )
+					'move the booking'
 				);
 				$this->log(
 					$id,
@@ -211,7 +248,7 @@ final class BookingRepository {
 				);
 			},
 			function ( Throwable $e ) use ( $id, &$claim ) {
-				if ( null !== $claim ) {
+				if ( null !== $claim ) { // @phpstan-ignore notIdentical.alwaysFalse ($claim is set by reference inside $work)
 					$this->throwIfHeldByOthers( $e, $claim[0], $claim[1], $id );
 				}
 				throw $e;
@@ -225,11 +262,14 @@ final class BookingRepository {
 	 * @return array<string, mixed>
 	 */
 	private function lockForUpdate( int $id, int $expected_version ): array {
-		$row = $this->db->get_row(
-			$this->db->prepare( 'SELECT * FROM ' . Schema::bookings() . ' WHERE id = %d FOR UPDATE', $id ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-			ARRAY_A
+		$row = $this->quietly(
+			fn() => $this->db->get_row(
+				$this->db->prepare( 'SELECT * FROM ' . Schema::bookings() . ' WHERE id = %d FOR UPDATE', $id ), // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				ARRAY_A
+			)
 		);
 		if ( null === $row ) {
+			$this->throwIfTransient(); // a lost row lock is "busy", not a missing booking
 			throw new InvalidArgumentException( "Booking {$id} does not exist." );
 		}
 		if ( (int) $row['version'] !== $expected_version ) {
@@ -283,6 +323,55 @@ final class BookingRepository {
 				$limit
 			),
 			ARRAY_A
+		);
+	}
+
+	/**
+	 * Safety net: frees lock rows whose booking is gone or no longer holds a slot (cancelled,
+	 * expired, completed, no-show). Normal changes never leave such rows; this repairs one left by
+	 * a failure no transaction can undo (e.g. the server dropping the connection mid-change, after
+	 * which wpdb re-runs the statement outside the transaction), so a time never stays unbookable.
+	 *
+	 * Candidates come from a consistent (non-locking) read, so changes still in flight are
+	 * invisible to it; each DELETE re-checks its booking.
+	 *
+	 * @return int Lock rows released.
+	 */
+	public function releaseOrphanLocks(): int {
+		$live = array();
+		foreach ( BookingStatus::cases() as $status ) {
+			if ( $status->holdsSlot() ) {
+				$live[] = $status->value;
+			}
+		}
+		$placeholders = implode( ', ', array_fill( 0, count( $live ), '%s' ) );
+		$ids          = $this->db->get_col(
+			$this->db->prepare(
+				'SELECT DISTINCT l.booking_id FROM ' . Schema::locks() . ' l LEFT JOIN ' . Schema::bookings() . " b ON b.id = l.booking_id WHERE b.id IS NULL OR b.status NOT IN ({$placeholders})", // phpcs:ignore WordPress.DB.PreparedSQL
+				$live
+			)
+		);
+		if ( array() === $ids ) {
+			return 0;
+		}
+		// Its own checked transaction, so the release is committed whatever the session's autocommit mode.
+		return $this->inTransaction(
+			function () use ( $ids, $placeholders, $live ): int {
+				$released = 0;
+				foreach ( $ids as $booking_id ) {
+					$sql     = $this->db->prepare(
+						'DELETE FROM ' . Schema::locks() . ' WHERE booking_id = %d AND NOT EXISTS ( SELECT 1 FROM ' . Schema::bookings() . " WHERE id = %d AND status IN ({$placeholders}) )", // phpcs:ignore WordPress.DB.PreparedSQL
+						array_merge( array( (int) $booking_id, (int) $booking_id ), $live )
+					);
+					$deleted = $this->quietly( fn() => $this->db->query( $sql ) );
+					if ( false === $deleted ) {
+						$this->throwIfTransient();
+						throw new RuntimeException( 'Could not release a stale time slot: ' . $this->db->last_error );
+					}
+					$released += (int) $deleted;
+				}
+				return $released;
+			}
 		);
 	}
 
@@ -448,17 +537,20 @@ final class BookingRepository {
 
 	/** Appends to the audit log and queues the emails the event calls for, in the caller's transaction. */
 	private function log( int $booking_id, string $action, ?string $from, ?string $to, ?int $actor_user_id = null, array $payload = array() ): void {
-		$this->db->insert(
-			Schema::events(),
-			array(
-				'booking_id'    => $booking_id,
-				'actor_user_id' => $actor_user_id,
-				'action'        => $action,
-				'from_status'   => $from,
-				'to_status'     => $to,
-				'payload'       => array() === $payload ? null : wp_json_encode( $payload ),
-				'created_at'    => gmdate( self::DATETIME ),
-			)
+		$this->write(
+			fn() => $this->db->insert(
+				Schema::events(),
+				array(
+					'booking_id'    => $booking_id,
+					'actor_user_id' => $actor_user_id,
+					'action'        => $action,
+					'from_status'   => $from,
+					'to_status'     => $to,
+					'payload'       => array() === $payload ? null : wp_json_encode( $payload ),
+					'created_at'    => gmdate( self::DATETIME ),
+				)
+			),
+			'record the change'
 		);
 		$this->queued += $this->outbox->recordEvent( $booking_id, (int) $this->db->insert_id, $action, $from, $to, $actor_user_id, $payload );
 	}
@@ -482,58 +574,158 @@ final class BookingRepository {
 	 * everything it needs inside the transaction), so the retry sees the winner's committed
 	 * locks and ends in a clean SlotConflict instead of a 500. If every attempt loses, $on_error
 	 * gets a CalendarBusy (create() and reschedule() then re-check the units: see throwIfHeldByOthers()).
+	 *
+	 * Every statement in $work goes through write()/quietly() with its result checked: after a
+	 * deadlock InnoDB has already rolled the whole transaction back, so a statement that ran on
+	 * regardless would commit on its own. COMMIT is checked too, and lock waits are bounded
+	 * (LOCK_WAIT_SECONDS per statement).
+	 *
+	 * wpdb's silent reconnect is switched off for the duration: when the server drops the
+	 * connection mid-change, re-running the failed statement on a fresh session (autocommit, no
+	 * transaction) could commit half a change, e.g. a booking row without its slot locks. With no
+	 * retries the request fails instead and the server has already rolled the whole change back.
 	 */
 	private function inTransaction( callable $work, ?callable $on_error = null ): mixed {
-		for ( $attempt = 1; ; $attempt++ ) {
-			$this->queued = 0;
-			$this->db->query( 'START TRANSACTION' );
-			try {
-				$result = $work();
-				$this->db->query( 'COMMIT' );
-				if ( $this->queued > 0 ) { // @phpstan-ignore greater.alwaysFalse (incremented inside $work via log())
+		$restore_lock_wait = $this->boundLockWait();
+		$reconnect_retries = $this->db->reconnect_retries; // @phpstan-ignore property.protected (wpdb exposes it through __get/__set)
+		try {
+			for ( $attempt = 1; ; $attempt++ ) {
+				$this->queued = 0;
+				try {
+					$this->begin();
+					$result = $work();
+					$this->commit();
+				} catch ( TransientLockError $e ) {
+					$this->rollback();
+					if ( $attempt < self::MAX_ATTEMPTS ) {
+						usleep( wp_rand( 5000, 25000 ) * $attempt ); // jitter so the victims don't collide again
+						continue;
+					}
+					$e = new CalendarBusy( 'The booking could not be saved because the calendar is busy. Please try again.', 0, $e );
+					if ( null === $on_error ) {
+						throw $e;
+					}
+					return $on_error( $e );
+				} catch ( Throwable $e ) {
+					$this->rollback();
+					if ( null === $on_error ) {
+						throw $e;
+					}
+					return $on_error( $e );
+				}
+				if ( $this->queued > 0 ) { // incremented inside $work via log()
 					do_action( Outbox::QUEUED_HOOK ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant is 'ishot_booking_notifications_queued'.
 				}
 				return $result;
-			} catch ( TransientLockError $e ) {
-				$this->db->query( 'ROLLBACK' );
-				if ( $attempt < self::MAX_ATTEMPTS ) {
-					usleep( wp_rand( 5000, 25000 ) * $attempt ); // jitter so the victims don't collide again
-					continue;
-				}
-				$e = new CalendarBusy( 'The booking could not be saved because the calendar is busy. Please try again.', 0, $e );
-				if ( null === $on_error ) {
-					throw $e;
-				}
-				return $on_error( $e );
-			} catch ( Throwable $e ) {
-				$this->db->query( 'ROLLBACK' );
-				if ( null === $on_error ) {
-					throw $e;
-				}
-				return $on_error( $e );
 			}
+		} finally {
+			$this->db->reconnect_retries = $reconnect_retries; // @phpstan-ignore property.protected
+			$restore_lock_wait();
+		}
+	}
+
+	private function begin(): void {
+		$this->txn_handle = null;
+		$started          = $this->quietly( fn() => $this->db->query( 'START TRANSACTION' ) );
+		if ( false === $started ) {
+			$this->throwIfTransient();
+			throw new RuntimeException( 'Could not start a database transaction: ' . $this->db->last_error );
+		}
+		// Only now: START TRANSACTION itself may still reconnect a connection that timed out while idle.
+		$this->db->reconnect_retries = 0; // @phpstan-ignore property.protected (restored by inTransaction())
+		$handle                      = $this->db->dbh; // @phpstan-ignore property.protected (wpdb exposes it through __get)
+		$this->txn_handle            = $this->guardsConnection() && is_object( $handle ) ? \WeakReference::create( $handle ) : null;
+	}
+
+	/**
+	 * Whether quietly() may treat a change of connection handle inside a transaction as a lost
+	 * connection. Not for drop-ins that route each query to one of several servers (HyperDB,
+	 * LudicrousDB: they keep their handles in $dbhs and swap $dbh per query); on those sites every
+	 * booking query must go to the primary (see README). Filter: ishot_booking_connection_guard.
+	 */
+	private function guardsConnection(): bool {
+		return (bool) apply_filters( 'ishot_booking_connection_guard', ! property_exists( $this->db, 'dbhs' ), $this->db );
+	}
+
+	private function commit(): void {
+		$committed        = $this->quietly( fn() => $this->db->query( 'COMMIT' ) ); // also checks the connection
+		$this->txn_handle = null;
+		if ( false === $committed ) {
+			$this->throwIfTransient(); // e.g. a cluster certification failure surfaces at COMMIT
+			throw new RuntimeException( 'Could not save the change: ' . $this->db->last_error );
+		}
+	}
+
+	private function rollback(): void {
+		$this->txn_handle = null;
+		$this->quietly( fn() => $this->db->query( 'ROLLBACK' ) );
+	}
+
+	/**
+	 * Lowers this session's InnoDB lock wait for the duration of one booking change. The server
+	 * default (50 s) across MAX_ATTEMPTS would outlast PHP and proxy timeouts and turn the 503
+	 * "busy" answer into a 500/504. Returns the callback that puts the previous value back.
+	 *
+	 * @return callable(): void
+	 */
+	private function boundLockWait(): callable {
+		$noop  = static function (): void {};
+		$limit = (int) apply_filters( 'ishot_booking_lock_wait_timeout', self::LOCK_WAIT_SECONDS );
+		if ( $limit < 1 ) {
+			return $noop;
+		}
+		$previous = $this->quietly( fn() => $this->db->get_var( 'SELECT @@SESSION.innodb_lock_wait_timeout' ) );
+		if ( ! is_numeric( $previous ) || (int) $previous <= $limit ) {
+			return $noop; // not InnoDB, or already short enough
+		}
+		$this->quietly( fn() => $this->db->query( $this->db->prepare( 'SET SESSION innodb_lock_wait_timeout = %d', $limit ) ) );
+		return function () use ( $previous ): void {
+			$this->quietly( fn() => $this->db->query( $this->db->prepare( 'SET SESSION innodb_lock_wait_timeout = %d', (int) $previous ) ) );
+		};
+	}
+
+	/**
+	 * Runs one write of a transaction and fails the whole transaction if it did not apply
+	 * (wpdb returns false on error; an unchecked failure would let the rest commit without it).
+	 *
+	 * @param callable(): (int|bool|null) $statement
+	 * @throws TransientLockError On a deadlock or lock wait timeout (the transaction is retried).
+	 * @throws RuntimeException   On any other failure.
+	 */
+	private function write( callable $statement, string $what ): void {
+		if ( false === $this->quietly( $statement ) ) {
+			$this->throwIfTransient();
+			throw new RuntimeException( "Could not {$what}: " . $this->db->last_error );
 		}
 	}
 
 	/** @throws TransientLockError When the last query was a deadlock victim or timed out waiting for a lock. */
 	private function throwIfTransient(): void {
-		$error = $this->db->last_error;
-		if ( str_contains( $error, 'Deadlock found' ) || str_contains( $error, 'Lock wait timeout' ) ) {
-			throw new TransientLockError( $error );
+		if ( DbError::isTransient( $this->db ) ) {
+			throw new TransientLockError( $this->db->last_error );
 		}
 	}
 
-	/** Runs a query with wpdb error output suppressed; failures are handled by the caller. */
+	/**
+	 * Runs a query with wpdb error output suppressed; failures are handled by the caller.
+	 * Inside a transaction it also refuses a result that came from a different connection than the
+	 * one the transaction began on: wpdb reconnected, and the server has rolled the transaction back.
+	 */
 	private function quietly( callable $query ): mixed {
 		$previous = $this->db->suppress_errors( true );
 		try {
-			return $query();
+			$result = $query();
 		} finally {
 			$this->db->suppress_errors( $previous );
 		}
+		if ( null !== $this->txn_handle && $this->txn_handle->get() !== $this->db->dbh ) { // @phpstan-ignore property.protected
+			$this->txn_handle = null;
+			throw new RuntimeException( 'The database connection was lost in the middle of a booking change; it was not saved.' );
+		}
+		return $result;
 	}
 
 	private function isDuplicateKeyError(): bool {
-		return str_contains( $this->db->last_error, 'Duplicate entry' );
+		return DbError::isDuplicateKey( $this->db );
 	}
 }

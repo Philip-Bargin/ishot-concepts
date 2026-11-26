@@ -4,9 +4,11 @@ namespace IShot\Booking\Application;
 use DateTimeImmutable;
 use IShot\Booking\Domain\BookingStatus;
 use IShot\Booking\Persistence\BookingRepository;
+use IShot\Booking\Persistence\CalendarBusy;
 use IShot\Booking\Persistence\StaleBooking;
 use IShot\Booking\Settings;
 use InvalidArgumentException;
+use RuntimeException;
 
 /**
  * Expires unpaid requests whose hold has lapsed, releasing their slots.
@@ -30,6 +32,14 @@ final class HoldExpiry {
 				++$expired;
 			} catch ( StaleBooking | InvalidArgumentException $e ) {
 				// Staff or the client acted on it at the same moment; their change stands.
+				continue;
+			} catch ( CalendarBusy $e ) {
+				// Lost its row lock under contention: the next sweep (or request) expires it.
+				continue;
+			} catch ( RuntimeException $e ) {
+				// Any other failure (nothing was changed: the transaction rolled back) must not stop the
+				// holds behind it, nor the public request this sweep runs inside. It is retried next run.
+				do_action( 'ishot_booking_hold_expiry_failed', (int) $hold['id'], $e );
 				continue;
 			}
 		}
@@ -55,9 +65,16 @@ final class HoldExpiry {
 		wp_clear_scheduled_hook( self::HOOK );
 	}
 
-	/** Cron callback. */
+	/** Cron callback: expires lapsed holds, then frees any lock row a failed change left behind. */
 	public static function sweep(): void {
 		global $wpdb;
-		( new self( new BookingRepository( $wpdb, Settings::int( 'granularity_minutes' ) ) ) )->run( new DateTimeImmutable( 'now' ) );
+		$repo = new BookingRepository( $wpdb, Settings::int( 'granularity_minutes' ) );
+		( new self( $repo ) )->run( new DateTimeImmutable( 'now' ) );
+		try {
+			$repo->releaseOrphanLocks();
+		} catch ( RuntimeException $e ) {
+			// Nothing was released (rolled back); the next sweep tries again.
+			do_action( 'ishot_booking_hold_expiry_failed', 0, $e );
+		}
 	}
 }

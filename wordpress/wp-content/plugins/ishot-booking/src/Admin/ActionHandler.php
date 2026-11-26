@@ -5,6 +5,7 @@ use IShot\Booking\Application\StaffActions;
 use IShot\Booking\Domain\BookingStatus;
 use IShot\Booking\Domain\TimeRange;
 use IShot\Booking\Persistence\BookingRepository;
+use IShot\Booking\Persistence\CalendarBusy;
 use IShot\Booking\Persistence\NewBooking;
 use IShot\Booking\Persistence\SlotConflict;
 use IShot\Booking\Persistence\StaleBooking;
@@ -90,6 +91,8 @@ final class ActionHandler {
 			return self::result( 'error', 'stale' );
 		} catch ( SlotConflict $e ) {
 			return self::result( 'error', 'slot_taken' );
+		} catch ( CalendarBusy $e ) {
+			return self::result( 'error', 'busy' );
 		} catch ( InvalidArgumentException $e ) {
 			return self::result( 'error', 'invalid' );
 		}
@@ -126,6 +129,8 @@ final class ActionHandler {
 			);
 		} catch ( SlotConflict $e ) {
 			return self::result( 'error', 'slot_taken' );
+		} catch ( CalendarBusy $e ) {
+			return self::result( 'error', 'busy' );
 		}
 		return self::result( 'success', 'blocked' );
 	}
@@ -152,6 +157,8 @@ final class ActionHandler {
 				$repo->transition( $id, BookingStatus::Cancelled, (int) $row['version'], get_current_user_id() );
 			} catch ( StaleBooking $e ) {
 				return self::result( 'error', 'stale' );
+			} catch ( CalendarBusy $e ) {
+				return self::result( 'error', 'busy' );
 			}
 		}
 		return self::result( 'success', 'unblocked' );
@@ -175,6 +182,7 @@ final class ActionHandler {
 			'not_found'        => __( 'That booking no longer exists.', 'ishot-booking' ),
 			'stale'            => __( 'Someone else changed this booking while you were looking. The latest version is shown below; try again.', 'ishot-booking' ),
 			'slot_taken'       => __( 'That time overlaps another booking or block. Nothing was changed.', 'ishot-booking' ),
+			'busy'             => __( 'The calendar is busy right now. Nothing was changed. Please try again in a moment.', 'ishot-booking' ),
 			'invalid'          => __( 'That change is not possible for this booking. Check the details and try again.', 'ishot-booking' ),
 			'settings_invalid' => __( 'Some values need fixing. Nothing was saved.', 'ishot-booking' ),
 			'feed_key'         => __( 'A new calendar address was created. The old one no longer works.', 'ishot-booking' ),

@@ -5,7 +5,7 @@
  *
  * Usage: php claim-slot.php <mode> <start-at-unix-float> <slot-start-utc>
  *   mode = reset  → (re)create tables and empty them, print "ready"
- *   mode = claim  → print "ok:<id>" or "conflict"
+ *   mode = claim  → print "ok:<id>", "conflict" or "busy"
  *   mode = count  → print the number of live bookings and lock rows: "<bookings>:<locks>"
  */
 
@@ -18,6 +18,7 @@ require_once dirname( __DIR__, 2 ) . '/vendor/autoload.php'; // works whether or
 use IShot\Booking\Domain\BookingStatus;
 use IShot\Booking\Domain\TimeRange;
 use IShot\Booking\Persistence\BookingRepository;
+use IShot\Booking\Persistence\CalendarBusy;
 use IShot\Booking\Persistence\NewBooking;
 use IShot\Booking\Persistence\Schema;
 use IShot\Booking\Persistence\SlotConflict;
@@ -60,4 +61,6 @@ try {
 	echo 'ok:' . $repo->create( $draft );
 } catch ( SlotConflict $e ) {
 	echo 'conflict';
+} catch ( CalendarBusy $e ) {
+	echo 'busy'; // every attempt lost a deadlock before the winner committed: nothing stored (REST 503)
 }

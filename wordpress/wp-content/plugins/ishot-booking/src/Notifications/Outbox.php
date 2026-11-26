@@ -1,6 +1,7 @@
 <?php
 namespace IShot\Booking\Notifications;
 
+use IShot\Booking\Persistence\DbError;
 use IShot\Booking\Persistence\Schema;
 use IShot\Booking\Persistence\TransientLockError;
 use wpdb;
@@ -126,10 +127,10 @@ final class Outbox {
 			$this->db->suppress_errors( $previous );
 		}
 		$error = $this->db->last_error;
-		if ( false === $inserted && ( str_contains( $error, 'Deadlock found' ) || str_contains( $error, 'Lock wait timeout' ) ) ) {
+		if ( false === $inserted && DbError::isTransient( $this->db ) ) {
 			throw new TransientLockError( $error ); // the repository re-runs the whole transaction
 		}
-		if ( false === $inserted && ! str_contains( $error, 'Duplicate entry' ) ) {
+		if ( false === $inserted && ! DbError::isDuplicateKey( $this->db ) ) {
 			// Anything but a duplicate must abort the booking change: an email must never be lost silently.
 			throw new \RuntimeException( 'Could not queue a notification: ' . $this->db->last_error );
 		}

@@ -20,6 +20,7 @@ final class RestBookingsTest extends TestCase {
 	private string $monday;
 
 	protected function setUp(): void {
+		DeadlockingWpdb::settle();
 		global $wpdb;
 		Schema::install();
 		foreach ( Schema::tables() as $table ) {
@@ -52,6 +53,7 @@ final class RestBookingsTest extends TestCase {
 			wp_delete_post( $id, true );
 		}
 		remove_all_filters( 'ishot_booking_rate_limit' );
+		DeadlockingWpdb::settle();
 	}
 
 	private function makeService( string $title, int $duration, int $buffer_after, bool $bookable ): int {
@@ -140,6 +142,9 @@ final class RestBookingsTest extends TestCase {
 
 		$this->assertSame( 503, $response->get_status() );
 		$this->assertSame( 'ishot_busy', $response->get_data()['code'] );
+		$this->assertSame( '2', $response->get_headers()['Retry-After'] ?? null, 'tells the client when to retry' );
+		$this->assertSame( array( 'status' => 503, 'retry_after' => 2 ), $response->get_data()['data'] );
+		$this->assertStringNotContainsStringIgnoringCase( 'deadlock', wp_json_encode( $response->get_data() ), 'no database detail leaks' );
 		$this->assertSame( 0, self::bookingCount() );
 	}
 
@@ -224,6 +229,23 @@ final class RestBookingsTest extends TestCase {
 			array( '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00' ),
 			$response->get_data()['times']
 		);
+	}
+
+	/** The lazy hold sweep runs inside availability reads: a hold that cannot be expired right now must not break them. */
+	public function test_availability_still_answers_when_a_lapsed_hold_is_busy(): void {
+		global $wpdb;
+		$this->assertSame( 201, $this->book( '10:00' )->get_status() );
+		$wpdb->query( $wpdb->prepare( 'UPDATE ' . Schema::bookings() . ' SET hold_expires_at = %s', gmdate( 'Y-m-d H:i:s', time() - HOUR_IN_SECONDS ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+
+		DeadlockingWpdb::swapIn()->deadlock_row_locks = true;
+		try {
+			$response = self::request( 'GET', '/availability', array( 'service' => $this->service, 'date' => $this->monday ) );
+		} finally {
+			DeadlockingWpdb::restore();
+		}
+
+		$this->assertSame( 200, $response->get_status() );
+		$this->assertSame( 'requested', $wpdb->get_var( 'SELECT status FROM ' . Schema::bookings() ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}
 
 	public function test_availability_is_empty_on_a_closed_day(): void {

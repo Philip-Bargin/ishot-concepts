@@ -23,6 +23,7 @@ final class RestClientTest extends TestCase {
 	private string $monday;
 
 	protected function setUp(): void {
+		DeadlockingWpdb::settle();
 		global $wpdb;
 		Schema::install();
 		foreach ( Schema::tables() as $table ) {
@@ -58,6 +59,7 @@ final class RestClientTest extends TestCase {
 	protected function tearDown(): void {
 		wp_delete_post( $this->service, true );
 		remove_all_filters( 'ishot_booking_rate_limit' );
+		DeadlockingWpdb::settle();
 	}
 
 	private static function call( string $method, string $route, array $body = array() ): WP_REST_Response {
@@ -181,7 +183,25 @@ final class RestClientTest extends TestCase {
 
 		$this->assertSame( 503, $response->get_status() );
 		$this->assertSame( 'ishot_busy', $response->get_data()['code'] );
+		$this->assertSame( '2', $response->get_headers()['Retry-After'] ?? null );
 		$this->assertSame( "{$this->monday} 10:00:00", $this->repo->find( 1 )['start_utc'] );
+	}
+
+	public function test_a_cancel_that_keeps_losing_its_row_lock_gets_a_clean_503_and_keeps_the_booking(): void {
+		$token = $this->book( '10:00' );
+		$locks = $this->repo->lockedUnits( 1, "{$this->monday} 00:00:00", "{$this->monday} 23:59:59" );
+
+		DeadlockingWpdb::swapIn()->deadlock_row_locks = true;
+		try {
+			$response = self::call( 'PATCH', "/bookings/{$token}", array( 'action' => 'cancel' ) );
+		} finally {
+			DeadlockingWpdb::restore();
+		}
+
+		$this->assertSame( array( 503, 'ishot_busy' ), array( $response->get_status(), $response->get_data()['code'] ) );
+		$this->assertSame( '2', $response->get_headers()['Retry-After'] ?? null );
+		$this->assertNotSame( 'cancelled', $this->repo->find( 1 )['status'] );
+		$this->assertSame( $locks, $this->repo->lockedUnits( 1, "{$this->monday} 00:00:00", "{$this->monday} 23:59:59" ), 'the slot is still held' );
 	}
 
 	public function test_rescheduling_onto_a_taken_time_offers_alternatives_and_keeps_the_booking(): void {
@@ -214,6 +234,10 @@ final class RestClientTest extends TestCase {
 
 		$this->assertSame( 422, $again->get_status() );
 		$this->assertSame( 'ishot_not_changeable', $again->get_data()['code'] );
+
+		// A retried cancel (e.g. after a proxy 503 hid the first answer) is told the same, not a 500.
+		$retry = self::call( 'PATCH', "/bookings/{$token}", array( 'action' => 'cancel' ) );
+		$this->assertSame( array( 422, 'ishot_not_changeable' ), array( $retry->get_status(), $retry->get_data()['code'] ) );
 	}
 
 	public function test_the_link_stops_working_thirty_days_after_the_session(): void {

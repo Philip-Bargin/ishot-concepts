@@ -24,6 +24,7 @@ final class RestStaffTest extends TestCase {
 	private array $users = array();
 
 	protected function setUp(): void {
+		DeadlockingWpdb::settle();
 		global $wpdb;
 		Schema::install();
 		Roles::install();
@@ -52,6 +53,7 @@ final class RestStaffTest extends TestCase {
 		foreach ( $this->users as $id ) {
 			wp_delete_user( $id );
 		}
+		DeadlockingWpdb::settle();
 	}
 
 	private function as( ?string $role ): void {
@@ -202,7 +204,26 @@ final class RestStaffTest extends TestCase {
 
 		$this->assertSame( array( 503, 'ishot_busy' ), array( $moved->get_status(), $moved->get_data()['code'] ) );
 		$this->assertSame( array( 503, 'ishot_busy' ), array( $block->get_status(), $block->get_data()['code'] ) );
+		$this->assertSame( '2', $moved->get_headers()['Retry-After'] ?? null );
 		$this->assertSame( '2026-12-14 10:00:00', $this->repo->find( $id )['start_utc'] );
+	}
+
+	public function test_removing_a_block_that_keeps_losing_its_row_lock_gets_503_and_keeps_the_block(): void {
+		$this->as( 'ishot_photographer' );
+		$block = self::call( 'POST', '/blocks', array( 'start' => '2026-12-14T09:00', 'end' => '2026-12-14T12:00', 'reason' => 'Studio maintenance' ) );
+		$id    = (int) $block->get_data()['id'];
+
+		DeadlockingWpdb::swapIn()->deadlock_row_locks = true;
+		try {
+			$response = self::call( 'DELETE', "/blocks/{$id}" );
+		} finally {
+			DeadlockingWpdb::restore();
+		}
+
+		$this->assertSame( array( 503, 'ishot_busy' ), array( $response->get_status(), $response->get_data()['code'] ) );
+		$this->assertSame( '2', $response->get_headers()['Retry-After'] ?? null );
+		$this->assertSame( 'confirmed', $this->repo->find( $id )['status'] );
+		$this->assertCount( 6, $this->repo->lockedUnits( 1, '2026-12-14 00:00:00', '2026-12-15 00:00:00' ), 'the block still holds 09:00–12:00' );
 	}
 
 	public function test_unknown_booking_or_action_is_rejected(): void {

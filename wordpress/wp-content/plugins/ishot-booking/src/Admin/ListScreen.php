@@ -96,7 +96,8 @@ final class ListScreen {
 					'page'          => Menu::LIST_SLUG,
 					'ishot_bulk'    => $result['error'] ?? 'ok',
 					'ishot_done'    => $result['done'],
-					'ishot_skipped' => count( $result['skipped'] ),
+					'ishot_skipped' => self::skipCounts( $result['skipped'] )['skipped'],
+					'ishot_busy'    => self::skipCounts( $result['skipped'] )['busy'],
 				),
 				admin_url( 'admin.php' )
 			)
@@ -112,6 +113,7 @@ final class ListScreen {
 		$code    = sanitize_key( wp_unslash( $_GET['ishot_bulk'] ) );
 		$done    = absint( $_GET['ishot_done'] ?? 0 );
 		$skipped = absint( $_GET['ishot_skipped'] ?? 0 );
+		$busy    = absint( $_GET['ishot_busy'] ?? 0 );
 		// phpcs:enable
 		$errors = array(
 			'nonce'     => __( 'That form had expired. Please try again.', 'ishot-booking' ),
@@ -123,12 +125,35 @@ final class ListScreen {
 			echo '<div class="notice notice-error"><p>' . esc_html( $errors[ $code ] ) . '</p></div>';
 			return;
 		}
+		echo '<div class="notice notice-' . ( $skipped + $busy > 0 ? 'warning' : 'success' ) . '"><p>' . esc_html( self::bulkSummary( $done, $skipped, $busy ) ) . '</p></div>';
+	}
+
+	/**
+	 * Splits a bulk run's skips (id => reason) into busy ones and all others.
+	 *
+	 * @param array<int, string> $skipped
+	 * @return array{skipped: int, busy: int}
+	 */
+	public static function skipCounts( array $skipped ): array {
+		$busy = count( array_keys( $skipped, 'busy', true ) );
+		return array(
+			'skipped' => count( $skipped ) - $busy,
+			'busy'    => $busy,
+		);
+	}
+
+	/** The bulk-run notice text. Busy bookings are reported apart: unlike other skips, retrying them works. */
+	public static function bulkSummary( int $done, int $skipped, int $busy ): string {
 		/* translators: %d: number of bookings */
 		$text = sprintf( _n( '%d booking updated.', '%d bookings updated.', $done, 'ishot-booking' ), $done );
 		if ( $skipped > 0 ) {
 			/* translators: %d: number of bookings */
 			$text .= ' ' . sprintf( _n( '%d skipped: the action did not apply to it (status or timing), or someone changed it first.', '%d skipped: the action did not apply to them (status or timing), or someone changed them first.', $skipped, 'ishot-booking' ), $skipped );
 		}
-		echo '<div class="notice notice-' . ( $skipped > 0 ? 'warning' : 'success' ) . '"><p>' . esc_html( $text ) . '</p></div>';
+		if ( $busy > 0 ) {
+			/* translators: %d: number of bookings */
+			$text .= ' ' . sprintf( _n( '%d not changed because the calendar was busy. Select it and try again.', '%d not changed because the calendar was busy. Select them and try again.', $busy, 'ishot-booking' ), $busy );
+		}
+		return $text;
 	}
 }

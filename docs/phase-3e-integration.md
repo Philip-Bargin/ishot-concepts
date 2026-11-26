@@ -14,7 +14,7 @@ The backend for all of it is built and tested; this is the contract the front en
 | Account option | `create_account: true` | Offered to guests only. The response's `account` is `check_email` or `not_created`; show the same neutral text for both (for example "If you don't have an account yet, check your email to set a password"). Never say "an account already exists". |
 | Clash | 409 `ishot_slot_taken` | Show `data.alternatives` (ISO times) as one-tap choices, as the prototype does. |
 | Policy | 422 `ishot_*` | Show `message` next to the date/time field. |
-| Busy | 503 `ishot_busy` | Rare: the database was too contended to save. Nothing was stored; offer "Try again" and resend with the same `Idempotency-Key`. |
+| Busy | 503 `ishot_busy` (header `Retry-After: 2`, `data.retry_after` = 2) | Rare: the database was too contended to save. Nothing was stored. Keep the form filled in, show "The calendar is busy right now. Nothing was changed. Please try again in a moment." with a "Try again" button, wait at least `retry_after` seconds before resending, and resend with the **same** `Idempotency-Key` (so a retry can never create a second booking). Do not auto-retry more than once. |
 | Success | 201 | Has `token`. Build the manage link with the fragment convention (section 3) and **never put the token in a URL path or query**. |
 
 ## 2. My bookings (`/account`)
@@ -34,7 +34,8 @@ The backend for all of it is built and tested; this is the contract the front en
 2. Keep the token in memory only: no `localStorage`, `sessionStorage` or cookies.
 3. Call `GET /manage` and `PATCH /manage` (`{action:"cancel"}` or `{action:"reschedule", start:"YYYY-MM-DDTHH:MM"}`) with the token in the **`X-Ishot-Manage-Token` header**. Never use the deprecated `/bookings/{token}` route, and never use `?token=` (the server ignores it).
 4. Load **no third-party scripts, fonts, images or iframes**. The server sends a Content-Security-Policy allowing only same-origin `script/connect/img`, so any third-party tag will be blocked. Extend it only deliberately, through `ishot_booking_manage_csp`.
-5. Handle 404 as "this link has expired or is not valid" (the same text for unknown and expired links), 422 (past the cut-off, or the booking can't be changed), 409 (clash: show alternatives) and 429 (wait and retry).
+5. Handle 404 as "this link has expired or is not valid" (the same text for unknown and expired links), 422 (past the cut-off, or the booking can't be changed), 409 (clash: show alternatives), 429 (wait and retry) and 503 `ishot_busy` (cancel or reschedule: "The calendar is busy right now. Nothing was changed." with a "Try again" button, after at least `Retry-After` seconds; nothing was changed, so resending the same request is safe).
+6. Treat **any** 503, even one whose body is not JSON (some hosts and proxies replace 5xx bodies with an HTML page, or answer 503 themselves), as "this may not have been saved, try again", never as success. Only a JSON `ishot_busy` guarantees that nothing changed. Retrying is still safe: the booking form resends the same `Idempotency-Key` (a booking that did save comes back as 200 `replayed`), and a cancel that did go through answers the retry with 422 `ishot_not_changeable`, so reload the booking and show its current state. This applies to the booking form (section 1) too.
 
 **Already enforced by the server:**
 - `Referrer-Policy: no-referrer`, `Cache-Control: no-store, private` and `X-Robots-Tag: noindex` on the page.

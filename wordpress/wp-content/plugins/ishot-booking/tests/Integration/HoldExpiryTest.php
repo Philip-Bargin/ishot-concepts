@@ -22,6 +22,7 @@ final class HoldExpiryTest extends TestCase {
 	private DateTimeImmutable $now;
 
 	protected function setUp(): void {
+		DeadlockingWpdb::settle();
 		global $wpdb;
 		Schema::install();
 		foreach ( Schema::tables() as $table ) {
@@ -29,6 +30,10 @@ final class HoldExpiryTest extends TestCase {
 		}
 		$this->repo = new BookingRepository( $wpdb, 30 );
 		$this->now  = new DateTimeImmutable( '2026-12-01 12:00', new DateTimeZone( 'UTC' ) );
+	}
+
+	protected function tearDown(): void {
+		DeadlockingWpdb::settle();
 	}
 
 	private function hold( string $start, ?string $expires, BookingStatus $status = BookingStatus::Requested ): int {
@@ -59,6 +64,65 @@ final class HoldExpiryTest extends TestCase {
 		$this->assertSame( 'expired', $this->repo->find( $pending )['status'] );
 		$this->assertSame( array(), $this->repo->lockedUnits( 1, '2026-12-14 00:00:00', '2026-12-15 00:00:00' ) );
 		$this->assertSame( array( 'reason' => 'hold_lapsed' ), json_decode( $this->repo->events( $requested )[1]['payload'], true ) );
+	}
+
+	/** The sweep also runs inside public requests (availability, new bookings): a busy row must not break them. */
+	public function test_a_hold_whose_row_lock_keeps_losing_deadlocks_is_left_for_the_next_sweep(): void {
+		$hold                     = $this->hold( '2026-12-14 10:00', '2026-12-01 11:59' );
+		$deadlocking              = DeadlockingWpdb::connect();
+		$deadlocking->deadlock_row_locks = true;
+
+		$expired = ( new HoldExpiry( new BookingRepository( $deadlocking, 30 ) ) )->run( $this->now );
+		unset( $deadlocking );
+
+		$this->assertSame( 0, $expired );
+		$this->assertSame( 'requested', $this->repo->find( $hold )['status'] );
+		$this->assertSame( 1, ( new HoldExpiry( $this->repo ) )->run( $this->now ), 'the next sweep expires it' );
+	}
+
+	/** A hold that fails for any other reason must not stop the holds behind it (it sorts first every run). */
+	public function test_a_hold_that_cannot_be_expired_does_not_stop_the_others(): void {
+		$stuck  = $this->hold( '2026-12-14 10:00', '2026-12-01 11:00' ); // oldest: always first in the sweep
+		$other  = $this->hold( '2026-12-14 14:00', '2026-12-01 11:30' );
+		$failed = array();
+		$listen = static function ( int $id ) use ( &$failed ): void {
+			$failed[] = $id;
+		};
+		add_action( 'ishot_booking_hold_expiry_failed', $listen );
+
+		$deadlocking               = DeadlockingWpdb::connect();
+		$deadlocking->fail_pattern = '/^\s*UPDATE `?' . preg_quote( Schema::bookings(), '/' ) . "\\b.*`id` = '?{$stuck}'?\\s*\$/is"; // wpdb quotes the id: WHERE `id` = '1'
+		try {
+			$expired = ( new HoldExpiry( new BookingRepository( $deadlocking, 30 ) ) )->run( $this->now );
+		} finally {
+			remove_action( 'ishot_booking_hold_expiry_failed', $listen );
+			unset( $deadlocking );
+		}
+
+		$this->assertSame( 1, $expired );
+		$this->assertSame( 'expired', $this->repo->find( $other )['status'] );
+		$this->assertSame( 'requested', $this->repo->find( $stuck )['status'], 'its change rolled back' );
+		$this->assertSame( array( $stuck ), $failed, 'reported for whoever watches the hook' );
+		$this->assertSame( 1, ( new HoldExpiry( $this->repo ) )->run( $this->now ), 'and a later sweep still expires it' );
+	}
+
+	/** The cron sweep also frees any lock row a failed change left behind. */
+	public function test_the_cron_sweep_frees_lock_rows_left_behind(): void {
+		global $wpdb;
+		$live = $this->hold( '2026-12-14 10:00', null );
+		$wpdb->insert(
+			Schema::locks(),
+			array(
+				'resource_id'    => 1,
+				'unit_start_utc' => '2026-12-14 15:00:00',
+				'booking_id'     => 999999,
+			)
+		);
+
+		HoldExpiry::sweep();
+
+		$this->assertSame( array( '2026-12-14 10:00:00', '2026-12-14 10:30:00' ), $this->repo->lockedUnits( 1, '2026-12-14 00:00:00', '2026-12-15 00:00:00' ) );
+		$this->assertSame( 'requested', $this->repo->find( $live )['status'] );
 	}
 
 	public function test_live_holds_and_confirmed_bookings_are_left_alone(): void {

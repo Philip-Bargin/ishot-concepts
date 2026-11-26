@@ -48,10 +48,16 @@ final class ConcurrencyTest extends TestCase {
 
 		$winners   = array_filter( $results, static fn( $r ) => str_starts_with( $r, 'ok:' ) );
 		$conflicts = array_filter( $results, static fn( $r ) => 'conflict' === $r );
+		// A racer that lost every deadlock retry before the winner committed: a clean "busy, try again".
+		$busy = array_filter( $results, static fn( $r ) => 'busy' === $r );
+
+		// Evidence for the run log (stderr, so it does not count as test output).
+		fwrite( STDERR, sprintf( "\nConcurrencyTest: %d racers: %d winner, %d conflict, %d busy\n", self::RACERS, count( $winners ), count( $conflicts ), count( $busy ) ) );
 
 		$this->assertCount( 1, $winners, 'exactly one racer may win; got: ' . implode( ' | ', array_unique( $results ) ) );
-		$others = array_diff_key( $results, $winners, $conflicts );
-		$this->assertCount( self::RACERS - 1, $conflicts, 'every other racer must get a clean conflict, not an error; got: ' . implode( ' | ', array_unique( array_map( array( self::class, 'plain' ), $others ) ) ) );
+		$others = array_diff_key( $results, $winners, $conflicts, $busy );
+		$this->assertSame( array(), $others, 'every other racer must get a clean conflict or busy answer, not an error; got: ' . implode( ' | ', array_unique( array_map( array( self::class, 'plain' ), $others ) ) ) );
+		$this->assertGreaterThan( count( $busy ), count( $conflicts ), 'busy must stay the rare exception, not the usual loser answer' );
 		// One booking; its 60 min + 30 min buffer = 3 locked half-hour units.
 		$this->assertSame( '1:3', self::child( 'count', '0', '' ) );
 	}

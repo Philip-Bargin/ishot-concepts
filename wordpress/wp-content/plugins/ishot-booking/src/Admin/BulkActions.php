@@ -4,6 +4,7 @@ namespace IShot\Booking\Admin;
 use DateTimeImmutable;
 use IShot\Booking\Application\StaffActions;
 use IShot\Booking\Persistence\BookingRepository;
+use IShot\Booking\Persistence\CalendarBusy;
 use IShot\Booking\Persistence\SlotConflict;
 use IShot\Booking\Persistence\StaleBooking;
 use IShot\Booking\Settings;
@@ -71,6 +72,8 @@ final class BulkActions {
 			try {
 				$actions->perform( $id, $action, (int) $row['version'], get_current_user_id(), array( 'bulk' => true ) );
 				++$result['done'];
+			} catch ( CalendarBusy $e ) {
+				$result['skipped'][ $id ] = 'busy'; // nothing changed; the rest of the run goes on
 			} catch ( StaleBooking | SlotConflict | InvalidArgumentException $e ) {
 				$result['skipped'][ $id ] = 'changed'; // someone acted on it meanwhile
 			}
