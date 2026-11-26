@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 /** The dev-only fixture writer fails safe: each guard alone blocks every write. */
 final class StudioDevFixturesTest extends TestCase {
 
-	private const FILLED = array( 'phone', 'whatsapp', 'instagram', 'email', 'address' );
+	private const FILLED = array( 'phone', 'whatsapp', 'instagram', 'facebook', 'email', 'address' );
 
 	protected function setUp(): void {
 		delete_option( Settings::OPTION );
@@ -86,10 +86,10 @@ final class StudioDevFixturesTest extends TestCase {
 		$d = Studio::details();
 		$this->assertSame( '0881405259', $d['phone'] );
 		$this->assertSame( 'https://wa.me/231881405259', $d['whatsapp_url'] );
-		$this->assertSame( 'https://www.instagram.com/ishotconcept/', $d['instagram_url'] );
+		$this->assertSame( 'https://www.instagram.com/ishot_concept/', $d['instagram_url'] );
 		$this->assertSame( 'ishotconcept01@gmail.com', $d['email'] );
 		$this->assertSame( 'Monrovia, Liberia', $d['address'] );
-		$this->assertNull( $d['facebook_url'], 'Facebook stays empty until supplied' );
+		$this->assertSame( 'https://www.facebook.com/people/Ishot-Concept/100083810506889/', $d['facebook_url'] );
 		$this->assertSame( self::FILLED, Studio::unconfirmed() );
 		$this->assertSame( self::FILLED, $result['written'] );
 	}
@@ -145,7 +145,7 @@ final class StudioDevFixturesTest extends TestCase {
 				'studio_phone'         => StudioDevFixtures::VALUES['phone'],
 				'studio_whatsapp'      => StudioDevFixtures::VALUES['whatsapp'],
 				'studio_instagram_url' => StudioDevFixtures::VALUES['instagram'],
-				'studio_facebook_url'  => '',
+				'studio_facebook_url'  => StudioDevFixtures::VALUES['facebook'],
 				'studio_public_email'  => StudioDevFixtures::VALUES['email'],
 				'studio_address'       => StudioDevFixtures::VALUES['address'],
 			)

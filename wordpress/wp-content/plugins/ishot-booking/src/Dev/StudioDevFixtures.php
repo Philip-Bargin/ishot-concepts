@@ -14,11 +14,12 @@ use IShot\Booking\Studio;
  */
 final class StudioDevFixtures {
 
-	/** Prototype values (src/data.js `contact`). Facebook is deliberately absent: it is not supplied. */
+	/** Prototype values (src/data.js `contact`; socials owner-supplied 2026-11-25). */
 	public const VALUES = array(
 		'phone'     => '0881405259',
 		'whatsapp'  => '+231 881 405 259',
-		'instagram' => 'https://www.instagram.com/ishotconcept/',
+		'instagram' => 'https://www.instagram.com/ishot_concept/',
+		'facebook'  => 'https://www.facebook.com/people/Ishot-Concept/100083810506889/',
 		'email'     => 'ishotconcept01@gmail.com',
 		'address'   => 'Monrovia, Liberia',
 	);
